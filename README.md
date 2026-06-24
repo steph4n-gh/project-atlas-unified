@@ -105,7 +105,6 @@ Instead of computing all $N \times N$ token interactions, QAN computes attention
 *   **Rolling Perplexity Canary**: Monitors sequence degradation over a 512-token rolling window, falling back gracefully to dense attention if perplexity exceeds $2\times$ the calibration baseline.
 *   **Spectral bisection Cohomology Firewall**: Evaluates attention graph Laplacians ($L = D - W$) during the forward pass. When algebraic connectivity $\lambda_2 < \tau$, it uses the Fiedler vector's signs to bisect the context and trigger targeted rollbacks at the exact split boundary.
 *   **Apple Silicon (Metal/MPS) Autograd Operators**: Highly responsive custom gather-scatter PyTorch autograd operators tailored for local MPS execution.
-*   **Triton CUDA Kernels**: Block-sparse JIT-compiled CUDA attention kernels grouping sequence tokens into $32 \times 32$ tiles with dense Tensor Core MMA support and zero-compute bypasses for empty tiles.
 *   **Stable Differentiable LoRA Pipeline**: Features a custom LoRA training pipeline with a **Backtracking Line Search** optimizer to guarantee monotonic causal cross-entropy loss convergence and zero NaN gradients.
 
 ---
@@ -273,8 +272,7 @@ project_atlas_unified/
 │   │   ├── procrustes.py # SVD Procrustes alignment for cross-model representations
 │   │   └── rag.py        # LatticeIndexer chunking and directory crawling
 │   ├── kernels/          # Accelerated hardware backends
-│   │   ├── mps_scatter.py # Gather-scatter PyTorch autograd operators for Apple Silicon
-│   │   └── triton_sparse.py # Block-sparse CUDA Triton kernels for NVIDIA Tensor Cores
+│   │   └── mps_scatter.py # Gather-scatter PyTorch autograd operators for Apple Silicon
 │   ├── modeling/         # Model grafting layers, adapters, and AutoQANGraftModel
 │   │   ├── attention.py
 │   │   ├── auto.py       # AutoQANGraftModel and RoPE wrapping functions
@@ -309,7 +307,7 @@ project_atlas_unified/
 
 ## ⚡ Empirical Performance & Latency Benchmarks
 
-Tested natively on local **Apple Silicon (M4 Pro GPU)** and **NVIDIA CUDA (Triton)** devices:
+Tested natively on local **Apple Silicon (M4 Pro GPU)** devices:
 
 *   **Compute Sparsity**: At a sequence length of 1,024, QAN sparse attention computes only **$28,448$ active coordinate pairs** (out of $1,048,576$ dense attention weights), achieving a **$97.29\%$ compute bypass**.
 *   **Prefill Throughput & Fusion**: The coordinate-sparse MPS attention operator processed a 1,024-token forward pass in **$5.439$ milliseconds**, delivering a raw prefill processing throughput of **$188,259$ tokens/second** on the M4 Pro GPU. The new **fused gather-scatter MPS kernel** accelerates this further, cutting coordinate-routing latency by **$49.63\%$** (reducing mean latency from **$883.34\text{ ms}$ to $444.97\text{ ms}$**).
