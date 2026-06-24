@@ -202,7 +202,7 @@ dependencies = [
 [[package]]
 name = "spectral-pruner"
 version = "1.0.0"
-source = "git+https://github.com/steph4n-gh/spectral-pruner.git#dee535df6c532b743958611d4f1176c17d95b5bc"
+source = "git+https://github.com/steph4n-gh/spectral-pruner.git?rev=dee535df#dee535df6c532b743958611d4f1176c17d95b5bc"
 
 [[package]]
 name = "strsim"

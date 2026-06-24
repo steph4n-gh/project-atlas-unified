@@ -15,7 +15,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: "ci-${{ github.ref }}"
   cancel-in-progress: true
 
 jobs:
@@ -33,7 +33,7 @@ jobs:
 
       - name: Run NPM Dependency Audit
         run: |
-          cargo run --manifest-path security-auditor/Cargo.toml --package security-auditor --bin security-auditor -- --lockfile package-lock.json
+          cargo run --release --manifest-path security-auditor/Cargo.toml --package security-auditor --bin security-auditor -- --lockfile package-lock.json
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -52,7 +52,7 @@ jobs:
 
       - name: Run Python Dependency Audit
         run: |
-          cargo run --manifest-path security-auditor/Cargo.toml --package security-auditor --bin security-auditor -- --graph python-deps.json
+          cargo run --release --manifest-path security-auditor/Cargo.toml --package security-auditor --bin security-auditor -- --graph python-deps.json
 
       - name: Run Pytest suite
         run: |

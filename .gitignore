@@ -64,6 +64,9 @@ ORIGINAL_REQUEST.md
 # Node dependencies
 node_modules/
 
+# Generated dependency graph artifacts
+python-deps.json
+
 # Large Model weights and activation caches
 scratch/*.elq
 scratch/*.npy

@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+"""Dump Python dependency graph as JSON for spectral-pruner auditing.
+
+Reads installed packages from the current Python environment using
+importlib.metadata, builds a dependency graph, and outputs a JSON file
+compatible with the security-auditor tool.
+"""
 import importlib.metadata
 import json
 import re
@@ -6,11 +12,25 @@ import sys
 import argparse
 
 def normalize_name(name):
-    return name.lower().replace('_', '-')
+    return re.sub(r'[-_.]+', '-', name).lower()
 
-req_re = re.compile(r'^([a-zA-Z0-9_\-]+)')
+# Matches the package name at the start of a PEP 508 requirement string.
+REQ_NAME_RE = re.compile(r'^([a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?)')
+# Matches extras-gated or platform-specific markers that should be excluded.
+EXTRAS_RE = re.compile(r';\s*extra\s*==')
+
 def parse_req_name(req_str):
-    m = req_re.match(req_str)
+    """Extract and normalize the package name from a PEP 508 requirement string.
+
+    Returns None if the requirement is gated behind an extras marker
+    (e.g., 'pytest; extra == "dev"') since those represent optional
+    dependency groups that inflate the graph with phantom edges.
+    """
+    # Filter out extras-gated dependencies — they create phantom edges
+    # to packages that may not be installed or relevant to production.
+    if EXTRAS_RE.search(req_str):
+        return None
+    m = REQ_NAME_RE.match(req_str)
     if m:
         return normalize_name(m.group(1))
     return None
@@ -18,6 +38,7 @@ def parse_req_name(req_str):
 def main():
     parser = argparse.ArgumentParser(description="Dump Python dependency graph as JSON for spectral-pruner.")
     parser.add_argument("-o", "--output", default="python-deps.json", help="Output JSON path")
+    parser.add_argument("--root", default="project-atlas-unified", help="Root package name to anchor the graph from")
     parser.add_argument("--sinks", default="cffi,cryptography,anyio,uvicorn", help="Comma-separated list of packages to treat as system sinks")
     args = parser.parse_args()
 
@@ -31,7 +52,7 @@ def main():
         dist_map[name] = d
 
     # Primary root package
-    root_pkg = "project-atlas-unified"
+    root_pkg = normalize_name(args.root)
     if root_pkg not in dist_map:
         print(f"Error: Primary package '{root_pkg}' is not installed in the environment.", file=sys.stderr)
         sys.exit(1)
@@ -62,7 +83,7 @@ def main():
     
     system_start_idx = len(normal_pkgs)
     
-    # 3. Build edges
+    # 3. Build edges (filtering out extras-gated requirements)
     edges = []
     for u_name in all_nodes:
         u_idx = node_to_idx[u_name]
@@ -88,7 +109,7 @@ def main():
         json.dump(payload, f, indent=2)
 
     print(f"Successfully dumped {len(all_nodes)} nodes and {len(edges)} edges to {args.output}")
-    print(f"System boundaries start at index {system_start_idx} (sinks: {list(sink_names)})")
+    print(f"System boundaries start at index {system_start_idx} (sinks: {sorted(sink_names)})")
 
 if __name__ == "__main__":
     main()
