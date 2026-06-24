@@ -181,6 +181,15 @@ Launch the FastAPI-powered Sleek Dark Web Dashboard. It automatically boots the 
 qan-cli ui --host 127.0.0.1 --port 8000
 ```
 
+#### Launching the MoE Studio & Regex Wizard Portal
+To run the high-fidelity Mixture of Experts (MoE) Studio, p-adic routing dashboard, and E8 Regex Wizard:
+```bash
+python3 scripts/serve_moe.py
+```
+This starts the local web server at `http://localhost:8080`.
+* **Mixture of Experts Studio (`http://localhost:8080/moe_designer.html`)**: Real-time 3D WebGL simulator with the E8 router lattice, orbiting experts, JIT expert compilation, and an interactive system guide.
+* **E8 Regex Wizard (`http://localhost:8080/index.html`)**: Interactive neuro-symbolic translation showing prompt coordinate trees and direct dialect compilers.
+
 #### Running Autonomous Self-Improvement
 Optimize critical compute kernels and mathematical modules autonomously using a local Gemma-4 model or cloud-assisted Gemini. You can target five separate modules: `mps_scatter`, `cohomology`, `e8_decoder`, `e8_swap`, or `adelic`.
 ```bash
