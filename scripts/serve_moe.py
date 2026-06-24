@@ -1980,28 +1980,6 @@ Ready for cyber-synthesis prompt queries...</div>
 
             playBeep(440, 'square', 0.1);
 
-            // Add intermediate loading sequence logs/sounds to make it hilarious & readable!
-            setTimeout(() => {
-                if (btn.disabled) {
-                    screen.innerHTML += "Intersecting ultrametric tree nodes...\\n";
-                    playBeep(550, 'square', 0.05);
-                }
-            }, 600);
-            
-            setTimeout(() => {
-                if (btn.disabled) {
-                    screen.innerHTML += "Swapping p-adic weight matrices from virtual VRAM...\\n";
-                    playBeep(660, 'square', 0.05);
-                }
-            }, 1200);
-
-            setTimeout(() => {
-                if (btn.disabled) {
-                    screen.innerHTML += "Resolving Gosset root coordinate projections...\\n";
-                    playBeep(770, 'square', 0.05);
-                }
-            }, 1700);
-
             try {
                 const response = await fetch("/api/generate", {
                     method: "POST",
@@ -2012,9 +1990,6 @@ Ready for cyber-synthesis prompt queries...</div>
                 });
 
                 const data = await response.json();
-
-                // Wait for the full 2-second experience
-                await new Promise(resolve => setTimeout(resolve, 2000));
 
                 if (data.status === "success") {
                     // Triumphant compile beep
@@ -3078,31 +3053,6 @@ MOE_HTML_PAGE = """<!DOCTYPE html>
             chatHistory.appendChild(sysLoading);
             chatHistory.scrollTop = chatHistory.scrollHeight;
 
-            // Intermediate progress logs
-            setTimeout(() => {
-                const loadingNode = document.getElementById("chat-loading-indicator");
-                if (loadingNode) {
-                    const step1 = document.createElement("div");
-                    step1.style.color = "#ffff00";
-                    step1.innerText = "[SYSTEM] Paging expert weights (sub-15ms threshold)...";
-                    chatHistory.insertBefore(step1, loadingNode);
-                    chatHistory.scrollTop = chatHistory.scrollHeight;
-                    playBeep(700, 'sine', 0.05);
-                }
-            }, 700);
-
-            setTimeout(() => {
-                const loadingNode = document.getElementById("chat-loading-indicator");
-                if (loadingNode) {
-                    const step2 = document.createElement("div");
-                    step2.style.color = "#33ff33";
-                    step2.innerText = "[SYSTEM] Projecting coordinate tokens onto ultrametric E8 tree...";
-                    chatHistory.insertBefore(step2, loadingNode);
-                    chatHistory.scrollTop = chatHistory.scrollHeight;
-                    playBeep(800, 'sine', 0.05);
-                }
-            }, 1400);
-
             const btn = document.getElementById("chat-send-btn");
             btn.disabled = true;
 
@@ -3114,9 +3064,6 @@ MOE_HTML_PAGE = """<!DOCTYPE html>
                 });
                 const data = await response.json();
                 
-                // Wait for the full 2-second experience
-                await new Promise(resolve => setTimeout(resolve, 2000));
-
                 // Remove loading indicator
                 const loadingNode = document.getElementById("chat-loading-indicator");
                 if (loadingNode) loadingNode.remove();
