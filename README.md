@@ -5,7 +5,7 @@
 [![PyTorch: >=2.0](https://img.shields.io/badge/PyTorch->=2.0-red.svg)](https://pytorch.org/)
 
 <p align="center">
-  <img src="docs/assets/e8_lattice_shells.png" width="180" alt="E8 Gosset Polytope Concentric Shell Mapping">
+  <img src="docs/assets/github_social_preview.png" width="100%" alt="Project Atlas Banner">
 </p>
 
 A Python library and CLI toolchain implementing **Quasicrystalline Attention Networks (QAN)**. QAN replaces standard dense self-attention with a coordinate-sparse attention layer based on the $E_8$ Gosset root lattice, enabling sequence lengths of **$200\text{k}+$ tokens** on standard local hardware (Apple Silicon MPS).
