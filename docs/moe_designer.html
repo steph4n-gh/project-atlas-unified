@@ -1155,12 +1155,14 @@
                     window.updateExpertWeight(i, normalized);
                     
                     // Trigger particle beam with slight staggered delay
+                    const targetIndex = prompt.target.indexOf(i);
+                    const staggerDelay = targetIndex >= 0 ? targetIndex : 0;
                     setTimeout(() => {
                         window.triggerParticleBeam(i);
                         // Peak VU level
                         vuValues[i] = 0.85 + Math.random() * 0.15;
                         window.updateVUMeter(i, vuValues[i]);
-                    }, tIdx * 120);
+                    }, staggerDelay * 120);
                 } else {
                     window.updateExpertWeight(i, 0);
                 }
