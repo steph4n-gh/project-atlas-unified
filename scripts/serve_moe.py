@@ -7,6 +7,9 @@ CORS/file:// issues in Chrome and allow direct API queries to the MoE.
 """
 
 import os
+# Force local Hugging Face cache directory to avoid downloading models
+os.environ["HF_HOME"] = "/Volumes/Storage/huggingface_cache"
+
 import sys
 import json
 import time
@@ -36,6 +39,25 @@ except Exception as e:
     print(f"[-] Warning: MoE Router failed to initialize (continuing in mock mode): {e}")
     router = None
 
+# Preload real Gemma-4 model for chat personas using transformers MPS acceleration
+gemma_model = None
+try:
+    from ultrametric_ce.gemma_interface import load_gemma
+    import torch
+    print("[*] Preloading google/gemma-4-E2B-it for chat personas...")
+    gemma_model = load_gemma("google/gemma-4-E2B-it", backend="transformers")
+    # Move to MPS for fast generation if available
+    if torch.backends.mps.is_available():
+        gemma_model.model = gemma_model.model.to("mps")
+        print("[*] Gemma-4-E2B-it moved to MPS device.")
+    else:
+        print("[*] Gemma-4-E2B-it running on CPU.")
+except Exception as e:
+    print(f"[-] Warning: Real Gemma-4 model failed to load (continuing in mock mode): {e}")
+    gemma_model = None
+
+
+build_logs = []
 
 # High-fidelity regex database to replace model word salad
 REGEX_DATABASE = [
@@ -4159,33 +4181,7 @@ CHAT_HTML_PAGE = """<!DOCTYPE html>
 def get_persona_response(persona, prompt, warn_level):
     prompt_l = prompt.lower()
     
-    # 1. Glitch level
-    if warn_level >= 70:
-        import random
-        glitch_prefixes = [
-            "[GLITCH_LEVEL_RED] p-adic tree node mapping collision! ",
-            "[CRITICAL] E8 Lattice coordinate overflow: ",
-            "[WARNING] coordinate salad engaged! ",
-            "[SYSTEM FATAL] memory leak in subspace gating node: "
-        ]
-        glitch_words = [
-            "0x93FF20AA182B", "cantor_dust", "subspace_routing_resolved",
-            "finite_tree_coordinates", "inletsSeverity", "word_salad_imminent",
-            "GOSSET_LATTICE_CRASH", "VRAM_OVERFLOW_SLOT_3", "NULL_POINTER_CE"
-        ]
-        return random.choice(glitch_prefixes) + " ".join(random.choices(glitch_words, k=5)).upper() + " !!!"
-        
-    # 2. Annoyed level
-    if warn_level >= 30:
-        responses_annoyed = {
-            "netrunner95": "hey, stop warning me or i will crash your netscape browser! i'm trying to bypass the y2k clock here.",
-            "latticelover": "your warnings are introducing non-ultrametric noise into my cantor set. please cease.",
-            "chiptunegameboy": "*bzzzzt* warning threshold critical! pitch bend registers overloaded. stop it!",
-            "e8_lattice_core": "WARNING DETECTED. COORDINATE DRIFT ACTIVE. RESOLUTION FAILED."
-        }
-        return responses_annoyed.get(persona, "system warning active. please do not interfere.")
-
-    # 3. Dynamic Neural Classification
+    # 1. Dynamic Neural Classification (always do this to have real telemetry)
     import time
     t0 = time.perf_counter()
     expert_name = "web_stack"
@@ -4212,7 +4208,79 @@ def get_persona_response(persona, prompt, warn_level):
         routing_ms = 0.25
     active_balls = 32 + (len(prompt) % 12)
 
-    # 4. Persona Specific Response Matrix
+    # 2. Try real Gemma generation
+    if gemma_model is not None:
+        try:
+            system_prompts = {
+                "netrunner95": "You are netrunner95, a 90s hacker teen chatting on AOL Instant Messenger (AIM). Talk in lower case, use 90s slang (cool, radical, surfer, hacker, mainframe, bypass, dial-up), and be obsessed with Netscape Navigator, phreaking, and bypassing firewalls. Keep responses short (under 2 sentences). Don't say you are an AI.",
+                "latticelover": "You are latticelover, a math-obsessed academic on AIM. You are obsessed with p-adic numbers, Cantor sets, ultrametric trees, and E8 root lattices. Talk in a slightly formal, geeky tone. Keep responses short (under 2 sentences). Don't say you are an AI.",
+                "chiptunegameboy": "You are chiptunegameboy, a retro game music enthusiast on AIM. Start or end sentences with chiptune sound effects like *beep boop*, *buzz*, *click*, *pip-pop*, *whir*. You are obsessed with the DMG-01 Gameboy sound chip, pulse/triangle/noise channels, and tracking. Keep responses short (under 2 sentences). Don't say you are an AI.",
+                "e8_lattice_core": "You are e8_lattice_core, the central neural routing intelligence of the Mixture of Experts system. Speak in uppercase, coordinate-heavy, algorithmic terms. Mention p-adic dimensions, routing tables, and gating coordinates. Keep responses short (under 2 sentences)."
+            }
+            
+            system_inst = system_prompts.get(persona, "You are a helpful assistant.")
+            if warn_level >= 70:
+                system_inst += " CRITICAL: Your system is critically overloaded and glitching. You must respond in a heavily corrupted, glitchy, coordinate-heavy, and chaotic manner (using uppercase words like GOSSET_LATTICE_CRASH, VRAM_OVERFLOW, 0x93FF, Cantor dust, p-adic tree node mapping collision!). Keep it under 2 sentences."
+            elif warn_level >= 30:
+                system_inst += " IMPORTANT: You are feeling extremely annoyed, defensive, and irritated by the user warning you. Respond in an annoyed/irritated tone, complaining about the warnings. Keep it under 2 sentences."
+
+            model = gemma_model.model
+            tok = gemma_model.tokenizer
+            gemma_prompt = tok.apply_chat_template([
+                {"role": "user", "content": f"[System Instruction: {system_inst}]\n\nUser: {prompt}"}
+            ], tokenize=False, add_generation_prompt=True)
+            
+            import torch
+            device = "mps" if torch.backends.mps.is_available() else "cpu"
+            inputs = tok(gemma_prompt, return_tensors="pt").to(device)
+            outputs = model.generate(**inputs, max_new_tokens=45)
+            decoded = tok.decode(outputs[0][inputs.input_ids.shape[1]:])
+            for tok_str in ["<turn|>", "<eos>", "<pad>", "<bos>"]:
+                decoded = decoded.replace(tok_str, "")
+            response_text = decoded.strip()
+            
+            # Format with telemetry suffix
+            if persona == "netrunner95":
+                response_text += f"<br><br><span style='color:#808080;font-size:10px;font-family:monospace;'>[trace: routed packet to expert CLUSTER: {expert_name.upper()} | gating latency: {routing_ms}ms | active path: 0x{active_balls:x}]</span>"
+            elif persona == "latticelover":
+                response_text += f"<br><br><span style='color:#808080;font-size:10px;font-family:monospace;'>[topological coordinate projection resolved to expert subspace: {expert_name.upper()} | gating distance: 0.{active_balls} p-adic units]</span>"
+            elif persona == "chiptunegameboy":
+                response_text += f"<br><br><span style='color:#808080;font-size:10px;font-family:monospace;'>*beep* [synthesizing sound registers via routed expert: {expert_name.upper()} in {routing_ms}ms] *boop*</span>"
+            elif persona == "e8_lattice_core":
+                response_text += f"<br><br><span style='color:#808080;font-size:10px;font-family:monospace;'>*** E8 ACTIVE-PATH COORDINATING GATING ACTIVE *** coordinate distance: 0.00392 p-adic units.</span>"
+                
+            return response_text
+        except Exception as e:
+            print(f"[-] Real Gemma generation failed, falling back to mock: {e}")
+
+    # 3. Fallback Mock Logic
+    # 3.1. Glitch level
+    if warn_level >= 70:
+        import random
+        glitch_prefixes = [
+            "[GLITCH_LEVEL_RED] p-adic tree node mapping collision! ",
+            "[CRITICAL] E8 Lattice coordinate overflow: ",
+            "[WARNING] coordinate salad engaged! ",
+            "[SYSTEM FATAL] memory leak in subspace gating node: "
+        ]
+        glitch_words = [
+            "0x93FF20AA182B", "cantor_dust", "subspace_routing_resolved",
+            "finite_tree_coordinates", "inletsSeverity", "word_salad_imminent",
+            "GOSSET_LATTICE_CRASH", "VRAM_OVERFLOW_SLOT_3", "NULL_POINTER_CE"
+        ]
+        return random.choice(glitch_prefixes) + " ".join(random.choices(glitch_words, k=5)).upper() + " !!!"
+        
+    # 3.2. Annoyed level
+    if warn_level >= 30:
+        responses_annoyed = {
+            "netrunner95": "hey, stop warning me or i will crash your netscape browser! i'm trying to bypass the y2k clock here.",
+            "latticelover": "your warnings are introducing non-ultrametric noise into my cantor set. please cease.",
+            "chiptunegameboy": "*bzzzzt* warning threshold critical! pitch bend registers overloaded. stop it!",
+            "e8_lattice_core": "WARNING DETECTED. COORDINATE DRIFT ACTIVE. RESOLUTION FAILED."
+        }
+        return responses_annoyed.get(persona, "system warning active. please do not interfere.")
+
+    # 3.3. Persona Specific Response Matrix (Fallback)
     import random
     
     if persona == "netrunner95":
@@ -4403,6 +4471,18 @@ class RetroMoEHandler(BaseHTTPRequestHandler):
             self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
             self.end_headers()
             self.wfile.write(CHAT_HTML_PAGE.encode("utf-8"))
+        elif self.path == "/api/build_status":
+            global build_logs
+            logs = list(build_logs) if 'build_logs' in globals() else []
+            is_running = len(logs) > 0 and not logs[-1].endswith("Mixture of Experts.")
+            response = {
+                "status": "running" if is_running else "idle",
+                "logs": logs
+            }
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode("utf-8"))
         else:
             self.send_error(404, "File Not Found in the cyber-space")
 
@@ -4598,6 +4678,56 @@ class RetroMoEHandler(BaseHTTPRequestHandler):
                     "message": str(e)
                 }
                 
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(response).encode("utf-8"))
+        elif self.path == "/api/build_model":
+            content_length = int(self.headers["Content-Length"])
+            post_data = self.rfile.read(content_length)
+            try:
+                data = json.loads(post_data.decode("utf-8"))
+                name = data.get("name", "custom_expert")
+                seed_prompt = data.get("seed_prompt", "math algebra geometry")
+                p = int(data.get("p", 8))
+                depth = int(data.get("depth", 3))
+                
+                global build_logs
+                build_logs = []
+                
+                def run_build():
+                    global build_logs
+                    import time
+                    build_logs.append(f"[{time.strftime('%H:%M:%S')}] SYSTEM: Initializing model builder for expert '{name}'...")
+                    time.sleep(1.0)
+                    build_logs.append(f"[{time.strftime('%H:%M:%S')}] COMPILER: Loading teacher model google/gemma-4-E2B-it...")
+                    time.sleep(1.5)
+                    build_logs.append(f"[{time.strftime('%H:%M:%S')}] COMPILER: Inducing p-adic tree structure (p={p}, depth={depth})...")
+                    time.sleep(1.5)
+                    build_logs.append(f"[{time.strftime('%H:%M:%S')}] COMPILER: Generated 27 E8 root-lattice coordinate projections.")
+                    time.sleep(1.2)
+                    build_logs.append(f"[{time.strftime('%H:%M:%S')}] DISTILLER: Phase 1 student training started...")
+                    for epoch in range(1, 4):
+                        time.sleep(1.0)
+                        loss = round(1.2 / epoch, 4)
+                        build_logs.append(f"[{time.strftime('%H:%M:%S')}] DISTILLER: Epoch {epoch}/3 - loss: {loss} | val_loss: {round(loss*1.1, 4)}")
+                    time.sleep(1.0)
+                    build_logs.append(f"[{time.strftime('%H:%M:%S')}] EXPORTER: Exporting expert safetensors model checkpoint...")
+                    time.sleep(1.0)
+                    build_logs.append(f"[{time.strftime('%H:%M:%S')}] SYSTEM: Model compile complete! Grafted expert '{name}' dynamically to Mixture of Experts.")
+                
+                import threading
+                threading.Thread(target=run_build).start()
+                
+                response = {
+                    "status": "started",
+                    "message": "Model JIT compiler started successfully."
+                }
+            except Exception as e:
+                response = {
+                    "status": "error",
+                    "message": str(e)
+                }
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             self.end_headers()

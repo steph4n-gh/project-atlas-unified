@@ -116,6 +116,50 @@
                     </div>
                 </section>
                 
+                <!-- Expert Builder -->
+                <section class="panel-card glass-panel">
+                    <div class="rack-screw top-left"></div>
+                    <div class="rack-screw top-right"></div>
+                    <div class="rack-screw bottom-left"></div>
+                    <div class="rack-screw bottom-right"></div>
+                    
+                    <h2>Expert Builder <span>JIT DISTILLER</span></h2>
+                    
+                    <div class="dev-controls">
+                        <div class="dev-group">
+                            <label for="build-expert-name">Expert Name</label>
+                            <input type="text" id="build-expert-name" value="quantum_expert" style="max-width: 150px;">
+                        </div>
+                        <div class="dev-group">
+                            <label for="build-expert-prompt">Keywords</label>
+                            <input type="text" id="build-expert-prompt" value="quantum wavefunction" style="max-width: 150px;">
+                        </div>
+                        <div class="dev-group">
+                            <div style="flex: 1; display: flex; align-items: center; gap: 4px;">
+                                <label for="build-expert-p">p</label>
+                                <select id="build-expert-p">
+                                    <option value="3">3</option>
+                                    <option value="5">5</option>
+                                    <option value="8" selected>8</option>
+                                </select>
+                            </div>
+                            <div style="flex: 1; display: flex; align-items: center; gap: 4px;">
+                                <label for="build-expert-depth">depth</label>
+                                <select id="build-expert-depth">
+                                    <option value="2">2</option>
+                                    <option value="3" selected>3</option>
+                                    <option value="4">4</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="dev-group">
+                            <button type="button" class="btn-cyber" id="btn-build-model" style="flex: 1; justify-content: center;">
+                                🛠️ Compile & Graft Expert
+                            </button>
+                        </div>
+                    </div>
+                </section>
+                
                 <!-- C. Developer & Integration console -->
                 <section class="panel-card glass-panel">
                     <div class="rack-screw top-left"></div>
@@ -434,8 +478,30 @@
             sidebarRoot.innerHTML = '';
             floatingRoot.innerHTML = '';
             
+            // 1. Central Gateway Router Floating Card
+            const gCard = document.createElement('div');
+            gCard.className = 'expert-floating-card gateway-floating-card';
+            gCard.id = `gateway-card`;
+            gCard.innerHTML = `
+                <div class="floating-card-header">
+                    <span class="floating-card-label" style="font-weight: 700; color: var(--neon-cyan); letter-spacing: 0.5px;">
+                        <span class="logo-hexagon" style="font-size: 11px; margin-right: 4px; animation: none;">&#x2B22;</span>
+                        Gemma-4-E2B
+                    </span>
+                    <span class="floating-card-status" id="gateway-status" style="color: var(--neon-cyan); text-shadow: 0 0 5px var(--neon-cyan);">GATEWAY</span>
+                </div>
+                <div class="floating-card-weight" style="font-size: 8px;">
+                    <span>Type:</span>
+                    <span>UCE Gating Router</span>
+                </div>
+                <div style="font-size: 7.5px; color: var(--text-muted); margin-top: 2px; text-align: center;">
+                    Routes inputs to top-k active experts
+                </div>
+            `;
+            floatingRoot.appendChild(gCard);
+            
             EXPERT_DATA.forEach(exp => {
-                // 1. Sidebar Row
+                // 2. Sidebar Row
                 const row = document.createElement('div');
                 row.className = 'expert-row glass-inner';
                 row.style.border = '1px solid rgba(255, 255, 255, 0.03)';
@@ -463,7 +529,7 @@
                 `;
                 sidebarRoot.appendChild(row);
                 
-                // 2. Floating Card Overlay
+                // 3. Floating Card Overlay
                 const card = document.createElement('div');
                 card.className = 'expert-floating-card';
                 card.id = `expert-card-${exp.id}`;
@@ -681,6 +747,32 @@
         const coreMesh = new THREE.Mesh(coreGeom, coreMat);
         routerGroup.add(coreMesh);
 
+        // D. Gateway Router Pulsing Rings for Active Indication & Directionality
+        const ringGeom = new THREE.RingGeometry(1.4, 1.45, 32);
+        const ringMat = new THREE.MeshBasicMaterial({
+            color: 0x00f3ff,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.3,
+            blending: THREE.AdditiveBlending
+        });
+        const gatewayRing = new THREE.Mesh(ringGeom, ringMat);
+        gatewayRing.rotation.x = Math.PI / 2; // Flat on X-Z plane
+        scene.add(gatewayRing);
+
+        // Outer ring for expanding wave ripple
+        const ringGeom2 = new THREE.RingGeometry(1.4, 1.43, 32);
+        const ringMat2 = new THREE.MeshBasicMaterial({
+            color: 0x8a2be2,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.15,
+            blending: THREE.AdditiveBlending
+        });
+        const gatewayRing2 = new THREE.Mesh(ringGeom2, ringMat2);
+        gatewayRing2.rotation.x = Math.PI / 2;
+        scene.add(gatewayRing2);
+
 
         // --- ORBITING EXPERT NODES ---
         const experts = [];
@@ -737,6 +829,29 @@
             const linkLine = new THREE.Line(connectionGeom, connectionMat);
             linkLine.computeLineDistances();
             scene.add(linkLine);
+
+            // Flow particles for directionality (outward from center to expert)
+            const flowCount = 6;
+            const flowGeom = new THREE.BufferGeometry();
+            const flowPositions = new Float32Array(flowCount * 3);
+            flowGeom.setAttribute('position', new THREE.BufferAttribute(flowPositions, 3));
+            
+            const flowMat = new THREE.PointsMaterial({
+                size: 0.3,
+                map: ptTexture,
+                color: data.colorHex,
+                transparent: true,
+                opacity: 0.0,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            const flowMesh = new THREE.Points(flowGeom, flowMat);
+            scene.add(flowMesh);
+            
+            const flowProgress = [];
+            for (let i = 0; i < flowCount; i++) {
+                flowProgress.push(i / flowCount);
+            }
             
             experts.push({
                 id: data.id,
@@ -746,7 +861,10 @@
                 mesh: mesh,
                 shell: shellMesh,
                 linkLine: linkLine,
-                basePos: pos.clone()
+                basePos: pos.clone(),
+                flowMesh: flowMesh,
+                flowMat: flowMat,
+                flowProgress: flowProgress
             });
         });
 
@@ -872,6 +990,34 @@
         // --- DYNAMIC POSITION PROJECTION (3D -> HTML) ---
         const tempProj = new THREE.Vector3();
         function updateFloatingCards() {
+            // 1. Project central gateway router at position (0, 1.8, 0)
+            const gCard = document.getElementById('gateway-card');
+            if (gCard) {
+                const gatewayPos = new THREE.Vector3(0, 1.8, 0);
+                tempProj.copy(gatewayPos).project(camera);
+                
+                if (tempProj.z > 1) {
+                    gCard.style.opacity = '0';
+                    gCard.style.display = 'none';
+                } else {
+                    gCard.style.display = 'flex';
+                    const x = (tempProj.x * 0.5 + 0.5) * sceneContainer.clientWidth;
+                    const y = (-(tempProj.y * 0.5) + 0.5) * sceneContainer.clientHeight;
+                    
+                    gCard.style.left = `${x}px`;
+                    gCard.style.top = `${y}px`;
+                    gCard.style.transform = `translate(-50%, -100%) translateY(-10px)`;
+                    gCard.style.zIndex = 1001; // Keep gateway card above expert cards
+                    
+                    const scale = Math.max(0.85, 1.15 - tempProj.z * 0.35);
+                    gCard.style.scale = scale;
+                    
+                    const opacity = Math.max(0.3, Math.min(1.0, 1.5 - tempProj.z * 1.2));
+                    gCard.style.opacity = opacity;
+                }
+            }
+
+            // 2. Project experts
             experts.forEach(exp => {
                 tempProj.setFromMatrixPosition(exp.mesh.matrixWorld);
                 tempProj.project(camera);
@@ -1104,6 +1250,208 @@
             window.updateVUMeter(expIdx, vuVal);
         });
 
+        // JIT Expert Builder Integration
+        let buildPollInterval = null;
+        let lastLoggedLineCount = 0;
+        
+        function addExpertToStudio(name, color, description) {
+            const nextId = EXPERT_DATA.length;
+            const colorHex = parseInt(color.replace('#', '0x'));
+            const newData = { id: nextId, name, color, colorHex, description };
+            
+            EXPERT_DATA.push(newData);
+            renderUIComponents();
+            
+            // Re-render select option in developer tools
+            const select = document.getElementById('dev-expert-select');
+            if (select) {
+                const opt = document.createElement('option');
+                opt.value = nextId;
+                opt.innerText = `Expert ${nextId}: ${name}`;
+                select.appendChild(opt);
+            }
+            
+            // Add 3D Node
+            const expGroup = new THREE.Group();
+            
+            // Calculate new position based on updated total count
+            const totalCount = EXPERT_DATA.length;
+            const angle = (nextId * 2 * Math.PI) / totalCount;
+            const y = Math.sin(nextId * Math.PI / 2) * 1.5;
+            const x = Math.cos(angle) * orbitRadius;
+            const z = Math.sin(angle) * orbitRadius;
+            const pos = new THREE.Vector3(x, y, z);
+            
+            expGroup.position.copy(pos);
+            scene.add(expGroup);
+            
+            // Core sphere
+            const sphereGeom = new THREE.SphereGeometry(0.4, 16, 16);
+            const sphereMat = new THREE.MeshBasicMaterial({
+                color: colorHex,
+                transparent: true,
+                opacity: 0.8
+            });
+            const mesh = new THREE.Mesh(sphereGeom, sphereMat);
+            expGroup.add(mesh);
+            
+            // Outer wireframe shell
+            const shellGeom = new THREE.IcosahedronGeometry(0.7, 1);
+            const shellMat = new THREE.MeshBasicMaterial({
+                color: colorHex,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.2
+            });
+            const shellMesh = new THREE.Mesh(shellGeom, shellMat);
+            expGroup.add(shellMesh);
+            
+            // Visual connection dashed line to Center Router
+            const linePoints = [new THREE.Vector3(0, 0, 0), pos];
+            const connectionGeom = new THREE.BufferGeometry().setFromPoints(linePoints);
+            const connectionMat = new THREE.LineDashedMaterial({
+                color: colorHex,
+                dashSize: 0.25,
+                gapSize: 0.15,
+                transparent: true,
+                opacity: 0.2,
+                blending: THREE.AdditiveBlending
+            });
+            const linkLine = new THREE.Line(connectionGeom, connectionMat);
+            linkLine.computeLineDistances();
+            scene.add(linkLine);
+
+            // Flow particles for directionality (outward from center to expert)
+            const flowCount = 6;
+            const flowGeom = new THREE.BufferGeometry();
+            const flowPositions = new Float32Array(flowCount * 3);
+            flowGeom.setAttribute('position', new THREE.BufferAttribute(flowPositions, 3));
+            
+            const flowMat = new THREE.PointsMaterial({
+                size: 0.3,
+                map: ptTexture,
+                color: colorHex,
+                transparent: true,
+                opacity: 0.0,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            const flowMesh = new THREE.Points(flowGeom, flowMat);
+            scene.add(flowMesh);
+            
+            const flowProgress = [];
+            for (let i = 0; i < flowCount; i++) {
+                flowProgress.push(i / flowCount);
+            }
+            
+            experts.push({
+                id: nextId,
+                name: name,
+                color: colorHex,
+                group: expGroup,
+                mesh: mesh,
+                shell: shellMesh,
+                linkLine: linkLine,
+                basePos: pos.clone(),
+                flowMesh: flowMesh,
+                flowMat: flowMat,
+                flowProgress: flowProgress
+            });
+            
+            // Adjust positions of existing experts to space them evenly
+            experts.forEach((exp, i) => {
+                const newAngle = (i * 2 * Math.PI) / totalCount;
+                const newY = Math.sin(i * Math.PI / 2) * 1.5;
+                const newX = Math.cos(newAngle) * orbitRadius;
+                const newZ = Math.sin(newAngle) * orbitRadius;
+                const newPos = new THREE.Vector3(newX, newY, newZ);
+                
+                exp.basePos.copy(newPos);
+                exp.group.position.copy(newPos);
+                
+                // Re-create connection line
+                scene.remove(exp.linkLine);
+                const newLinePoints = [new THREE.Vector3(0, 0, 0), newPos];
+                const newConnectionGeom = new THREE.BufferGeometry().setFromPoints(newLinePoints);
+                const newLinkLine = new THREE.Line(newConnectionGeom, connectionMat.clone());
+                newLinkLine.material.color.setHex(exp.color);
+                newLinkLine.computeLineDistances();
+                scene.add(newLinkLine);
+                exp.linkLine = newLinkLine;
+            });
+            
+            // Also adjust autopilot prompts to route to the new expert
+            PROMPTS.push({
+                text: `run decentralized topological calculation using ${name} parameters`,
+                target: [nextId]
+            });
+        }
+        
+        document.getElementById('btn-build-model').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-build-model');
+            const name = document.getElementById('build-expert-name').value.trim();
+            const keywords = document.getElementById('build-expert-prompt').value.trim();
+            const p = document.getElementById('build-expert-p').value;
+            const depth = document.getElementById('build-expert-depth').value;
+            
+            if (!name) {
+                alert("Please enter a valid expert name.");
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerText = "🛠️ Compiling...";
+            window.logRouterDecision(`SYSTEM: Contacting JIT Compiler for '${name}'...`);
+            
+            try {
+                const res = await fetch('/api/build_model', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, seed_prompt: keywords, p, depth })
+                });
+                const data = await res.json();
+                
+                if (data.status === 'started') {
+                    lastLoggedLineCount = 0;
+                    if (buildPollInterval) clearInterval(buildPollInterval);
+                    
+                    // Generate random neon color
+                    const neonColors = ['#ff00ff', '#00ff7f', '#ff9900', '#ff007f', '#0070ff', '#ff2a6d', '#a6ff00', '#00f3ff', '#e0b0ff', '#ffff00'];
+                    const color = neonColors[Math.floor(Math.random() * neonColors.length)];
+                    
+                    buildPollInterval = setInterval(async () => {
+                        const statusRes = await fetch('/api/build_status');
+                        const statusData = await statusRes.json();
+                        
+                        // Print any new logs
+                        if (statusData.logs && statusData.logs.length > lastLoggedLineCount) {
+                            for (let i = lastLoggedLineCount; i < statusData.logs.length; i++) {
+                                window.logRouterDecision(statusData.logs[i]);
+                            }
+                            lastLoggedLineCount = statusData.logs.length;
+                        }
+                        
+                        if (statusData.status === 'idle') {
+                            clearInterval(buildPollInterval);
+                            btn.disabled = false;
+                            btn.innerText = "🛠️ Compile & Graft Expert";
+                            
+                            // Graft model to UI!
+                            addExpertToStudio(name, color, `JIT Distilled ${keywords} Specialist`);
+                        }
+                    }, 800);
+                } else {
+                    btn.disabled = false;
+                    btn.innerText = "🛠️ Compile & Graft Expert";
+                    alert("Build failed to start: " + data.message);
+                }
+            } catch (err) {
+                btn.disabled = false;
+                btn.innerText = "🛠️ Compile & Graft Expert";
+                alert("Network error: " + err.message);
+            }
+        });
+
         // Prompt presets for the router simulation
         const PROMPTS = [
             { text: "Implement a discrete convolution matrix in WebGL", target: [0, 1] },
@@ -1168,13 +1516,25 @@
                 }
             }
             
-            // Flash E8 Core visually
-            coreMesh.material.opacity = 0.8;
-            coreMesh.scale.set(1.25, 1.25, 1.25);
+            // Flash E8 Core visually and trigger Gateway active pulse wave
+            coreMesh.material.opacity = 0.9;
+            coreMesh.scale.set(1.4, 1.4, 1.4);
+            window.gatewayPulse = 1.0;
+            const gatewayStatus = document.getElementById('gateway-status');
+            if (gatewayStatus) {
+                gatewayStatus.innerText = "ROUTING";
+                gatewayStatus.style.color = "var(--neon-rose)";
+                gatewayStatus.style.textShadow = "0 0 8px var(--neon-rose)";
+            }
             setTimeout(() => {
                 coreMesh.material.opacity = 0.25;
                 coreMesh.scale.set(1, 1, 1);
-            }, 300);
+                if (gatewayStatus) {
+                    gatewayStatus.innerText = "GATEWAY";
+                    gatewayStatus.style.color = "var(--neon-cyan)";
+                    gatewayStatus.style.textShadow = "0 0 5px var(--neon-cyan)";
+                }
+            }, 600);
         }
 
         function startAutoPilotQueryLoop() {
@@ -1211,6 +1571,23 @@
             
             // Pulse E8 lines slightly
             linesMat.opacity = 0.12 + Math.sin(time * 2) * 0.04;
+
+            // Animate Gateway Router active/idle pulsing rings
+            if (typeof window.gatewayPulse === 'undefined') window.gatewayPulse = 0.0;
+            window.gatewayPulse *= 0.93; // smooth decay
+            
+            const pulseScale = 1.0 + window.gatewayPulse * 1.5 + Math.sin(time * 4) * 0.1;
+            gatewayRing.scale.set(pulseScale, pulseScale, pulseScale);
+            ringMat.opacity = (0.2 + window.gatewayPulse * 0.6 + Math.sin(time * 4) * 0.05);
+            
+            // Outer ring has a continuous expanding wave effect
+            let ring2Scale = (time * 1.2) % 3.0; // expand from 0 to 3
+            if (ring2Scale < 0.5) ring2Scale = 0.5; // don't shrink too small
+            gatewayRing2.scale.set(ring2Scale, ring2Scale, ring2Scale);
+            
+            // Fade out as it expands
+            const ring2Opacity = Math.max(0, (1 - (ring2Scale / 3.0)) * (0.25 + window.gatewayPulse * 0.5));
+            ringMat2.opacity = ring2Opacity;
             
             // C. Animate Orbiting Expert Nodes
             experts.forEach((exp, idx) => {
@@ -1231,6 +1608,29 @@
                 if (exp.linkLine.material.opacity > 0.2) {
                     exp.linkLine.material.opacity -= 0.01;
                 }
+
+                // Update flow particles positions and opacity
+                const posAttr = exp.flowMesh.geometry.attributes.position;
+                const center = new THREE.Vector3(0, 0, 0);
+                const target = exp.group.position;
+                
+                const isActive = exp.linkLine.material.opacity > 0.25;
+                const targetOpacity = isActive ? (exp.linkLine.material.opacity - 0.2) * 1.4 : 0.0;
+                
+                exp.flowMat.opacity = THREE.MathUtils.lerp(exp.flowMat.opacity, targetOpacity, 0.15);
+                
+                const speed = 1.0;
+                for (let i = 0; i < exp.flowProgress.length; i++) {
+                    exp.flowProgress[i] += delta * speed;
+                    if (exp.flowProgress[i] > 1.0) {
+                        exp.flowProgress[i] -= 1.0;
+                    }
+                    
+                    const t = exp.flowProgress[i];
+                    const p = new THREE.Vector3().lerpVectors(center, target, t);
+                    posAttr.setXYZ(i, p.x, p.y, p.z);
+                }
+                posAttr.needsUpdate = true;
             });
             
             // D. Update Active Beams

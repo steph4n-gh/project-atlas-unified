@@ -406,6 +406,14 @@ body {
     transition: scale 0.1s ease;
 }
 
+.gateway-floating-card {
+    min-width: 155px;
+    border: 1.5px solid rgba(0, 243, 255, 0.45);
+    background: rgba(8, 8, 18, 0.92);
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.25), 0 4px 20px rgba(0, 0, 0, 0.85);
+    border-radius: 8px;
+}
+
 .floating-card-header {
     display: flex;
     align-items: center;
