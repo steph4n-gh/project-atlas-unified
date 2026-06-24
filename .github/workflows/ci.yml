@@ -26,16 +26,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          cache: true
+
+      - name: Run NPM Dependency Audit
+        run: |
+          cargo run --manifest-path security-auditor/Cargo.toml --package security-auditor --bin security-auditor -- --lockfile package-lock.json
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
           cache: "pip"
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -e .
+
+      - name: Generate Python Dependency Graph
+        run: |
+          python scripts/dump_dependencies.py
+
+      - name: Run Python Dependency Audit
+        run: |
+          cargo run --manifest-path security-auditor/Cargo.toml --package security-auditor --bin security-auditor -- --graph python-deps.json
 
       - name: Run Pytest suite
         run: |
