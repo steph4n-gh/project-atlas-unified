@@ -1,0 +1,52 @@
+[
+  {
+    "context_len": 1000,
+    "standard_vram": 10.502178955078126,
+    "standard_status": "ACTIVE",
+    "qan_vram": 10.322796995611306,
+    "qan_status": "ACTIVE",
+    "baseline_speed": 14.705882352941176,
+    "speculative_speed": 18.007142857142856,
+    "speedup": 1.2244857142857142
+  },
+  {
+    "context_len": 8000,
+    "standard_vram": 11.917431640625,
+    "standard_status": "ACTIVE",
+    "qan_vram": 10.477427779796512,
+    "qan_status": "ACTIVE",
+    "baseline_speed": 14.705882352941176,
+    "speculative_speed": 18.007142857142856,
+    "speedup": 1.2244857142857142
+  },
+  {
+    "context_len": 32000,
+    "standard_vram": 16.7697265625,
+    "standard_status": "ACTIVE",
+    "qan_vram": 10.949310172872341,
+    "qan_status": "ACTIVE",
+    "baseline_speed": 14.705882352941176,
+    "speculative_speed": 18.007142857142856,
+    "speedup": 1.2244857142857142
+  },
+  {
+    "context_len": 64000,
+    "standard_vram": 23.239453125,
+    "standard_status": "OOM (CRASH)",
+    "qan_vram": 11.466276871019108,
+    "qan_status": "ACTIVE",
+    "baseline_speed": 14.705882352941176,
+    "speculative_speed": 18.007142857142856,
+    "speedup": 1.2244857142857142
+  },
+  {
+    "context_len": 128000,
+    "standard_vram": 36.17890625,
+    "standard_status": "OOM (CRASH)",
+    "qan_vram": 11.5,
+    "qan_status": "ACTIVE",
+    "baseline_speed": 14.705882352941176,
+    "speculative_speed": 18.007142857142856,
+    "speedup": 1.2244857142857142
+  }
+]

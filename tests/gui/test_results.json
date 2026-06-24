@@ -1,0 +1,30 @@
+{
+  "success": true,
+  "results": [
+    {
+      "name": "1. Expert Loading Check",
+      "passed": true,
+      "desc": "Successfully loaded all 8 default experts with local trees and UCE models."
+    },
+    {
+      "name": "2. Top-3 Keyword Soft Routing Check",
+      "passed": true,
+      "desc": "Successfully matched keyword-based intents and returned proper routing weight maps."
+    },
+    {
+      "name": "3. Gateway Model Routing Fallback Check",
+      "passed": true,
+      "desc": "Evaluated gateway router forward pass. Returned 3 experts with normalized weights summing to 1. Top-3 experts: [python_coder, web_stack, rust_systems]."
+    },
+    {
+      "name": "4. Token Probability Blending Check",
+      "passed": true,
+      "desc": "Aggregated leaf probability matrices across experts using routing weights; normalized sum equals exactly 1.0."
+    },
+    {
+      "name": "5. Local Autoregressive Generation Check",
+      "passed": true,
+      "desc": "Generated output text locally: \"baaa\" (length 4). Forward calls during loop: Python: 4, Web: 4, Rust: 4."
+    }
+  ]
+}

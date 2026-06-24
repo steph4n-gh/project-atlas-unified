@@ -1,0 +1,89 @@
+# OS Metadata
+.DS_Store
+Thumbs.db
+
+# Python Caches & Compiled bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.ipynb_checkpoints/
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python Build & Distribution
+build/
+dist/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Pytest & Coverage
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+htmlcov/
+
+# Local logs & runs
+*.log
+scratch/
+*.py.bak
+
+# Output artifacts
+results/*.png
+results/*.jpg
+results/*.pdf
+results/qa_report.json
+
+# Project Metadata and Requests
+master_mathematical_concepts.md
+TEST_READY.md
+TEST_INFRA.md
+ORIGINAL_REQUEST.md
+.agents/
+
+# Node dependencies
+node_modules/
+
+# Large Model weights and activation caches
+scratch/*.elq
+scratch/*.npy
+.attention_cache/
+
+# Large benchmark data assets
+benchmarks/data/*.json
+
+# Scratch text logs and outputs
+scratch/*.txt
+scratch/test_load_shape.txt
+
+# Internal / Draft documents
+docs/x_post_draft.md
+docs/prefill_optimization_agent_prompt.md
+
+# Rust Build Artifacts
+target/
+qan_transformers/tokenizer/rust/target/
+
+# Local Temp Folders
+tmp/
+

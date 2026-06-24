@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client-Side Mixture of Experts (MoE) Studio</title>
+    <!-- CSS link -->
+    <link rel="stylesheet" href="assets/css/designer.css">
+    
+    <!-- Three.js and OrbitControls via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <div class="studio-container">
+        <!-- 1. HEADER SECTION -->
+        <header class="studio-header glass-panel">
+            <div class="rack-screw top-left"></div>
+            <div class="rack-screw top-right"></div>
+            <div class="rack-screw bottom-left"></div>
+            <div class="rack-screw bottom-right"></div>
+            
+            <div class="logo-section">
+                <span class="logo-hexagon">&#x2B22;</span>
+                <div class="logo-meta">
+                    <h1>MoE Studio</h1>
+                    <p>Client-Side Mixture of Experts Orchestrator</p>
+                </div>
+            </div>
+            
+            <div class="system-badges">
+                <div class="badge">
+                    <span class="badge-dot active"></span>
+                    <span id="badge-framework">WASM Thread Pool</span>
+                </div>
+                <div class="badge">
+                    <span class="badge-dot spinning"></span>
+                    <span id="badge-webgpu">WebGPU: Active</span>
+                </div>
+                <div class="badge">
+                    <span id="fps-counter">FPS: 60</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 2. MAIN LAYOUT -->
+        <div class="studio-layout">
+            <!-- Left Sidebar: System Settings & Tokenizer Ingestion -->
+            <aside class="panel-sidebar">
+                <!-- A. System Telemetry Panel -->
+                <section class="panel-card glass-panel">
+                    <div class="rack-screw top-left"></div>
+                    <div class="rack-screw top-right"></div>
+                    <div class="rack-screw bottom-left"></div>
+                    <div class="rack-screw bottom-right"></div>
+                    
+                    <h2>System Telemetry <span>LIVE</span></h2>
+                    
+                    <div class="telemetry-grid">
+                        <div class="telemetry-item glass-inner">
+                            <span class="telemetry-label">Routing Latency</span>
+                            <span class="telemetry-value highlight-cyan" id="telemetry-latency">1.8ms</span>
+                        </div>
+                        <div class="telemetry-item glass-inner">
+                            <span class="telemetry-label">Throughput</span>
+                            <span class="telemetry-value highlight-purple" id="telemetry-throughput">84 t/s</span>
+                        </div>
+                        <div class="telemetry-item glass-inner">
+                            <span class="telemetry-label">Active Experts</span>
+                            <span class="telemetry-value highlight-emerald" id="telemetry-active-experts">2 / 8</span>
+                        </div>
+                        <div class="telemetry-item glass-inner">
+                            <span class="telemetry-label">Context Size</span>
+                            <span class="telemetry-value" id="telemetry-context">2,048 ctx</span>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- B. Tokenizer & Drag-and-Drop Ingestion -->
+                <section class="panel-card glass-panel" style="flex: 1;">
+                    <div class="rack-screw top-left"></div>
+                    <div class="rack-screw top-right"></div>
+                    <div class="rack-screw bottom-left"></div>
+                    <div class="rack-screw bottom-right"></div>
+                    
+                    <h2>Model Config Ingestion <span>DRAG & DROP</span></h2>
+                    
+                    <div class="vortex-drop-zone" id="drop-zone">
+                        <!-- Canvas for glowing particle vortex -->
+                        <canvas id="vortex-canvas"></canvas>
+                        
+                        <div class="vortex-overlay" id="vortex-ui">
+                            <div class="vortex-icon">🌀</div>
+                            <h3>Drag & Drop Model Configuration</h3>
+                            <p>Drag .json, .gguf, or .safetensors here</p>
+                            
+                            <!-- Tokenizer loading progress ring -->
+                            <div class="progress-ring-container" id="progress-container">
+                                <svg class="progress-ring" width="64" height="64">
+                                    <circle class="progress-ring__circle-bg" stroke="rgba(255,255,255,0.05)" stroke-width="4" fill="transparent" r="26" cx="32" cy="32"/>
+                                    <circle class="progress-ring__circle" id="progress-circle" stroke="#00f3ff" stroke-width="4" fill="transparent" r="26" cx="32" cy="32" stroke-dasharray="163.36" stroke-dashoffset="163.36"/>
+                                </svg>
+                                <div class="progress-text" id="progress-percent">0%</div>
+                            </div>
+                            <div class="progress-status" id="progress-status">Tokenizer: Idle</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Simulators Panel inside Side Card -->
+                    <div class="dev-controls" style="margin-top: 14px;">
+                        <div class="dev-group">
+                            <button type="button" class="btn-cyber" id="btn-simulate-upload" style="flex: 1; justify-content: center;">
+                                📁 Simulate Config Drop
+                            </button>
+                        </div>
+                    </div>
+                </section>
+                
+                <!-- C. Developer & Integration console -->
+                <section class="panel-card glass-panel">
+                    <div class="rack-screw top-left"></div>
+                    <div class="rack-screw top-right"></div>
+                    <div class="rack-screw bottom-left"></div>
+                    <div class="rack-screw bottom-right"></div>
+                    
+                    <h2>Systems Integration <span>TEST API</span></h2>
+                    
+                    <div class="dev-controls">
+                        <div class="dev-group">
+                            <label for="dev-expert-select">Expert Target</label>
+                            <select id="dev-expert-select">
+                                <option value="0">Expert 0: CodeLlama</option>
+                                <option value="1">Expert 1: MathLLaMA</option>
+                                <option value="2">Expert 2: WikiWriter</option>
+                                <option value="3">Expert 3: TranslatoR</option>
+                                <option value="4">Expert 4: Summarizer</option>
+                                <option value="5">Expert 5: SentimentAnalyst</option>
+                                <option value="6">Expert 6: LegalAdvisor</option>
+                                <option value="7">Expert 7: CreativeWriter</option>
+                            </select>
+                        </div>
+                        <div class="dev-group">
+                            <button type="button" class="btn-cyber" id="btn-dev-beam" style="flex: 1; justify-content: center;">
+                                ⚡ Trigger Beam
+                            </button>
+                        </div>
+                        <div class="dev-group">
+                            <label for="dev-vu-value">VU Level (0-1)</label>
+                            <input type="range" id="dev-vu-value" min="0" max="100" value="75" style="cursor: pointer;">
+                        </div>
+                    </div>
+                </section>
+            </aside>
+
+            <!-- Center: 3D Visualization Canvas & HUD Controls -->
+            <main class="panel-main">
+                <div class="scene-container">
+                    <canvas id="canvas3d"></canvas>
+                    
+                    <!-- Absolute HUD overlay Dock at bottom of scene -->
+                    <div class="controls-dock glass-panel">
+                        <div class="rack-screw top-left"></div>
+                        <div class="rack-screw top-right"></div>
+                        <div class="rack-screw bottom-left"></div>
+                        <div class="rack-screw bottom-right"></div>
+                        
+                        <button type="button" class="btn-cyber active" id="btn-demo-toggle">
+                            <span>🤖</span> Auto-Pilot Demo
+                        </button>
+                        <button type="button" class="btn-cyber" id="btn-simulate-query">
+                            <span>⚡</span> Simulate Query
+                        </button>
+                        <button type="button" class="btn-cyber" id="btn-clear-connections">
+                            <span>🧹</span> Reset Viz
+                        </button>
+                    </div>
+                    
+                    <!-- Floating Labels Containers (3D Position Projection) -->
+                    <div id="floating-cards-root"></div>
+                </div>
+            </main>
+
+            <!-- Right Sidebar: Expert Matrix & Router Decision Logs -->
+            <aside class="panel-sidebar">
+                <!-- A. Expert Matrix Dashboard -->
+                <section class="panel-card glass-panel" style="flex: 1.2;">
+                    <div class="rack-screw top-left"></div>
+                    <div class="rack-screw top-right"></div>
+                    <div class="rack-screw bottom-left"></div>
+                    <div class="rack-screw bottom-right"></div>
+                    
+                    <h2>Expert Matrix <span>ROUTING SLOTS</span></h2>
+                    
+                    <div class="expert-matrix-list" id="expert-matrix-list">
+                        <!-- Expert Rows will be generated dynamically or styled statically.
+                             We write them statically for maximum UX rendering stability, then update them. -->
+                    </div>
+                </section>
+                
+                <!-- B. Router Decision Log -->
+                <section class="panel-card glass-panel logs-panel">
+                    <div class="rack-screw top-left"></div>
+                    <div class="rack-screw top-right"></div>
+                    <div class="rack-screw bottom-left"></div>
+                    <div class="rack-screw bottom-right"></div>
+                    
+                    <h2>Router Decision Log <span>CLI TERMINAL</span></h2>
+                    
+                    <div class="terminal-header">
+                        <div class="terminal-indicator">
+                            <span class="terminal-dot dot-red"></span>
+                            <span class="terminal-dot dot-yellow"></span>
+                            <span class="terminal-dot dot-green"></span>
+                        </div>
+                        <span>systems_router@atlas-moe ~ log</span>
+                    </div>
+                    
+                    <div class="log-container" id="log-container">
+                        <div class="log-entry">
+                            <span class="log-time">[17:36:40]</span>
+                            <span class="log-sys">SYSTEM: MoE Studio initialization complete. WebGPU core ready.</span>
+                        </div>
+                        <div class="log-entry">
+                            <span class="log-time">[17:36:41]</span>
+                            <span class="log-router">ROUTER: Awaiting input tokenization.</span>
+                        </div>
+                    </div>
+                </section>
+            </aside>
+        </div>
+    </div>
+
+    <!-- MAIN SCRIPT (Logic & Rendering) -->
+    <script>
+        // --- DATA STRUCTURES ---
+        const EXPERT_DATA = [
+            { id: 0, name: "CodeLlama", color: "#00f3ff", colorHex: 0x00f3ff, description: "Coding Specialist" },
+            { id: 1, name: "MathLLaMA", color: "#8a2be2", colorHex: 0x8a2be2, description: "Symbolic Reasoner" },
+            { id: 2, name: "WikiWriter", color: "#00ff7f", colorHex: 0x00ff7f, description: "Factual Knowledge" },
+            { id: 3, name: "TranslatoR", color: "#ff9900", colorHex: 0xff9900, description: "Cross-lingual tasks" },
+            { id: 4, name: "Summarizer", color: "#ff007f", colorHex: 0xff007f, description: "Semantic Compression" },
+            { id: 5, name: "SentimentAnalyst", color: "#0070ff", colorHex: 0x0070ff, description: "Classification" },
+            { id: 6, name: "LegalAdvisor", color: "#ff2a6d", colorHex: 0xff2a6d, description: "Strict Logic & Rules" },
+            { id: 7, name: "CreativeWriter", color: "#a6ff00", colorHex: 0xa6ff00, description: "Generative Divergence" }
+        ];
+
+        // --- GLOBAL INTERGATION HOOKS ---
+        // These are exposed on window for web_systems_engineer
+        window.triggerParticleBeam = function(expertIndex, color) {
+            if (expertIndex < 0 || expertIndex >= 8) return;
+            const targetColor = color || EXPERT_DATA[expertIndex].colorHex;
+            
+            // Get positions
+            const startPos = new THREE.Vector3(0, 0, 0);
+            const endPos = experts[expertIndex].mesh.position.clone();
+            
+            // Instantiate beam
+            const beam = new ParticleBeam(scene, startPos, endPos, targetColor);
+            activeBeams.push(beam);
+            
+            // Briefly set visual connection line to full opacity
+            experts[expertIndex].linkLine.material.opacity = 0.9;
+            experts[expertIndex].linkLine.material.color.setHex(targetColor);
+            
+            // Set active state on HTML cards & Sidebar
+            window.setExpertActive(expertIndex, true);
+            
+            window.logRouterDecision(`BEAM: Activating routing channel to Expert ${expertIndex} (${EXPERT_DATA[expertIndex].name})`);
+        };
+
+        window.updateVUMeter = function(expertIndex, value) {
+            // value should be 0.0 to 1.0
+            if (expertIndex < 0 || expertIndex >= 8) return;
+            
+            // Bound value
+            const val = Math.max(0, Math.min(1, value));
+            
+            // Update Sidebar VU Meter
+            const sidebarMeter = document.querySelector(`#vu-meter-sidebar-${expertIndex}`);
+            if (sidebarMeter) {
+                const bars = sidebarMeter.querySelectorAll('.vu-bar');
+                const numBars = bars.length;
+                const activeCount = Math.round(val * numBars);
+                bars.forEach((bar, idx) => {
+                    if (idx < activeCount) {
+                        bar.classList.add('active');
+                        // Add organic wobble variance
+                        const height = Math.min(100, Math.max(15, (idx + 1) / numBars * 100 + (Math.random() * 15 - 7.5)));
+                        bar.style.height = `${height}%`;
+                    } else {
+                        bar.classList.remove('active');
+                        bar.style.height = '15%';
+                    }
+                });
+            }
+            
+            // Update Floating 3D Card VU Meter
+            const floatMeter = document.querySelector(`#vu-meter-float-${expertIndex}`);
+            if (floatMeter) {
+                const bars = floatMeter.querySelectorAll('.vu-bar');
+                const numBars = bars.length;
+                const activeCount = Math.round(val * numBars);
+                bars.forEach((bar, idx) => {
+                    if (idx < activeCount) {
+                        bar.classList.add('active');
+                        const height = Math.min(100, Math.max(15, (idx + 1) / numBars * 100 + (Math.random() * 15 - 7.5)));
+                        bar.style.height = `${height}%`;
+                    } else {
+                        bar.classList.remove('active');
+                        bar.style.height = '15%';
+                    }
+                });
+            }
+        };
+
+        window.updateExpertWeight = function(expertIndex, weight) {
+            // weight should be 0.0 to 1.0
+            if (expertIndex < 0 || expertIndex >= 8) return;
+            const percent = Math.round(weight * 100);
+            
+            // Update UI Sidebar Weight fill and Text
+            const fill = document.getElementById(`expert-weight-fill-${expertIndex}`);
+            if (fill) fill.style.width = `${percent}%`;
+            
+            const txt = document.getElementById(`expert-pct-${expertIndex}`);
+            if (txt) txt.innerText = `${percent}%`;
+            
+            // Update floating card weight text
+            const floatTxt = document.getElementById(`float-weight-val-${expertIndex}`);
+            if (floatTxt) floatTxt.innerText = `${percent}%`;
+        };
+
+        window.setTokenizerProgress = function(percent) {
+            const pVal = Math.max(0, Math.min(100, percent));
+            
+            // SVG setup
+            const circle = document.getElementById('progress-circle');
+            const percentText = document.getElementById('progress-percent');
+            const statusText = document.getElementById('progress-status');
+            const ringContainer = document.getElementById('progress-container');
+            const vortexIcon = document.querySelector('.vortex-icon');
+            
+            const radius = 26;
+            const circumference = radius * 2 * Math.PI;
+            circle.style.strokeDasharray = `${circumference} ${circumference}`;
+            const offset = circumference - (pVal / 100) * circumference;
+            circle.style.strokeDashoffset = offset;
+            
+            percentText.innerText = `${Math.round(pVal)}%`;
+            
+            if (pVal > 0 && pVal < 100) {
+                ringContainer.classList.add('active');
+                if (vortexIcon) vortexIcon.style.display = 'none';
+                statusText.innerText = "Tokenizer: Loading...";
+                statusText.style.color = "var(--neon-purple)";
+                circle.style.stroke = "var(--neon-purple)";
+            } else if (pVal === 100) {
+                ringContainer.classList.add('active');
+                if (vortexIcon) vortexIcon.style.display = 'none';
+                statusText.innerText = "Tokenizer: Loaded!";
+                statusText.style.color = "var(--neon-emerald)";
+                circle.style.stroke = "var(--neon-emerald)";
+                
+                // Trigger flash in logger
+                window.logRouterDecision(`SYSTEM: Tokenizer loaded successfully (vocab_size=32,000).`);
+                
+                // Reset back to idle icon after delay
+                setTimeout(() => {
+                    if (percentText.innerText === '100%') {
+                        ringContainer.classList.remove('active');
+                        if (vortexIcon) vortexIcon.style.display = 'block';
+                        statusText.innerText = "Tokenizer: Ready";
+                        statusText.style.color = "var(--neon-cyan)";
+                    }
+                }, 2500);
+            } else {
+                ringContainer.classList.remove('active');
+                if (vortexIcon) vortexIcon.style.display = 'block';
+                statusText.innerText = "Tokenizer: Idle";
+                statusText.style.color = "var(--neon-cyan)";
+            }
+        };
+
+        window.logRouterDecision = function(message) {
+            const container = document.getElementById('log-container');
+            if (!container) return;
+            
+            const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+            
+            // Format color highlights
+            let classType = 'log-sys';
+            if (message.startsWith('ROUTER:')) classType = 'log-router';
+            else if (message.startsWith('BEAM:')) classType = 'log-expert';
+            else if (message.startsWith('WARN:')) classType = 'log-warn';
+            
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+            entry.innerHTML = `<span class="log-time">[${time}]</span> <span class="${classType}">${message}</span>`;
+            
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+            
+            // Prune logs if too many
+            while (container.childNodes.length > 50) {
+                container.removeChild(container.firstChild);
+            }
+        };
+
+        window.setExpertActive = function(expertIndex, isActive) {
+            if (expertIndex < 0 || expertIndex >= 8) return;
+            
+            const led = document.getElementById(`expert-led-${expertIndex}`);
+            if (led) {
+                led.style.color = isActive ? EXPERT_DATA[expertIndex].color : 'rgba(255, 255, 255, 0.15)';
+            }
+            
+            const floatLed = document.getElementById(`float-dot-${expertIndex}`);
+            if (floatLed) {
+                floatLed.style.color = isActive ? EXPERT_DATA[expertIndex].color : 'rgba(255, 255, 255, 0.15)';
+            }
+            
+            const floatStatus = document.getElementById(`float-status-${expertIndex}`);
+            if (floatStatus) {
+                floatStatus.innerText = isActive ? "Active" : "Idle";
+                floatStatus.style.color = isActive ? EXPERT_DATA[expertIndex].color : 'var(--text-muted)';
+            }
+        };
+
+        // --- RENDER STATIC EXPERT ROWS & FLOATING ELEMENTS ---
+        function renderUIComponents() {
+            const sidebarRoot = document.getElementById('expert-matrix-list');
+            const floatingRoot = document.getElementById('floating-cards-root');
+            
+            sidebarRoot.innerHTML = '';
+            floatingRoot.innerHTML = '';
+            
+            EXPERT_DATA.forEach(exp => {
+                // 1. Sidebar Row
+                const row = document.createElement('div');
+                row.className = 'expert-row glass-inner';
+                row.style.border = '1px solid rgba(255, 255, 255, 0.03)';
+                row.style.borderRadius = '6px';
+                row.innerHTML = `
+                    <div class="expert-info">
+                        <div class="expert-name-wrapper">
+                            <span class="expert-status-led" id="expert-led-${exp.id}" style="color: rgba(255,255,255,0.15);"></span>
+                            <span class="expert-name">${exp.id}: ${exp.name}</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
+                            <div class="expert-weight-bg">
+                                <div class="expert-weight-fill" id="expert-weight-fill-${exp.id}" style="color: ${exp.color}; width: 0%;"></div>
+                            </div>
+                            <span class="expert-percentage" id="expert-pct-${exp.id}">0%</span>
+                        </div>
+                    </div>
+                    <div class="vu-meter-panel" id="vu-meter-sidebar-${exp.id}" style="color: ${exp.color};">
+                        <div class="vu-bar"></div>
+                        <div class="vu-bar"></div>
+                        <div class="vu-bar"></div>
+                        <div class="vu-bar"></div>
+                        <div class="vu-bar"></div>
+                    </div>
+                `;
+                sidebarRoot.appendChild(row);
+                
+                // 2. Floating Card Overlay
+                const card = document.createElement('div');
+                card.className = 'expert-floating-card';
+                card.id = `expert-card-${exp.id}`;
+                card.innerHTML = `
+                    <div class="floating-card-header">
+                        <span class="floating-card-label">
+                            <span class="floating-card-dot" id="float-dot-${exp.id}" style="color: rgba(255,255,255,0.15);"></span>
+                            ${exp.name}
+                        </span>
+                        <span class="floating-card-status" id="float-status-${exp.id}">Idle</span>
+                    </div>
+                    <div class="floating-card-weight">
+                        <span>Weight:</span>
+                        <span id="float-weight-val-${exp.id}">0%</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
+                        <span style="font-size:7.5px; color:var(--text-muted);">${exp.description}</span>
+                        <div class="mini-vu-container" id="vu-meter-float-${exp.id}" style="color: ${exp.color};">
+                            <div class="vu-bar" style="width:2px; height:15%;"></div>
+                            <div class="vu-bar" style="width:2px; height:15%;"></div>
+                            <div class="vu-bar" style="width:2px; height:15%;"></div>
+                            <div class="vu-bar" style="width:2px; height:15%;"></div>
+                            <div class="vu-bar" style="width:2px; height:15%;"></div>
+                        </div>
+                    </div>
+                `;
+                floatingRoot.appendChild(card);
+            });
+        }
+        renderUIComponents();
+
+
+        // --- THREE.JS SCENE SETUP ---
+        const sceneContainer = document.querySelector('.scene-container');
+        const canvas = document.getElementById('canvas3d');
+        
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x09090c, 0.015);
+        
+        // Camera
+        const camera = new THREE.PerspectiveCamera(45, sceneContainer.clientWidth / sceneContainer.clientHeight, 0.1, 100);
+        camera.position.set(0, 8, 22);
+        
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+        renderer.setSize(sceneContainer.clientWidth, sceneContainer.clientHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        
+        // Orbit Controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxDistance = 40;
+        controls.minDistance = 6;
+        controls.enablePan = false;
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.08);
+        scene.add(ambientLight);
+        
+        const centerLight = new THREE.PointLight(0x00f3ff, 2.5, 15);
+        centerLight.position.set(0, 0, 0);
+        scene.add(centerLight);
+        
+        const spaceLight = new THREE.DirectionalLight(0x8a2be2, 0.5);
+        spaceLight.position.set(5, 15, 5);
+        scene.add(spaceLight);
+
+        // --- SCENE BACKGROUND STARS ---
+        const starsGeometry = new THREE.BufferGeometry();
+        const starsCount = 500;
+        const starsPositions = new Float32Array(starsCount * 3);
+        for(let i=0; i<starsCount*3; i+=3) {
+            starsPositions[i] = (Math.random() - 0.5) * 60;
+            starsPositions[i+1] = (Math.random() - 0.5) * 60;
+            starsPositions[i+2] = (Math.random() - 0.5) * 60;
+        }
+        starsGeometry.setAttribute('position', new THREE.BufferAttribute(starsPositions, 3));
+        const starsMaterial = new THREE.PointsMaterial({
+            size: 0.1,
+            color: 0x7e839f,
+            transparent: true,
+            opacity: 0.6
+        });
+        const starField = new THREE.Points(starsGeometry, starsMaterial);
+        scene.add(starField);
+
+        // --- GATEWAY ROUTER (E8 LATTICE VISUALIZATION) ---
+        // 240 root vectors of E8 Lie group
+        function generateE8Roots() {
+            const roots = [];
+            // 112 vectors of format (±1, ±1, 0, 0, 0, 0, 0, 0)
+            for (let i = 0; i < 8; i++) {
+                for (let j = i + 1; j < 8; j++) {
+                    for (const s1 of [-1, 1]) {
+                        for (const s2 of [-1, 1]) {
+                            const v = new Array(8).fill(0);
+                            v[i] = s1;
+                            v[j] = s2;
+                            roots.push(v);
+                        }
+                    }
+                }
+            }
+            // 128 vectors of format (±0.5, ±0.5, ±0.5, ±0.5, ±0.5, ±0.5, ±0.5, ±0.5) with even minus count
+            for (let b = 0; b < 256; b++) {
+                let minusCount = 0;
+                const v = [];
+                for (let i = 0; i < 8; i++) {
+                    const bit = (b >> i) & 1;
+                    if (bit === 1) {
+                        v.push(-0.5);
+                        minusCount++;
+                    } else {
+                        v.push(0.5);
+                    }
+                }
+                if (minusCount % 2 === 0) {
+                    roots.push(v);
+                }
+            }
+            return roots;
+        }
+
+        // Project 8D coordinates into 3D using quasi-crystalline projection
+        // We use cosines/sines with custom phase/frequency offsets to ensure an aesthetic E8 Coxeter projection
+        const projMatrix = [];
+        for (let i = 0; i < 8; i++) {
+            const theta = (i * Math.PI) / 4;
+            projMatrix.push([
+                Math.cos(theta),
+                Math.sin(theta) * Math.cos(i * Math.PI / 3),
+                Math.sin(theta) * Math.sin(i * Math.PI / 3)
+            ]);
+        }
+
+        function project8DTo3D(v) {
+            let x = 0, y = 0, z = 0;
+            for (let i = 0; i < 8; i++) {
+                x += v[i] * projMatrix[i][0];
+                y += v[i] * projMatrix[i][1];
+                z += v[i] * projMatrix[i][2];
+            }
+            const scale = 2.4;
+            return new THREE.Vector3(x * scale, y * scale, z * scale);
+        }
+
+        // Create E8 visualization structure
+        const e8Roots = generateE8Roots();
+        const projectedVertices = e8Roots.map(project8DTo3D);
+
+        const routerGroup = new THREE.Group();
+        scene.add(routerGroup);
+
+        // A. Draw Vertices (Points)
+        const verticesGeom = new THREE.BufferGeometry().setFromPoints(projectedVertices);
+        // Canvas particle texture
+        const ptCanvas = document.createElement('canvas');
+        ptCanvas.width = 16;
+        ptCanvas.height = 16;
+        const ptCtx = ptCanvas.getContext('2d');
+        const ptGrad = ptCtx.createRadialGradient(8, 8, 0, 8, 8, 8);
+        ptGrad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+        ptGrad.addColorStop(0.3, 'rgba(0, 243, 255, 0.8)');
+        ptGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ptCtx.fillStyle = ptGrad;
+        ptCtx.fillRect(0, 0, 16, 16);
+        const ptTexture = new THREE.CanvasTexture(ptCanvas);
+
+        const verticesMat = new THREE.PointsMaterial({
+            size: 0.35,
+            map: ptTexture,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        const e8PointsMesh = new THREE.Points(verticesGeom, verticesMat);
+        routerGroup.add(e8PointsMesh);
+
+        // B. Draw Lines between nearest neighbors (distance in 8D = sqrt(2))
+        const linePositions = [];
+        for (let i = 0; i < e8Roots.length; i++) {
+            for (let j = i + 1; j < e8Roots.length; j++) {
+                let dot = 0;
+                for (let k = 0; k < 8; k++) {
+                    dot += e8Roots[i][k] * e8Roots[j][k];
+                }
+                // if dot product is 1, they are adjacent in E8 lattice
+                if (Math.abs(dot - 1) < 1e-3) {
+                    linePositions.push(projectedVertices[i].x, projectedVertices[i].y, projectedVertices[i].z);
+                    linePositions.push(projectedVertices[j].x, projectedVertices[j].y, projectedVertices[j].z);
+                }
+            }
+        }
+        const linesGeom = new THREE.BufferGeometry();
+        linesGeom.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
+        const linesMat = new THREE.LineBasicMaterial({
+            color: 0x8a2be2,
+            transparent: true,
+            opacity: 0.15,
+            blending: THREE.AdditiveBlending
+        });
+        const e8LinesMesh = new THREE.LineSegments(linesGeom, linesMat);
+        routerGroup.add(e8LinesMesh);
+
+        // C. Central Router Core Glowing Sphere
+        const coreGeom = new THREE.IcosahedronGeometry(1.2, 2);
+        const coreMat = new THREE.MeshBasicMaterial({
+            color: 0x00f3ff,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.25,
+            blending: THREE.AdditiveBlending
+        });
+        const coreMesh = new THREE.Mesh(coreGeom, coreMat);
+        routerGroup.add(coreMesh);
+
+
+        // --- ORBITING EXPERT NODES ---
+        const experts = [];
+        const orbitRadius = 8.5;
+
+        // Position helper
+        function getExpertPosition(index) {
+            const angle = (index * 2 * Math.PI) / 8;
+            // Generate some vertical variance wave
+            const y = Math.sin(index * Math.PI / 2) * 1.5;
+            const x = Math.cos(angle) * orbitRadius;
+            const z = Math.sin(angle) * orbitRadius;
+            return new THREE.Vector3(x, y, z);
+        }
+
+        EXPERT_DATA.forEach((data, idx) => {
+            const expGroup = new THREE.Group();
+            const pos = getExpertPosition(idx);
+            expGroup.position.copy(pos);
+            scene.add(expGroup);
+            
+            // Core sphere
+            const sphereGeom = new THREE.SphereGeometry(0.4, 16, 16);
+            const sphereMat = new THREE.MeshBasicMaterial({
+                color: data.colorHex,
+                transparent: true,
+                opacity: 0.8
+            });
+            const mesh = new THREE.Mesh(sphereGeom, sphereMat);
+            expGroup.add(mesh);
+            
+            // Outer wireframe shell
+            const shellGeom = new THREE.IcosahedronGeometry(0.7, 1);
+            const shellMat = new THREE.MeshBasicMaterial({
+                color: data.colorHex,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.2
+            });
+            const shellMesh = new THREE.Mesh(shellGeom, shellMat);
+            expGroup.add(shellMesh);
+            
+            // Visual connection dashed line to Center Router
+            const linePoints = [new THREE.Vector3(0, 0, 0), pos];
+            const connectionGeom = new THREE.BufferGeometry().setFromPoints(linePoints);
+            const connectionMat = new THREE.LineDashedMaterial({
+                color: data.colorHex,
+                dashSize: 0.25,
+                gapSize: 0.15,
+                transparent: true,
+                opacity: 0.2,
+                blending: THREE.AdditiveBlending
+            });
+            const linkLine = new THREE.Line(connectionGeom, connectionMat);
+            linkLine.computeLineDistances();
+            scene.add(linkLine);
+            
+            experts.push({
+                id: data.id,
+                name: data.name,
+                color: data.colorHex,
+                group: expGroup,
+                mesh: mesh,
+                shell: shellMesh,
+                linkLine: linkLine,
+                basePos: pos.clone()
+            });
+        });
+
+
+        // --- PARTICLE BEAM SYSTEM ---
+        class ParticleBeam {
+            constructor(scene, startPos, endPos, color = 0x00f3ff) {
+                this.scene = scene;
+                this.startPos = startPos.clone();
+                this.endPos = endPos.clone();
+                this.color = new THREE.Color(color);
+                this.particlesCount = 60;
+                
+                this.geometry = new THREE.BufferGeometry();
+                this.positions = new Float32Array(this.particlesCount * 3);
+                
+                // Initialize at start
+                for(let i=0; i<this.particlesCount; i++) {
+                    this.positions[i*3] = this.startPos.x;
+                    this.positions[i*3+1] = this.startPos.y;
+                    this.positions[i*3+2] = this.startPos.z;
+                }
+                this.geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3));
+                
+                // Canvas point texture
+                const canvas = document.createElement('canvas');
+                canvas.width = 16;
+                canvas.height = 16;
+                const ctx = canvas.getContext('2d');
+                const grad = ctx.createRadialGradient(8, 8, 0, 8, 8, 8);
+                grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+                grad.addColorStop(0.3, this.color.getStyle());
+                grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, 16, 16);
+                const tex = new THREE.CanvasTexture(canvas);
+                
+                this.material = new THREE.PointsMaterial({
+                    size: 0.5,
+                    map: tex,
+                    transparent: true,
+                    blending: THREE.AdditiveBlending,
+                    depthWrite: false
+                });
+                
+                this.pointsMesh = new THREE.Points(this.geometry, this.material);
+                this.scene.add(this.pointsMesh);
+                
+                // State data for particle animation
+                this.particleData = [];
+                for(let i=0; i<this.particlesCount; i++) {
+                    this.particleData.push({
+                        progress: -Math.random() * 0.4, // Staggered entry
+                        speed: 1.5 + Math.random() * 0.6,
+                        wiggleFreq: 12 + Math.random() * 8,
+                        wiggleAmp: 0.15 + Math.random() * 0.2,
+                        wiggleOffset: Math.random() * Math.PI * 2
+                    });
+                }
+                this.active = true;
+            }
+            
+            update(deltaTime) {
+                if (!this.active) return;
+                const posAttr = this.geometry.attributes.position;
+                let allFinished = true;
+                
+                const pathDir = new THREE.Vector3().subVectors(this.endPos, this.startPos).normalize();
+                
+                // Construct coordinate frame perpendicular to the beam direction
+                let perp = new THREE.Vector3(1, 0, 0);
+                if (Math.abs(pathDir.dot(perp)) > 0.9) {
+                    perp.set(0, 1, 0);
+                }
+                const bitang = new THREE.Vector3().crossVectors(pathDir, perp).normalize();
+                perp.crossVectors(pathDir, bitang).normalize();
+                
+                for(let i=0; i<this.particlesCount; i++) {
+                    const data = this.particleData[i];
+                    data.progress += data.speed * deltaTime;
+                    
+                    if (data.progress < 0) {
+                        posAttr.setXYZ(i, this.startPos.x, this.startPos.y, this.startPos.z);
+                        allFinished = false;
+                        continue;
+                    }
+                    
+                    if (data.progress >= 1) {
+                        posAttr.setXYZ(i, this.endPos.x, this.endPos.y, this.endPos.z);
+                        continue;
+                    }
+                    
+                    allFinished = false;
+                    
+                    // Linear lerp position
+                    const t = data.progress;
+                    const pos = new THREE.Vector3().lerpVectors(this.startPos, this.endPos, t);
+                    
+                    // Add corkscrew helix wiggle
+                    const angle = t * data.wiggleFreq + data.wiggleOffset;
+                    const amp = Math.sin(t * Math.PI) * data.wiggleAmp; // Zero at ends, max in middle
+                    
+                    pos.addScaledVector(perp, Math.cos(angle) * amp);
+                    pos.addScaledVector(bitang, Math.sin(angle) * amp);
+                    
+                    posAttr.setXYZ(i, pos.x, pos.y, pos.z);
+                }
+                
+                posAttr.needsUpdate = true;
+                
+                if (allFinished) {
+                    this.active = false;
+                    this.scene.remove(this.pointsMesh);
+                    this.geometry.dispose();
+                    this.material.dispose();
+                }
+            }
+        }
+
+        const activeBeams = [];
+
+
+        // --- DYNAMIC POSITION PROJECTION (3D -> HTML) ---
+        const tempProj = new THREE.Vector3();
+        function updateFloatingCards() {
+            experts.forEach(exp => {
+                tempProj.setFromMatrixPosition(exp.mesh.matrixWorld);
+                tempProj.project(camera);
+                
+                const card = document.getElementById(`expert-card-${exp.id}`);
+                if (!card) return;
+                
+                // If behind camera plane, hide it
+                if (tempProj.z > 1) {
+                    card.style.opacity = '0';
+                    card.style.display = 'none';
+                    return;
+                }
+                
+                card.style.display = 'flex';
+                
+                // Convert normalized device coordinates to CSS pixels
+                const x = (tempProj.x * 0.5 + 0.5) * sceneContainer.clientWidth;
+                const y = (-(tempProj.y * 0.5) + 0.5) * sceneContainer.clientHeight;
+                
+                // Absolute positions
+                card.style.left = `${x}px`;
+                card.style.top = `${y}px`;
+                card.style.transform = `translate(-50%, -100%) translateY(-10px)`;
+                
+                // Layer depth scaling
+                const zIndex = Math.round((1 - tempProj.z) * 1000);
+                card.style.zIndex = zIndex;
+                
+                const scale = Math.max(0.7, 1 - tempProj.z * 0.4);
+                card.style.scale = scale;
+                
+                // Fade out cards that are too far back
+                const opacity = Math.max(0.1, Math.min(1.0, 1.3 - tempProj.z * 1.5));
+                card.style.opacity = opacity;
+            });
+        }
+
+
+        // --- DRAG AND DROP VORTEX CANVAS ---
+        const dropZone = document.getElementById('drop-zone');
+        const vCanvas = document.getElementById('vortex-canvas');
+        const vCtx = vCanvas.getContext('2d');
+        let vortexParticles = [];
+        let isDraggingFile = false;
+        
+        class VortexParticle {
+            constructor(w, h) {
+                this.w = w;
+                this.h = h;
+                this.reset();
+            }
+            
+            reset() {
+                const angle = Math.random() * Math.PI * 2;
+                const maxD = Math.max(this.w, this.h) * 0.7;
+                this.dist = (0.3 + Math.random() * 0.7) * maxD;
+                this.angle = angle;
+                
+                this.speed = 0.4 + Math.random() * 0.8;
+                this.rotSpeed = 0.005 + Math.random() * 0.015;
+                this.size = 0.6 + Math.random() * 1.8;
+                
+                // Alternate colors
+                this.color = Math.random() > 0.5 ? 'rgba(0, 243, 255, 0.4)' : 'rgba(138, 43, 226, 0.3)';
+            }
+            
+            update() {
+                const pullFactor = isDraggingFile ? 3.0 : 1.0;
+                const rotFactor = isDraggingFile ? 2.5 : 1.0;
+                
+                this.dist -= this.speed * pullFactor;
+                this.angle += this.rotSpeed * rotFactor;
+                
+                this.x = this.w / 2 + Math.cos(this.angle) * this.dist;
+                this.y = this.h / 2 + Math.sin(this.angle) * this.dist;
+                
+                if (this.dist < 6) {
+                    this.reset();
+                }
+            }
+            
+            draw() {
+                vCtx.fillStyle = this.color;
+                vCtx.beginPath();
+                vCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                vCtx.fill();
+            }
+        }
+
+        function initVortex() {
+            const rect = dropZone.getBoundingClientRect();
+            vCanvas.width = rect.width;
+            vCanvas.height = rect.height;
+            vortexParticles = [];
+            for (let i = 0; i < 120; i++) {
+                vortexParticles.push(new VortexParticle(vCanvas.width, vCanvas.height));
+            }
+        }
+        
+        function drawVortex() {
+            vCtx.fillStyle = 'rgba(9, 9, 12, 0.15)';
+            vCtx.fillRect(0, 0, vCanvas.width, vCanvas.height);
+            
+            vortexParticles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            
+            // Draw central gravity well
+            if (isDraggingFile) {
+                vCtx.strokeStyle = 'rgba(0, 243, 255, 0.2)';
+                vCtx.lineWidth = 1;
+                vCtx.beginPath();
+                vCtx.arc(vCanvas.width/2, vCanvas.height/2, 35 + Math.sin(Date.now() * 0.005) * 4, 0, Math.PI * 2);
+                vCtx.stroke();
+            }
+        }
+
+        // Dropzone handlers
+        dropZone.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            isDraggingFile = true;
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            isDraggingFile = true;
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            isDraggingFile = false;
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            isDraggingFile = false;
+            dropZone.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            const filename = files.length > 0 ? files[0].name : "model_weights.gguf";
+            
+            window.logRouterDecision(`SYSTEM: Configuration file drop detected: ${filename}`);
+            simulateTokenizerLoading();
+        });
+
+        // Trigger loading simulation
+        let tokenizerLoading = false;
+        function simulateTokenizerLoading() {
+            if (tokenizerLoading) return;
+            tokenizerLoading = true;
+            
+            let percent = 0;
+            const interval = setInterval(() => {
+                percent += Math.random() * 8 + 4;
+                if (percent >= 100) {
+                    percent = 100;
+                    clearInterval(interval);
+                    tokenizerLoading = false;
+                }
+                window.setTokenizerProgress(percent);
+            }, 120);
+        }
+
+        document.getElementById('btn-simulate-upload').addEventListener('click', () => {
+            window.logRouterDecision("SYSTEM: Injecting mock configuration package...");
+            simulateTokenizerLoading();
+        });
+
+
+        // --- INTEGRATION HUD & TELEMETRY LOOPS ---
+        let autoPilotActive = true;
+        let queryInterval = null;
+        let lastTime = performance.now();
+        let frameCount = 0;
+        let decayRates = new Array(8).fill(0.95);
+        let expertWeights = new Array(8).fill(0);
+        let vuValues = new Array(8).fill(0);
+
+        // Telemetry counters
+        const latencyVal = document.getElementById('telemetry-latency');
+        const throughputVal = document.getElementById('telemetry-throughput');
+        const activeCountVal = document.getElementById('telemetry-active-experts');
+        const fpsVal = document.getElementById('fps-counter');
+
+        // Setup matrix
+        document.getElementById('btn-demo-toggle').addEventListener('click', (e) => {
+            autoPilotActive = !autoPilotActive;
+            if (autoPilotActive) {
+                e.target.classList.add('active');
+                window.logRouterDecision("SYSTEM: Autonomous evaluation routine (Auto-Pilot) ENGAGED.");
+                startAutoPilotQueryLoop();
+            } else {
+                e.target.classList.remove('active');
+                window.logRouterDecision("SYSTEM: Manual routing control OVERRIDE. Idle state.");
+                clearInterval(queryInterval);
+            }
+        });
+
+        document.getElementById('btn-simulate-query').addEventListener('click', () => {
+            triggerQueryRoutingSim();
+        });
+
+        document.getElementById('btn-clear-connections').addEventListener('click', () => {
+            window.logRouterDecision("SYSTEM: Flushed active routing cache.");
+            for(let i=0; i<8; i++) {
+                window.updateExpertWeight(i, 0);
+                window.updateVUMeter(i, 0);
+                window.setExpertActive(i, false);
+                experts[i].linkLine.material.opacity = 0.2;
+                experts[i].linkLine.material.color.setHex(EXPERT_DATA[i].colorHex);
+            }
+        });
+
+        // Developer integration triggers
+        document.getElementById('btn-dev-beam').addEventListener('click', () => {
+            const expIdx = parseInt(document.getElementById('dev-expert-select').value);
+            const vuVal = parseInt(document.getElementById('dev-vu-value').value) / 100;
+            
+            // Fire beam
+            window.triggerParticleBeam(expIdx);
+            
+            // Set dynamic weight (e.g. 70%)
+            window.updateExpertWeight(expIdx, 0.4 + Math.random()*0.4);
+            
+            // Pulse VU meter
+            vuValues[expIdx] = vuVal;
+            window.updateVUMeter(expIdx, vuVal);
+        });
+
+        // Prompt presets for the router simulation
+        const PROMPTS = [
+            { text: "Implement a discrete convolution matrix in WebGL", target: [0, 1] },
+            { text: "What is the homology dimension of a torus?", target: [1, 2] },
+            { text: "Translate these terms from French to German", target: [3] },
+            { text: "Summarize this 40-page medical compliance guide", target: [4, 6] },
+            { text: "Classify user feedback: positive, neutral, or negative", target: [5] },
+            { text: "Draft a liability waiver clause for software testing", target: [6] },
+            { text: "Write a poem about binary trees in the style of Edgar Allan Poe", target: [7, 0] },
+            { text: "Solve: x^2 - 7x + 12 = 0 using step-by-step calculus", target: [1] }
+        ];
+
+        function triggerQueryRoutingSim() {
+            const prompt = PROMPTS[Math.floor(Math.random() * PROMPTS.length)];
+            window.logRouterDecision(`ROUTER: Ingesting query: "${prompt.text}"`);
+            
+            // 1. Calculate mock latency
+            const lat = (1.1 + Math.random() * 1.8).toFixed(2);
+            latencyVal.innerText = `${lat}ms`;
+            
+            // 2. Set Active experts counts
+            activeCountVal.innerText = `${prompt.target.length} / 8`;
+            
+            // 3. Update router throughput
+            const tput = Math.round(75 + Math.random() * 25);
+            throughputVal.innerText = `${tput} t/s`;
+            
+            // 4. Trigger beams and levels
+            // Reset old active visual lines slightly
+            experts.forEach(exp => {
+                exp.linkLine.material.opacity = 0.25;
+            });
+            
+            // Calculate weights dynamically
+            const counts = prompt.target.length;
+            let sum = 0;
+            const tempWeights = new Array(8).fill(0);
+            
+            prompt.target.forEach((idx, tIdx) => {
+                const w = tIdx === 0 && counts > 1 ? 0.65 : (1 / counts) * (0.8 + Math.random() * 0.2);
+                tempWeights[idx] = w;
+                sum += w;
+            });
+            
+            // Normalize weights
+            for(let i=0; i<8; i++) {
+                if (tempWeights[i] > 0) {
+                    const normalized = tempWeights[i] / sum;
+                    window.updateExpertWeight(i, normalized);
+                    
+                    // Trigger particle beam with slight staggered delay
+                    setTimeout(() => {
+                        window.triggerParticleBeam(i);
+                        // Peak VU level
+                        vuValues[i] = 0.85 + Math.random() * 0.15;
+                        window.updateVUMeter(i, vuValues[i]);
+                    }, tIdx * 120);
+                } else {
+                    window.updateExpertWeight(i, 0);
+                }
+            }
+            
+            // Flash E8 Core visually
+            coreMesh.material.opacity = 0.8;
+            coreMesh.scale.set(1.25, 1.25, 1.25);
+            setTimeout(() => {
+                coreMesh.material.opacity = 0.25;
+                coreMesh.scale.set(1, 1, 1);
+            }, 300);
+        }
+
+        function startAutoPilotQueryLoop() {
+            clearInterval(queryInterval);
+            queryInterval = setInterval(() => {
+                triggerQueryRoutingSim();
+            }, 3200);
+        }
+
+
+        // --- ANIMATION LOOP ---
+        const clock = new THREE.Clock();
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const delta = clock.getDelta();
+            const time = performance.now() * 0.001;
+            
+            // FPS Calculation
+            frameCount++;
+            if (performance.now() - lastTime >= 1000) {
+                fpsVal.innerText = `FPS: ${frameCount}`;
+                frameCount = 0;
+                lastTime = performance.now();
+            }
+            
+            // A. Update controls
+            controls.update();
+            
+            // B. Rotate Central E8 Grid Router Node
+            routerGroup.rotation.y = time * 0.12;
+            routerGroup.rotation.x = Math.sin(time * 0.05) * 0.1;
+            
+            // Pulse E8 lines slightly
+            linesMat.opacity = 0.12 + Math.sin(time * 2) * 0.04;
+            
+            // C. Animate Orbiting Expert Nodes
+            experts.forEach((exp, idx) => {
+                // Subtle breathing drift relative to baseline
+                const drift = Math.sin(time * 1.5 + idx) * 0.12;
+                exp.group.position.x = exp.basePos.x + Math.cos(time * 0.2 + idx) * 0.15;
+                exp.group.position.z = exp.basePos.z + Math.sin(time * 0.2 + idx) * 0.15;
+                exp.group.position.y = exp.basePos.y + drift;
+                
+                // Slowly spin outer shells
+                exp.shell.rotation.y += 0.01;
+                exp.shell.rotation.x += 0.005;
+                
+                // Animate marching ants data dashes along link lines
+                exp.linkLine.material.dashOffset = time * 0.6;
+                
+                // Fade link lines back to idle if no active routing
+                if (exp.linkLine.material.opacity > 0.2) {
+                    exp.linkLine.material.opacity -= 0.01;
+                }
+            });
+            
+            // D. Update Active Beams
+            for (let i = activeBeams.length - 1; i >= 0; i--) {
+                const b = activeBeams[i];
+                b.update(delta);
+                if (!b.active) {
+                    activeBeams.splice(i, 1);
+                }
+            }
+            
+            // E. Decay VU Meters naturally
+            for (let i = 0; i < 8; i++) {
+                if (vuValues[i] > 0.15) {
+                    // Decay towards idle
+                    vuValues[i] *= 0.92; 
+                    window.updateVUMeter(i, vuValues[i]);
+                } else {
+                    // Slight idle flicker
+                    const flicker = 0.05 + Math.random() * 0.08;
+                    window.updateVUMeter(i, flicker);
+                }
+            }
+            
+            // F. Render 2D Vortex Canvas
+            drawVortex();
+            
+            // G. Project floating HTML cards
+            updateFloatingCards();
+            
+            // H. WebGL render
+            renderer.render(scene, camera);
+        }
+
+        // Window resize
+        window.addEventListener('resize', () => {
+            const w = sceneContainer.clientWidth;
+            const h = sceneContainer.clientHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+            initVortex(); // Recalculate vortex particle dimensions
+        });
+
+        // Initialize elements
+        initVortex();
+        animate();
+        startAutoPilotQueryLoop();
+        
+        // Initial tokenizer status
+        window.setTokenizerProgress(0);
+    </script>
+</body>
+</html>

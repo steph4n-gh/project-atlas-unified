@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "project-atlas-unified"
+version = "0.1.0"
+description = "Unified QAN Transformers and Ultrametric Cognitive Engine (UCE) Workspace"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Google DeepMind Advanced Agentic Coding Team"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence"
+]
+dependencies = [
+    "torch>=2.0",
+    "numpy>=1.20",
+    "transformers>=4.30",
+    "fastapi",
+    "uvicorn",
+    "pydantic",
+    "google-genai",
+    "mlx>=0.15",
+    "mlx-lm>=0.1.0"
+]
+
+[project.optional-dependencies]
+tests = ["pytest"]
+dev = ["pytest"]
+
+[project.entry-points.console_scripts]
+qan-cli = "qan_transformers.cli.main:main"
+uce-compile = "ultrametric_ce.cli.compile:main"
+uce-run = "ultrametric_ce.cli.run:main"
+uce-eval = "ultrametric_ce.cli.eval:main"
+uce-distill-phase0 = "ultrametric_ce.cli.distill_phase0:main"
+uce-run-distillation = "ultrametric_ce.cli.distill:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["qan_transformers*", "ultrametric_ce*"]

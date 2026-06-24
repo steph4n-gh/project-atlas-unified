@@ -1,0 +1,62 @@
+[
+  {
+    "context_len": 512,
+    "dense_prefill_ms": 45.475500000975444,
+    "dense_tps": 98.21243160419773,
+    "dense_vram_mb": 12.0,
+    "qan_prefill_ms": 193.87054099934176,
+    "qan_tps": 15.29656113053442,
+    "qan_vram_mb": 1.78125,
+    "vram_saving_pct": 85.15625,
+    "prefill_speedup": 0.23456632331329721,
+    "decode_speedup": 0.15574974451483414
+  },
+  {
+    "context_len": 1024,
+    "dense_prefill_ms": 57.20462499994028,
+    "dense_tps": 117.16401570878882,
+    "dense_vram_mb": 24.0,
+    "qan_prefill_ms": 95.59004199945775,
+    "qan_tps": 151.02289695925833,
+    "qan_vram_mb": 0.0,
+    "vram_saving_pct": 100.0,
+    "prefill_speedup": 0.59843707360506,
+    "decode_speedup": 1.2889870327987543
+  },
+  {
+    "context_len": 2048,
+    "dense_prefill_ms": 91.53266700013774,
+    "dense_tps": 118.74704060114865,
+    "dense_vram_mb": 48.0,
+    "qan_prefill_ms": 112.68958300024678,
+    "qan_tps": 171.53964334628094,
+    "qan_vram_mb": 0.0,
+    "vram_saving_pct": 100.0,
+    "prefill_speedup": 0.812254909133325,
+    "decode_speedup": 1.4445803657747882
+  },
+  {
+    "context_len": 4096,
+    "dense_prefill_ms": 245.23258400040504,
+    "dense_tps": 120.96823019851766,
+    "dense_vram_mb": 96.0,
+    "qan_prefill_ms": 317.6157500001864,
+    "qan_tps": 156.11263917242883,
+    "qan_vram_mb": 0.0,
+    "vram_saving_pct": 100.0,
+    "prefill_speedup": 0.7721046075336665,
+    "decode_speedup": 1.290525941532224
+  },
+  {
+    "context_len": 8000,
+    "dense_prefill_ms": 750.065917000029,
+    "dense_tps": 113.5214979402739,
+    "dense_vram_mb": 187.5,
+    "qan_prefill_ms": 1055.820333000156,
+    "qan_tps": 110.54844043049815,
+    "qan_vram_mb": 0.0,
+    "vram_saving_pct": 100.0,
+    "prefill_speedup": 0.7104105628167686,
+    "decode_speedup": 0.9738106212151997
+  }
+]

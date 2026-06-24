@@ -1,0 +1,19 @@
+{
+  "project": "devops_toolbox_moe",
+  "teacher_model": "google/gemma-4-31b-it",
+  "teacher_precision": "4bit",
+  "student_dim": 64,
+  "student_layers": 8,
+  "loss_weights": {
+    "kl_logits": 1.0,
+    "hidden_mse": 0.25,
+    "hierarchical_ast": 1.5,
+    "structural_regularizer": 0.05
+  },
+  "training_schedule": {
+    "batch_size": 8,
+    "epochs": 15,
+    "learning_rate": 5e-3,
+    "lr_decay": "cosine"
+  }
+}

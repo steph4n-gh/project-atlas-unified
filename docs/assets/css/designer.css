@@ -1,0 +1,738 @@
+/* 
+ * docs/assets/css/designer.css
+ * Client-Side MoE Studio Stylesheet
+ * Brand: Premium, Glassmorphic, Cyber-industrial with Neon Accents
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --bg-space: #09090c;
+    --bg-card: rgba(12, 12, 22, 0.45);
+    --bg-inner: rgba(6, 6, 12, 0.85);
+    --border-color: rgba(255, 255, 255, 0.05);
+    --border-hover: rgba(0, 243, 255, 0.25);
+    --border-glow: rgba(0, 243, 255, 0.1);
+    
+    /* Neon Glo Colors */
+    --neon-cyan: #00f3ff;
+    --neon-purple: #8a2be2;
+    --neon-emerald: #00ff7f;
+    --neon-orange: #ff9900;
+    --neon-magenta: #ff007f;
+    --neon-blue: #0070ff;
+    --neon-rose: #ff2a6d;
+    --neon-lime: #a6ff00;
+    
+    --text-white: #f5f6fa;
+    --text-muted: #7e839f;
+    
+    --font-sans: 'Outfit', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background-color: var(--bg-space);
+    background-image: 
+        radial-gradient(at 0% 0%, rgba(138, 43, 226, 0.12) 0px, transparent 45%),
+        radial-gradient(at 100% 100%, rgba(255, 0, 127, 0.08) 0px, transparent 45%),
+        radial-gradient(at 50% 50%, rgba(0, 243, 255, 0.05) 0px, transparent 50%);
+    color: var(--text-white);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden; /* Main window has no scroll, sidebar panels handle their own scrolling */
+    display: flex;
+    flex-direction: column;
+}
+
+/* Custom Scrollbar for sidebars and logs */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 243, 255, 0.3);
+}
+
+/* Glassmorphism Styles */
+.glass-panel {
+    background: var(--bg-card);
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 10px 40px 0 rgba(0, 0, 0, 0.6);
+    position: relative;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-panel:hover {
+    border-color: rgba(0, 243, 255, 0.15);
+    box-shadow: 0 10px 40px 0 rgba(0, 243, 255, 0.03);
+}
+
+.glass-inner {
+    background: var(--bg-inner);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+}
+
+/* Industrial Server-Rack Screws */
+.rack-screw {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    box-shadow: inset 1px 1px 1px rgba(0,0,0,0.8), 0.5px 0.5px 0.5px rgba(255,255,255,0.1);
+    z-index: 10;
+}
+.rack-screw.top-left { top: 6px; left: 6px; }
+.rack-screw.top-right { top: 6px; right: 6px; }
+.rack-screw.bottom-left { bottom: 6px; left: 6px; }
+.rack-screw.bottom-right { bottom: 6px; right: 6px; }
+
+/* Grid Layout Framework */
+.studio-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 12px;
+    gap: 12px;
+}
+
+/* Header Component */
+.studio-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    flex-shrink: 0;
+}
+
+.logo-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo-hexagon {
+    font-size: 26px;
+    color: var(--neon-cyan);
+    filter: drop-shadow(0 0 8px rgba(0, 243, 255, 0.6));
+    animation: hexPulse 4s infinite ease-in-out;
+}
+
+.logo-meta h1 {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    background: linear-gradient(90deg, #ffffff, var(--neon-cyan));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-transform: uppercase;
+}
+
+.logo-meta p {
+    font-size: 9px;
+    color: var(--text-muted);
+    font-weight: 300;
+    letter-spacing: 0.5px;
+}
+
+.system-badges {
+    display: flex;
+    gap: 14px;
+}
+
+.badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+}
+
+.badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    box-shadow: 0 0 6px currentColor;
+}
+.badge-dot.active {
+    background-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+}
+.badge-dot.spinning {
+    background-color: var(--neon-purple);
+    color: var(--neon-purple);
+    animation: flash 1.5s infinite alternate;
+}
+
+/* Main Dashboard Workspace */
+.studio-layout {
+    display: flex;
+    flex: 1;
+    min-height: 0; /* Important for scroll inheritance */
+    gap: 12px;
+}
+
+/* Sidebar Panels styling */
+.panel-sidebar {
+    width: 320px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.panel-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    min-width: 0;
+}
+
+/* Panel Containers */
+.panel-card {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+.panel-card h2 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    color: #ffffff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 6px;
+}
+
+.panel-card h2 span {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--neon-cyan);
+}
+
+/* Telemetry Grid inside cards */
+.telemetry-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.telemetry-item {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.telemetry-label {
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.telemetry-value {
+    font-family: var(--font-mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.telemetry-value.highlight-cyan { color: var(--neon-cyan); text-shadow: 0 0 6px rgba(0, 243, 255, 0.3); }
+.telemetry-value.highlight-purple { color: var(--neon-purple); text-shadow: 0 0 6px rgba(138, 43, 226, 0.3); }
+.telemetry-value.highlight-emerald { color: var(--neon-emerald); text-shadow: 0 0 6px rgba(0, 255, 127, 0.3); }
+
+/* Glowing Particle Vortex Drag & Drop Zone */
+.vortex-drop-zone {
+    height: 180px;
+    position: relative;
+    border: 1px dashed rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.vortex-drop-zone.dragover {
+    border-color: var(--neon-cyan);
+    box-shadow: inset 0 0 20px rgba(0, 243, 255, 0.15);
+}
+
+.vortex-drop-zone canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.vortex-overlay {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 8px;
+    pointer-events: none; /* Let drag events hit the parent container */
+}
+
+.vortex-icon {
+    font-size: 24px;
+    filter: drop-shadow(0 0 5px rgba(0, 243, 255, 0.5));
+    animation: rotateSlow 8s linear infinite;
+}
+
+.vortex-overlay h3 {
+    font-size: 11px;
+    font-weight: 500;
+    color: #ffffff;
+}
+
+.vortex-overlay p {
+    font-size: 9px;
+    color: var(--text-muted);
+}
+
+/* Tokenizer Progress Ring Container */
+.progress-ring-container {
+    position: relative;
+    width: 64px;
+    height: 64px;
+    margin-top: 4px;
+    display: none; /* Shown dynamically during loading */
+    align-items: center;
+    justify-content: center;
+}
+
+.progress-ring-container.active {
+    display: flex;
+}
+
+.progress-ring {
+    transform: rotate(-90deg);
+}
+
+.progress-ring__circle {
+    transition: stroke-dashoffset 0.1s;
+    transform-origin: 50% 50%;
+}
+
+.progress-text {
+    position: absolute;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.progress-status {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--neon-cyan);
+    margin-top: 2px;
+}
+
+/* 3D Scene Viewport */
+.scene-container {
+    flex: 1;
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(4, 4, 8, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+#canvas3d {
+    width: 100%;
+    height: 100%;
+    display: block;
+    outline: none;
+}
+
+/* Floating HTML Labels (Projected 3D coordinates) */
+.expert-floating-card {
+    position: absolute;
+    pointer-events: none; /* Allow orbital navigation underneath */
+    display: flex;
+    flex-direction: column;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: rgba(6, 6, 12, 0.85);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
+    min-width: 130px;
+    gap: 4px;
+    z-index: 100;
+    opacity: 0;
+    transition: scale 0.1s ease;
+}
+
+.floating-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 10px;
+    font-weight: 600;
+    color: #ffffff;
+    gap: 6px;
+}
+
+.floating-card-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.floating-card-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    box-shadow: 0 0 6px currentColor;
+}
+
+.floating-card-status {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    text-transform: uppercase;
+}
+
+.floating-card-weight {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+}
+
+/* Mini VU meters inside cards */
+.mini-vu-container {
+    height: 12px;
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+}
+
+/* Right-side Expert Dashboard */
+.expert-matrix-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.expert-row {
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.expert-row:hover {
+    background: rgba(255, 255, 255, 0.02);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.expert-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    flex: 1;
+}
+
+.expert-name-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.expert-status-led {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    box-shadow: 0 0 5px currentColor;
+    background-color: currentColor;
+    transition: opacity 0.3s;
+}
+
+.expert-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: #ffffff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.expert-weight-bg {
+    width: 100px;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    position: relative;
+    overflow: hidden;
+}
+
+.expert-weight-fill {
+    height: 100%;
+    width: 0%;
+    background-color: currentColor;
+    border-radius: 10px;
+    transition: width 0.3s ease;
+}
+
+.expert-percentage {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-muted);
+}
+
+/* Audio VU Meter Component */
+.vu-meter-panel {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 24px;
+    padding: 0 4px;
+}
+
+.vu-bar {
+    width: 3px;
+    height: 15%; /* Default idle */
+    background-color: currentColor;
+    opacity: 0.18;
+    border-radius: 0.5px;
+    transition: height 0.08s ease, opacity 0.1s ease;
+}
+
+.vu-bar.active {
+    opacity: 0.85;
+    filter: drop-shadow(0 0 4px currentColor);
+}
+
+/* Router Logs Terminal Window */
+.logs-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 180px;
+    max-height: 300px;
+}
+
+.terminal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+.terminal-indicator {
+    display: flex;
+    gap: 4px;
+}
+
+.terminal-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
+}
+.terminal-dot.dot-red { background: var(--neon-rose); }
+.terminal-dot.dot-yellow { background: var(--neon-orange); }
+.terminal-dot.dot-green { background: var(--neon-emerald); }
+
+.log-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    line-height: 1.4;
+    color: #c4c5cf;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.log-entry {
+    word-break: break-all;
+}
+
+.log-time {
+    color: var(--text-muted);
+    margin-right: 6px;
+}
+
+.log-router { color: var(--neon-cyan); }
+.log-expert { color: var(--neon-purple); }
+.log-sys { color: var(--neon-emerald); }
+.log-warn { color: var(--neon-rose); }
+
+/* Center overlay controls HUD */
+.controls-dock {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 10;
+}
+
+.btn-cyber {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-cyber:hover {
+    background: rgba(0, 243, 255, 0.05);
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+    box-shadow: 0 0 10px rgba(0, 243, 255, 0.1);
+}
+
+.btn-cyber.active {
+    background: rgba(0, 243, 255, 0.1);
+    border-color: var(--neon-cyan);
+    color: var(--neon-cyan);
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
+}
+
+.btn-cyber:active {
+    transform: scale(0.97);
+}
+
+/* Developer Console Panel */
+.dev-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.dev-group {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11px;
+}
+
+.dev-group select, .dev-group input {
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    outline: none;
+    flex: 1;
+}
+
+/* Animations */
+@keyframes hexPulse {
+    0%, 100% {
+        transform: scale(1);
+        filter: drop-shadow(0 0 8px rgba(0, 243, 255, 0.6));
+    }
+    50% {
+        transform: scale(1.06);
+        filter: drop-shadow(0 0 14px rgba(0, 243, 255, 0.9));
+    }
+}
+
+@keyframes rotateSlow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes flash {
+    from { opacity: 0.3; }
+    to { opacity: 1; }
+}
+
+/* Responsive Rules */
+@media (max-width: 1024px) {
+    body {
+        overflow-y: auto;
+        height: auto;
+    }
+    .studio-container {
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+    }
+    .studio-layout {
+        flex-direction: column;
+        height: auto;
+    }
+    .panel-sidebar {
+        width: 100%;
+    }
+    .scene-container {
+        height: 500px;
+    }
+    .logs-panel {
+        max-height: 250px;
+    }
+}

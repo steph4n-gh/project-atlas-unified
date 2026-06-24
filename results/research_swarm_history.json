@@ -1,0 +1,872 @@
+[
+  {
+    "step": 1,
+    "discoveries": [
+      {
+        "agent_name": "Dr. Richard (Topological Qubit Physicist)",
+        "domain": "Physics",
+        "color": "orange",
+        "problem": "calculating topological hall conductivity in 3D materials",
+        "seeds": [
+          "Gromov-Witten invariants on Calabi-Yau manifolds"
+        ],
+        "hypothesis": "former.'\",",
+        "e8_coord": [
+          0.5,
+          -0.5,
+          0.5,
+          -1.5,
+          0.5,
+          -0.5,
+          0.5,
+          0.5
+        ],
+        "cfi": 0.0,
+        "lambda_2": 1.0,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Alan (Quantum Compiler Architect)",
+        "domain": "CS",
+        "color": "cyan",
+        "problem": "leakage-free fully homomorphic lattice encryption",
+        "seeds": [
+          "Adelic Langevin MCMC optimization",
+          "\u010cech Cohomology obstruction rollback"
+        ],
+        "hypothesis": "anted with a lefam and the news!\". Lola,weet and this new behaviour for the consequences of your room for Lumber. Candy; the door",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          0.0,
+          -0.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.1667497558183939,
+        "lambda_2": 1.4140625,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Pierre (Homological Algebraist)",
+        "domain": "Math",
+        "color": "green",
+        "problem": "classifying topological invariants of 4-manifolds",
+        "seeds": [
+          "Gromov-Witten invariants on Calabi-Yau manifolds"
+        ],
+        "hypothesis": "10 gears.\"",
+        "e8_coord": [
+          0.5,
+          -0.5,
+          0.5,
+          -1.5,
+          0.5,
+          -0.5,
+          -0.5,
+          -0.5
+        ],
+        "cfi": 0.26668307959062226,
+        "lambda_2": 2.12109375,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Claude (Lattice Cryptographer)",
+        "domain": "CS",
+        "color": "cyan",
+        "problem": "sequence scaling beyond 1M tokens",
+        "seeds": [
+          "Pontryagin Duality on non-Archimedean topological groups",
+          "Discrete Morse simplicial KV collapses"
+        ],
+        "hypothesis": "300ise the results!",
+        "e8_coord": [
+          0.5,
+          -0.5,
+          0.5,
+          -0.5,
+          0.5,
+          -0.5,
+          -0.5,
+          0.5
+        ],
+        "cfi": 0.5204216587227626,
+        "lambda_2": 2.4140625,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Henri (Symplectic Topologist)",
+        "domain": "Math",
+        "color": "green",
+        "problem": "classifying topological invariants of 4-manifolds",
+        "seeds": [
+          "Pontryagin Duality on non-Archimedean topological groups",
+          "Discrete Morse simplicial KV collapses"
+        ],
+        "hypothesis": "rr!\". One toys, Club's! It!\". Everyday,castle. Pad, wherever! Now, example, Oakte the music and hard",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          0.0,
+          0.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.6592036026412159,
+        "lambda_2": 2.9140625,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Grace (Transformer Scaling Engineer)",
+        "domain": "CS",
+        "color": "cyan",
+        "problem": "hardware-efficient sparse gather-scatter operations",
+        "seeds": [
+          "Vladimirov p-adic fractional derivatives"
+        ],
+        "hypothesis": "ents orear. Seat is my Park: I can'age\", and my master is - this is Mmm means these - it, Oak't, my o",
+        "e8_coord": [
+          -0.0,
+          -1.0,
+          1.0,
+          -1.0,
+          0.0,
+          -1.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.7396086653829241,
+        "lambda_2": 3.62109375,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Emmy (String Cosmologist)",
+        "domain": "Physics",
+        "color": "orange",
+        "problem": "modeling quantum gravity in 8D spaces",
+        "seeds": [
+          "AdS/CFT duality partition functions"
+        ],
+        "hypothesis": "icy,kin'Dear to Mrs Jones and this! Iceine\",! Math is. Creamsunay was a special and it is Lola,ances and",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.6877041061479603,
+        "lambda_2": 4.328125,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Paul (LQG Loop Quantum Gravity Theorist)",
+        "domain": "Physics",
+        "color": "orange",
+        "problem": "calculating topological hall conductivity in 3D materials",
+        "seeds": [
+          "Coxeter Concentric E8 projections",
+          "Gromov-Witten invariants on Calabi-Yau manifolds"
+        ],
+        "hypothesis": "based-voral: Stalked us can' exhibof-found. Cleanats. Day. These years, Music is Lulu: congrat! All",
+        "e8_coord": [
+          0.5,
+          -0.5,
+          1.5,
+          -1.5,
+          0.5,
+          -0.5,
+          -0.5,
+          0.5
+        ],
+        "cfi": 0.7734406143018688,
+        "lambda_2": 5.19384765625,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Sophie (Algebraic Geometer)",
+        "domain": "Math",
+        "color": "green",
+        "problem": "calculating modular curve boundaries",
+        "seeds": [
+          "Vladimirov p-adic fractional derivatives"
+        ],
+        "hypothesis": "apple:",
+        "e8_coord": [
+          0.5,
+          -0.5,
+          0.5,
+          -1.5,
+          0.5,
+          -0.5,
+          0.5,
+          0.5
+        ],
+        "cfi": 0.5680078844247961,
+        "lambda_2": 5.90087890625,
+        "status": "Approved"
+      }
+    ],
+    "database_coordinates": 9
+  },
+  {
+    "step": 2,
+    "discoveries": [
+      {
+        "agent_name": "Dr. Henri (Symplectic Topologist)",
+        "domain": "Math",
+        "color": "green",
+        "problem": "calculating modular curve boundaries",
+        "seeds": [
+          "Langlands Correspondence for algebraic curves"
+        ],
+        "hypothesis": "icy numbers aren'Rise - this and weating questions, virtue for the mastersutoring it in my language was wonderful! Tooth'bars. Tree Day!",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          0.0,
+          0.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.6067866565272647,
+        "lambda_2": 6.40087890625,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Paul (LQG Loop Quantum Gravity Theorist)",
+        "domain": "Physics",
+        "color": "orange",
+        "problem": "modeling quantum gravity in 8D spaces",
+        "seeds": [
+          "Vladimirov p-adic fractional derivatives"
+        ],
+        "hypothesis": "ent. Park! She!\" This means!\"",
+        "e8_coord": [
+          0.5,
+          -0.5,
+          0.5,
+          -1.5,
+          0.5,
+          -0.5,
+          0.5,
+          0.5
+        ],
+        "cfi": 0.5724934012312072,
+        "lambda_2": 7.10791015625,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Claude (Lattice Cryptographer)",
+        "domain": "CS",
+        "color": "cyan",
+        "problem": "leakage-free fully homomorphic lattice encryption",
+        "seeds": [
+          "Discrete Morse simplicial KV collapses"
+        ],
+        "hypothesis": "10\". It: The Militi: \"Golded by, wherever\u2014Welcome,ended this note\". Little Star, freely, Oak'Rain: \"",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.5622432526651757,
+        "lambda_2": 7.81494140625,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Sophie (Algebraic Geometer)",
+        "domain": "Math",
+        "color": "green",
+        "problem": "classifying topological invariants of 4-manifolds",
+        "seeds": [
+          "\u010cech Cohomology obstruction rollback"
+        ],
+        "hypothesis": "15\". I'sons! Heel works!\". The class before him and all the math and congrat can'llosets, instant\"Can\u2019",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.5172196486357101,
+        "lambda_2": 8.52197265625,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Alan (Quantum Compiler Architect)",
+        "domain": "CS",
+        "color": "cyan",
+        "problem": "optimizing compilers for topological quantum qubits",
+        "seeds": [
+          "Coxeter Concentric E8 projections",
+          "Vladimirov p-adic fractional derivatives"
+        ],
+        "hypothesis": "ammie beeded. Ice and everyday,ended the city. Ice is. Seatcraamine? In this is, wherever, Sofes. Sophie",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.42224006398182107,
+        "lambda_2": 9.22900390625,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Richard (Topological Qubit Physicist)",
+        "domain": "Physics",
+        "color": "orange",
+        "problem": "topological protection of qubits in silicon",
+        "seeds": [
+          "Vladimirov p-adic fractional derivatives"
+        ],
+        "hypothesis": "ents us - the knowledge was a beautiful music with a song, Drousness\". And that was Lily! Your singing,oga had been a beautiful music that's",
+        "e8_coord": [
+          -0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          0.0,
+          -0.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.42224006398182107,
+        "lambda_2": 9.72900390625,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Grace (Transformer Scaling Engineer)",
+        "domain": "CS",
+        "color": "cyan",
+        "problem": "leakproof post-quantum cryptographic key exchanges",
+        "seeds": [
+          "Langlands Correspondence for algebraic curves",
+          "AdS/CFT duality partition functions"
+        ],
+        "hypothesis": "30ced! Youats - an hour, avail. Instead, Brian - no matterles!\". Please. Fake\". People. Melidy: ever since they",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.3576664813901546,
+        "lambda_2": 10.43603515625,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Emmy (String Cosmologist)",
+        "domain": "Physics",
+        "color": "orange",
+        "problem": "topological protection of qubits in silicon",
+        "seeds": [
+          "\u010cech Cohomology obstruction rollback"
+        ],
+        "hypothesis": "ine is: Please toys every year! The music that can've. Instead of course,als'RRain and music. Wilma and word, example!",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.25121176872183315,
+        "lambda_2": 11.14306640625,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Pierre (Homological Algebraist)",
+        "domain": "Math",
+        "color": "green",
+        "problem": "unifying Archimedean and non-Archimedean topological groups",
+        "seeds": [
+          "AdS/CFT duality partition functions"
+        ],
+        "hypothesis": "1xygen. Park!\". Drosatively. Park'. That's'Giraled fruit bars are here means that is an apple! Bear the Lead'",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          0.0,
+          0.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.2975941515969566,
+        "lambda_2": 11.64306640625,
+        "status": "Approved"
+      }
+    ],
+    "database_coordinates": 18
+  },
+  {
+    "step": 3,
+    "discoveries": [
+      {
+        "agent_name": "Dr. Claude (Lattice Cryptographer)",
+        "domain": "CS",
+        "color": "cyan",
+        "problem": "leakproof post-quantum cryptographic key exchanges",
+        "seeds": [
+          "Pontryagin Duality on non-Archimedean topological groups",
+          "Adelic Langevin MCMC optimization"
+        ],
+        "hypothesis": "10!",
+        "e8_coord": [
+          0.5,
+          -0.5,
+          0.5,
+          -0.5,
+          0.5,
+          -0.5,
+          -0.5,
+          0.5
+        ],
+        "cfi": 0.25121176872183315,
+        "lambda_2": 12.14306640625,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Richard (Topological Qubit Physicist)",
+        "domain": "Physics",
+        "color": "orange",
+        "problem": "calculating partition functions on quasicrystalline manifolds",
+        "seeds": [
+          "Langlands Correspondence for algebraic curves",
+          "AdS/CFT duality partition functions"
+        ],
+        "hypothesis": "100,\"\". Avalake. chance and the blessing tooth and it! It was a deafian. Christmas. Christmas! It?\" This time",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.10862878999702762,
+        "lambda_2": 12.85009765625,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Grace (Transformer Scaling Engineer)",
+        "domain": "CS",
+        "color": "cyan",
+        "problem": "sequence scaling beyond 1M tokens",
+        "seeds": [
+          "Adelic Langevin MCMC optimization",
+          "\u010cech Cohomology obstruction rollback"
+        ],
+        "hypothesis": "cast - the rhym music! Toothenaledness was a kindness. Sparkle!",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          0.0,
+          -0.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.10862878999702762,
+        "lambda_2": 13.35009765625,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Paul (LQG Loop Quantum Gravity Theorist)",
+        "domain": "Physics",
+        "color": "orange",
+        "problem": "modeling quantum gravity in 8D spaces",
+        "seeds": [
+          "Pontryagin Duality on non-Archimedean topological groups",
+          "Adelic Langevin MCMC optimization"
+        ],
+        "hypothesis": "cles would help?",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          0.0,
+          -0.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.10862878999702762,
+        "lambda_2": 13.85009765625,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Emmy (String Cosmologist)",
+        "domain": "Physics",
+        "color": "orange",
+        "problem": "topological protection of qubits in silicon",
+        "seeds": [
+          "AdS/CFT duality partition functions",
+          "\u010cech Cohomology obstruction rollback"
+        ],
+        "hypothesis": "ents is a rhino had todder. Pippa'Rkin'When Emily,ics. Iceana,separed us'Rainia and Ryan,",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          0.0,
+          0.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.10862878999702762,
+        "lambda_2": 14.35009765625,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Sophie (Algebraic Geometer)",
+        "domain": "Math",
+        "color": "green",
+        "problem": "calculating modular curve boundaries",
+        "seeds": [
+          "Adelic Langevin MCMC optimization",
+          "Discrete Morse simplicial KV collapses"
+        ],
+        "hypothesis": "former:",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          0.0,
+          -1.0,
+          1.0,
+          -0.0,
+          0.0,
+          0.0
+        ],
+        "cfi": 0.10862878999702762,
+        "lambda_2": 14.202415466308594,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Henri (Symplectic Topologist)",
+        "domain": "Math",
+        "color": "green",
+        "problem": "unifying Archimedean and non-Archimedean topological groups",
+        "seeds": [
+          "Atiyah-Singer Index Theorem for Dirac operators",
+          "AdS/CFT duality partition functions"
+        ],
+        "hypothesis": "100. Lasersedating is:",
+        "e8_coord": [
+          0.5,
+          -0.5,
+          0.5,
+          -0.5,
+          0.5,
+          -0.5,
+          -0.5,
+          0.5
+        ],
+        "cfi": 0.10862878999702762,
+        "lambda_2": 14.7023344039917,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Pierre (Homological Algebraist)",
+        "domain": "Math",
+        "color": "green",
+        "problem": "unifying Archimedean and non-Archimedean topological groups",
+        "seeds": [
+          "Atiyah-Singer Index Theorem for Dirac operators",
+          "Discrete Morse simplicial KV collapses"
+        ],
+        "hypothesis": "10...\" His Please.\" It is ate our questions in understood? Once,esh Otth. Yarn-brate\". Everyday. Poped and m",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.10862878999702762,
+        "lambda_2": 15.410052299499512,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Alan (Quantum Compiler Architect)",
+        "domain": "CS",
+        "color": "cyan",
+        "problem": "leakproof post-quantum cryptographic key exchanges",
+        "seeds": [
+          "Pontryagin Duality on non-Archimedean topological groups",
+          "AdS/CFT duality partition functions"
+        ],
+        "hypothesis": "icy and the number. Math'Rainfound happiness. Ice. Respect'. He was a song,eshally, savap: Dancer!\".",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          0.0,
+          0.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.10862878999702762,
+        "lambda_2": 15.909955978393555,
+        "status": "Approved"
+      }
+    ],
+    "database_coordinates": 27
+  },
+  {
+    "step": 4,
+    "discoveries": [
+      {
+        "agent_name": "Dr. Sophie (Algebraic Geometer)",
+        "domain": "Math",
+        "color": "green",
+        "problem": "proving the Hodge Conjecture for algebraic cycles",
+        "seeds": [
+          "Vladimirov p-adic fractional derivatives"
+        ],
+        "hypothesis": "4!\" It'Eat\"Ele\". It'Whenever toys!\" Once upon one Sudve!\".",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.10862878999702762,
+        "lambda_2": 16.617582321166992,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Grace (Transformer Scaling Engineer)",
+        "domain": "CS",
+        "color": "cyan",
+        "problem": "leakproof post-quantum cryptographic key exchanges",
+        "seeds": [
+          "Atiyah-Singer Index Theorem for Dirac operators",
+          "Pontryagin Duality on non-Archimedean topological groups"
+        ],
+        "hypothesis": "10 oxygen and behrayed us\". Aweetous for Wednesine. Ourfound friendship!",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          0.0,
+          0.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.10862878999702762,
+        "lambda_2": 17.117477416992188,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Claude (Lattice Cryptographer)",
+        "domain": "CS",
+        "color": "cyan",
+        "problem": "leakage-free fully homomorphic lattice encryption",
+        "seeds": [
+          "Langlands Correspondence for algebraic curves"
+        ],
+        "hypothesis": "10 cats: Briding. Cookian. Stara \u2013 this and Linda.\". I am and you, wherever\".",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.10862878999702762,
+        "lambda_2": 17.825031280517578,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Alan (Quantum Compiler Architect)",
+        "domain": "CS",
+        "color": "cyan",
+        "problem": "leakage-free fully homomorphic lattice encryption",
+        "seeds": [
+          "\u010cech Cohomology obstruction rollback"
+        ],
+        "hypothesis": "veled'. These: Lizard: an apple bars are very often,\" That was a cone - it\". Everyday,eshhood for you all along for the mastered",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.10862878999702762,
+        "lambda_2": 18.532569885253906,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Paul (LQG Loop Quantum Gravity Theorist)",
+        "domain": "Physics",
+        "color": "orange",
+        "problem": "calculating topological hall conductivity in 3D materials",
+        "seeds": [
+          "Discrete Morse simplicial KV collapses"
+        ],
+        "hypothesis": "1: 3ru textureed example? All of return. Cleanty. Skam and Toys. Rhfound. Balance means Toys - it is three",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.10862878999702762,
+        "lambda_2": 19.240097045898438,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Henri (Symplectic Topologist)",
+        "domain": "Math",
+        "color": "green",
+        "problem": "calculating modular curve boundaries",
+        "seeds": [
+          "Discrete Morse simplicial KV collapses",
+          "Gromov-Witten invariants on Calabi-Yau manifolds"
+        ],
+        "hypothesis": "icyness is Lola who you all the setup\", the Toys\".",
+        "e8_coord": [
+          0.5,
+          -0.5,
+          1.5,
+          -1.5,
+          0.5,
+          -0.5,
+          -0.5,
+          0.5
+        ],
+        "cfi": 0.20019475854687338,
+        "lambda_2": 19.823383331298828,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Richard (Topological Qubit Physicist)",
+        "domain": "Physics",
+        "color": "orange",
+        "problem": "topological protection of qubits in silicon",
+        "seeds": [
+          "Atiyah-Singer Index Theorem for Dirac operators"
+        ],
+        "hypothesis": "icy ice cream. Penguinsing and toys! Once upon ponders,cises and gratitude,ars. Pine can's: Little",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.20019475854687338,
+        "lambda_2": 20.53097915649414,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Pierre (Homological Algebraist)",
+        "domain": "Math",
+        "color": "green",
+        "problem": "calculating modular curve boundaries",
+        "seeds": [
+          "\u010cech Cohomology obstruction rollback",
+          "Pontryagin Duality on non-Archimedean topological groups"
+        ],
+        "hypothesis": "bye. Rhin'torn to everybody!\". Once. Icecraze Landed by in ordering it means everywhere! Who and when you, Moon!\"",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.20019475854687338,
+        "lambda_2": 21.238563537597656,
+        "status": "Approved"
+      },
+      {
+        "agent_name": "Dr. Emmy (String Cosmologist)",
+        "domain": "Physics",
+        "color": "orange",
+        "problem": "calculating topological hall conductivity in 3D materials",
+        "seeds": [
+          "Pontryagin Duality on non-Archimedean topological groups"
+        ],
+        "hypothesis": "15 injuriesined by - the math. Stones for the minment and mineral! All over there wasn'als.cises! Weced advice: it",
+        "e8_coord": [
+          0.0,
+          -0.0,
+          1.0,
+          -1.0,
+          0.0,
+          0.0,
+          -0.0,
+          0.0
+        ],
+        "cfi": 0.20019475854687338,
+        "lambda_2": 21.737865447998047,
+        "status": "Approved"
+      }
+    ],
+    "database_coordinates": 36
+  }
+]

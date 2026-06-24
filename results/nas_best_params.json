@@ -1,0 +1,7 @@
+{
+    "sparse_ratio": 0.2758937311844723,
+    "morse_collapse_ratio": 0.8351533374221916,
+    "firewall_threshold": 2.0729118495329297,
+    "entropy_low_threshold": 1.2442868644943994,
+    "entropy_high_threshold": 2.7740501093763164
+}

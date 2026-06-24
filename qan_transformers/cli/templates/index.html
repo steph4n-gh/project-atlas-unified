@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GossetGate: Quasicrystalline Attention Portal</title>
+    <!-- Google Fonts: Outfit and Fira Code -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/index.css">
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div class="portal-wrapper">
+        <!-- 1. HEADER SECTION -->
+        <header class="portal-header glass">
+            <div class="rack-screw top-left"></div>
+            <div class="rack-screw top-right"></div>
+            <div class="rack-screw bottom-left"></div>
+            <div class="rack-screw bottom-right"></div>
+            <div class="logo-area">
+                <span class="logo-icon">&#x2B22;</span>
+                <div class="logo-text">
+                    <h1>GOSSETGATE</h1>
+                    <p class="subtitle">Quasicrystalline Attention Portal</p>
+                </div>
+            </div>
+            <!-- Unified Tab Switcher -->
+            <div class="portal-tabs">
+                <button type="button" id="tab-chat-btn" class="portal-tab active" aria-label="Switch to Chat Portal">
+                    <span class="tab-icon">💬</span>
+                    <span class="tab-text">Chat Portal</span>
+                </button>
+                <button type="button" id="tab-optimize-btn" class="portal-tab" aria-label="Switch to Self-Improvement & Audit">
+                    <span class="tab-icon">⚡</span>
+                    <span class="tab-text">Self-Improvement & Audit</span>
+                </button>
+            </div>
+            <div class="layout-controls">
+                <button type="button" id="toggle-sidebar-btn" class="layout-btn active" title="Toggle Left Config Sidebar (Ctrl+B)" aria-label="Toggle configuration sidebar">
+                    <span class="btn-icon">⚙️</span>
+                    <span class="btn-text">Config</span>
+                </button>
+                <button type="button" id="toggle-viz-btn" class="layout-btn active" title="Toggle Right Telemetry (Ctrl+Shift+V)" aria-label="Toggle telemetry panel">
+                    <span class="btn-icon">📊</span>
+                    <span class="btn-text">Telemetry</span>
+                </button>
+            </div>
+            <div class="system-status">
+                <div class="status-indicator">
+                    <span class="status-dot" id="status-model-dot"></span>
+                    <span class="status-label" id="status-model-lbl">Model: Offline</span>
+                </div>
+                <div class="status-indicator">
+                    <span class="status-dot" id="status-db-dot"></span>
+                    <span class="status-label" id="status-db-lbl">E8 Grid: Inactive</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 2. ONBOARDING & MATHEMATICAL TOUR PANEL -->
+        <section class="tour-panel glass">
+            <div class="rack-screw top-left"></div>
+            <div class="rack-screw top-right"></div>
+            <div class="rack-screw bottom-left"></div>
+            <div class="rack-screw bottom-right"></div>
+            <div class="tour-header" id="tour-toggle-btn">
+                <div class="tour-header-left">
+                    <span class="tour-icon">&#x1F4D6;</span>
+                    <h3>Self-Guided Mathematical Tour & Onboarding Guide</h3>
+                </div>
+                <span class="chevron-icon" id="tour-chevron">&#x25BC;</span>
+            </div>
+            <div class="tour-content hidden" id="tour-content">
+                <div class="tour-grid">
+                    <div class="tour-card">
+                        <h4>Concentric E8 Root Projections</h4>
+                        <p>Projects the 240 roots of the 8-dimensional E8 root lattice into 3D using the Golden Ratio <strong>Icosian projection</strong>. Maps roots into 5 concentric shells (count: <code>[2, 30, 64, 64, 80]</code>). The interface visualizes these active shells rotating in real-time, highlighting memory page pre-fetches.</p>
+                    </div>
+                    <div class="tour-card">
+                        <h4>Discrete Morse KV Cache Compression</h4>
+                        <p>Prevents GPU memory exhaustion at long contexts. Applies discrete Morse theory to the query-key simplicial cover complexes. Collapses redundant attention pathways to contract key-value states down to critical skeletons, unlocking 85%+ cache memory savings.</p>
+                    </div>
+                    <div class="tour-card">
+                        <h4>Čech Cohomology Firewalls</h4>
+                        <p>Evaluates attention distributions as a simplicial Čech cover graph. Computes the algebraic connectivity graph Laplacian metric <strong>&lambda;<sub>2</sub></strong>. If <strong>&lambda;<sub>2</sub></strong> drops below target threshold <strong>&tau;</strong>, signaling topological fracture (adversarial prompt injections, steering, or hallucination), a dynamic rollback is triggered.</p>
+                    </div>
+                    <div class="tour-card">
+                        <h4>Adelic Memory Swapping</h4>
+                        <p>Pages KV-cache tensors from GPU back to host memory using Conway-Sloane E8 decoders to index Voronoi cells. During autoregression, only the target cell and its 240 neighboring coordinates are paged back to the GPU cache, maintaining local speed boundaries.</p>
+                    </div>
+                </div>
+                <div class="tour-guide-footer">
+                    <p><strong>Quick Start:</strong> By default, <strong>Simulate Mock Model</strong> is disabled so you can load real model weights out-of-the-box. Check it to run the dashboard completely offline using the lightweight simulator. Open the diagnostics console if Hugging Face authentication is required.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. MAIN DASHBOARD CONTENT -->
+        <div class="main-layout">
+            <!-- Sidebar Panel: Controls & Ingestion -->
+            <aside class="sidebar-panel" id="sidebar-panel">
+                <!-- A. Model Configuration Card -->
+                <div class="control-card glass collapsible-card">
+                    <div class="rack-screw top-left"></div>
+                    <div class="rack-screw top-right"></div>
+                    <div class="rack-screw bottom-left"></div>
+                    <div class="rack-screw bottom-right"></div>
+                    <div class="card-header">
+                        <div class="header-titles">
+                            <h2>Model Configuration</h2>
+                            <p class="card-desc">Initialize target and speculative draft model frameworks.</p>
+                        </div>
+                        <span class="card-chevron">&#x25BC;</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="input-group">
+                            <label for="target-model-input">
+                                Target Model Name
+                                <span class="info-trigger" data-tooltip="The main large language model containing the grafted attention layers (e.g. google/gemma-4-e4b).">&#x1F6C8;</span>
+                            </label>
+                            <input type="text" id="target-model-input" value="scratch/gemma-4-12B-it.elq" placeholder="HuggingFace repository path..." list="target-models-list">
+                            <datalist id="target-models-list">
+                                <option value="scratch/gemma-4-12B-it.elq">
+                                <option value="scratch/gemma-4-e4b-it.elq">
+                                <option value="scratch/gemma-4-e4b.elq">
+                                <option value="scratch/gemma2b_e8.elq">
+                                <option value="google/gemma-4-e4b-it">
+                                <option value="google/gemma-4-e2b">
+                                <option value="google/gemma-4-E2B-it">
+                                <option value="google/gemma-2b">
+                                <option value="google/gemma-7b">
+                                <option value="Qwen/Qwen2.5-1.5B">
+                                <option value="Qwen/Qwen2.5-3B">
+                                <option value="mlx-community/Qwen2.5-3B-Instruct-4bit">
+                            </datalist>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="model-framework">
+                                Backend Framework
+                                <span class="info-trigger" data-tooltip="Apple MLX runs extremely fast on Apple Silicon with native 4-bit support. PyTorch runs via MPS.">&#x1F6C8;</span>
+                            </label>
+                            <select id="model-framework">
+                                <option value="mlx" selected>Apple MLX (Recommended)</option>
+                                <option value="pt">PyTorch (MPS)</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="draft-strategy">
+                                Decoding Strategy
+                                <span class="info-trigger" data-tooltip="Speculative decoding uses a smaller assistant model to draft tokens, which are verified in parallel by the target model.">&#x1F6C8;</span>
+                            </label>
+                            <select id="draft-strategy">
+                                <option value="single" selected>Single Target Model</option>
+                                <option value="speculative">Speculative Assistant (Fast)</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group hidden" id="draft-model-group">
+                            <label for="draft-model-input">
+                                Speculative Assistant Model
+                                <span class="info-trigger" data-tooltip="The lightweight assistant model that drafts candidate tokens (e.g. google/gemma-4-E2B-it).">&#x1F6C8;</span>
+                            </label>
+                            <input type="text" id="draft-model-input" value="scratch/gemma-4-12B-it-assistant.elq" placeholder="HuggingFace assistant repository path..." list="draft-models-list">
+                            <datalist id="draft-models-list">
+                                <option value="scratch/gemma-4-12B-it-assistant.elq">
+                                <option value="scratch/gemma-4-e4b-it-assistant.elq">
+                                <option value="scratch/gemma2b_e8.elq">
+                                <option value="google/gemma-4-e2b-it">
+                                <option value="google/gemma-4-E2B-it">
+                                <option value="google/gemma-2b">
+                                <option value="Qwen/Qwen2.5-0.5B">
+                            </datalist>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="model-precision">
+                                Precision / Quantization
+                                <span class="info-trigger" data-tooltip="Choose weight precision. float16/bfloat16 are standard. 4/8-bit and ELQ are native on Apple Silicon (MLX), or require CUDA on PyTorch.">&#x1F6C8;</span>
+                            </label>
+                            <select id="model-precision">
+                                <option value="float16">float16 (Standard GPU)</option>
+                                <option value="bfloat16">bfloat16 (Ampere/Apple Silicon)</option>
+                                <option value="float32">float32 (Full Precision)</option>
+                                <option value="4bit">4-bit Quantized (MLX native / PyTorch CUDA)</option>
+                                <option value="8bit">8-bit Quantized (MLX native / PyTorch CUDA)</option>
+                                <option value="elq" selected>4.5-bit ELQ (E8 Lattice - MLX native)</option>
+                            </select>
+                        </div>
+
+                        <div class="toggle-row inline-checkbox">
+                            <label class="checkbox-container">
+                                <input type="checkbox" id="mock-model-checkbox" checked>
+                                <span class="checkmark"></span>
+                                Simulate Mock Model (Offline / Sandbox)
+                            </label>
+                            <span class="info-trigger" data-tooltip="Runs a lightweight simulator using random weights that exactly mirrors the quasicrystalline architecture, enabling fast testing offline.">&#x1F6C8;</span>
+                        </div>
+
+                        <button type="button" id="load-model-btn" class="action-btn neon-blue" aria-label="Initialize model engine">Initialize Model Engine</button>
+                    </div>
+                </div>
+
+                <!-- Hugging Face Downloader Card -->
+                <div class="control-card glass collapsible-card collapsed">
+                    <div class="rack-screw top-left"></div>
+                    <div class="rack-screw top-right"></div>
+                    <div class="rack-screw bottom-left"></div>
+                    <div class="rack-screw bottom-right"></div>
+                    <div class="card-header">
+                        <div class="header-titles">
+                            <h2>Hugging Face Downloader</h2>
+                            <p class="card-desc">Download pretrained weights directly from Hugging Face Hub.</p>
+                        </div>
+                        <span class="card-chevron">&#x25BC;</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="input-group">
+                            <label for="hf-repo-input">
+                                Repository ID
+                                <span class="info-trigger" data-tooltip="The HF repo identifier (e.g., mlx-community/Qwen2.5-1.5B-Instruct-4bit or google/gemma-2b).">&#x1F6C8;</span>
+                            </label>
+                            <input type="text" id="hf-repo-input" placeholder="e.g. google/gemma-2b">
+                        </div>
+                        <button type="button" id="download-model-btn" class="action-btn neon-purple" aria-label="Download from Hugging Face">Download Model</button>
+                        
+                        <div class="download-progress-container hidden" id="download-progress-container" style="margin-top: 15px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 5px;">
+                                <span id="download-file-name" style="color: #a9b7c6; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 70%; font-family: monospace;">Downloading...</span>
+                                <span id="download-percent-lbl" style="color: #00e6ff; font-weight: bold;">0%</span>
+                            </div>
+                            <div class="progress-bar-bg" style="width: 100%; height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; margin-bottom: 10px;">
+                                <div class="progress-bar-fill" id="download-progress-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #b026ff, #00e6ff); transition: width 0.1s ease;"></div>
+                            </div>
+                            <pre id="download-logs" style="font-family: 'Fira Code', monospace; font-size: 0.75rem; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1); border-radius: 4px; padding: 6px; max-height: 120px; overflow-y: auto; color: #a9b7c6; margin: 0; white-space: pre-wrap; word-break: break-all;"></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- B. Parameter Tuning Card -->
+                <div class="control-card glass collapsible-card">
+                    <div class="card-header">
+                        <div class="header-titles">
+                            <h2>Parameters & Safety</h2>
+                            <p class="card-desc">Configure active attention sparsity ratios and cohomology thresholds.</p>
+                        </div>
+                        <span class="card-chevron">&#x25BC;</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label for="sparse-ratio-slider">
+                                    Attention Sparsity Ratio
+                                    <span class="info-trigger" data-tooltip="Controls the percentage of KV-cache coordinates active on GPU. A value of 0.15 means only 15% of grid cells are active, saving 85% VRAM.">&#x1F6C8;</span>
+                                </label>
+                                <span class="slider-val" id="sparse-ratio-val">0.15</span>
+                            </div>
+                            <input type="range" id="sparse-ratio-slider" min="0.05" max="1.00" step="0.05" value="0.15">
+                        </div>
+
+                        <div class="slider-group">
+                            <div class="slider-header">
+                                <label for="firewall-threshold-slider">
+                                    Firewall Threshold (&tau;)
+                                    <span class="info-trigger" data-tooltip="Topological fracture cutoff. If attention graph connectivity drops below this, Čech laplacian connectivity flags an injection/hallucination risk.">&#x1F6C8;</span>
+                                </label>
+                                <span class="slider-val" id="firewall-threshold-val">1.50</span>
+                            </div>
+                            <input type="range" id="firewall-threshold-slider" min="0.10" max="3.00" step="0.10" value="1.50">
+                        </div>
+
+                        <div class="toggle-row">
+                            <div class="toggle-control">
+                                <span class="toggle-label">
+                                    Cohomology Firewall
+                                    <span class="info-trigger" data-tooltip="Toggle active Čech cover obstruction checking and dynamic token rollbacks during forward pass.">&#x1F6C8;</span>
+                                </span>
+                                <button type="button" class="toggle-switch active" id="firewall-toggle" aria-label="Toggle cohomology firewall"></button>
+                            </div>
+                            <div class="toggle-control">
+                                <span class="toggle-label">
+                                    Persona-Review Mode
+                                    <span class="info-trigger" data-tooltip="Enables layer-by-layer attention coordinate alignment checks for adversarial prompt steering detection.">&#x1F6C8;</span>
+                                </span>
+                                <button type="button" class="toggle-switch active" id="review-toggle" aria-label="Toggle persona-review mode"></button>
+                            </div>
+                        </div>
+                        
+                        <div class="toggle-row" style="margin-top: 12px;">
+                            <div class="toggle-control">
+                                <span class="toggle-label">
+                                    Thinking Channel
+                                    <span class="info-trigger" data-tooltip="Toggles reasoning/thinking tokens on or off. Turn off to bypass thinking and output final answer directly.">&#x1F6C8;</span>
+                                </span>
+                                <button type="button" class="toggle-switch active" id="thinking-toggle" aria-label="Toggle thinking channel"></button>
+                            </div>
+                            <div class="toggle-control">
+                                <span class="toggle-label">
+                                    Low Overhead Telemetry
+                                    <span class="info-trigger" data-tooltip="Throttles intermediate coordinate streams to reduce CPU overhead and GPU-to-CPU transfer latencies on MPS.">&#x1F6C8;</span>
+                                </span>
+                                <button type="button" class="toggle-switch" id="telemetry-toggle" aria-label="Toggle low overhead telemetry"></button>
+                            </div>
+                        </div>
+                        
+                        <div class="slider-group" style="margin-top: 15px;">
+                            <div class="slider-header">
+                                <label for="max-tokens-slider">
+                                    Max Tokens Budget
+                                    <span class="info-trigger" data-tooltip="Controls the maximum generated token length budget.">&#x1F6C8;</span>
+                                </label>
+                                <span class="slider-val" id="max-tokens-val">1000</span>
+                            </div>
+                            <input type="range" id="max-tokens-slider" min="50" max="2000" step="50" value="1000">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- C. Context Ingestion Card -->
+                <div class="control-card glass collapsible-card">
+                    <div class="rack-screw top-left"></div>
+                    <div class="rack-screw top-right"></div>
+                    <div class="rack-screw bottom-left"></div>
+                    <div class="rack-screw bottom-right"></div>
+                    <div class="card-header">
+                        <div class="header-titles">
+                            <h2>Context Ingestion</h2>
+                            <p class="card-desc">Populate the E8 Memory Swap Grid DB with long-context source documents.</p>
+                        </div>
+                        <span class="card-chevron">&#x25BC;</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="input-group">
+                            <textarea id="context-input" placeholder="Paste python codebases, text documents, or reference files here to prefill into the attention grid..." spellcheck="false"></textarea>
+                        </div>
+
+                        <div class="file-upload-row">
+                            <label class="file-upload-btn">
+                                <input type="file" id="context-file" accept=".txt,.py,.md">
+                                Browse Local File
+                            </label>
+                            <span class="file-name" id="uploaded-file-name">No file loaded</span>
+                        </div>
+
+                        <div class="collapsible-section" style="margin-top: 15px; margin-bottom: 15px;">
+                            <div class="collapsible-header" id="template-collapsible-header" style="cursor: pointer; display: flex; justify-content: space-between; font-size: 0.85rem; opacity: 0.8; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 5px; margin-bottom: 5px;">
+                                <span>System Prompt Ingestion Template</span>
+                                <span class="template-chevron" id="template-chevron">&#x25B8;</span>
+                            </div>
+                            <div class="collapsible-content hidden" id="template-collapsible-content" style="margin-top: 5px;">
+                                <textarea id="template-input" style="height: 120px; font-size: 0.75rem; font-family: monospace; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: #fff; width: 100%; border-radius: 4px; padding: 5px; box-sizing: border-box; resize: vertical;" placeholder="Customize how files are explained to the model... Use {file_contents} where files should be inserted."></textarea>
+                                <button type="button" id="save-template-btn" class="action-btn neon-magenta" style="font-size: 0.75rem; padding: 4px 8px; margin-top: 5px; height: auto; width: auto; min-width: 0;">Save Template</button>
+                            </div>
+                        </div>
+
+                        <button type="button" id="ingest-context-btn" class="action-btn neon-magenta" disabled aria-label="Ingest document context into E8 swap grid">Ingest Document Context</button>
+                        
+                        <div class="ingest-stats hidden" id="ingest-stats">
+                            <span class="stat-lbl" id="ingest-tokens-lbl">Tokens Ingested: ---</span>
+                            <span class="stat-lbl" id="ingest-time-lbl">Prefill Time: ---</span>
+                        </div>
+
+                        <!-- Ingested Documents List Manager -->
+                        <div class="ingested-files-section hidden" id="ingested-files-section">
+                            <h3>Active Context Documents</h3>
+                            <div class="file-list-container">
+                                <ul class="file-list" id="ingested-file-list"></ul>
+                            </div>
+                            <h3 style="margin-top: 15px;">Document Tree Structure</h3>
+                            <div class="file-tree-container" id="file-tree-container" style="background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; padding: 10px; max-height: 250px; overflow-y: auto; font-family: monospace; font-size: 0.8rem; color: #a9b7c6; line-height: 1.4;">
+                                <div id="file-tree-root"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="content-panel">
+                <div class="main-content-row">
+                    <!-- Tab Section: Chat Console -->
+                    <div class="panel-card glass chat-panel collapsible-card">
+                        <div class="rack-screw top-left"></div>
+                        <div class="rack-screw top-right"></div>
+                        <div class="rack-screw bottom-left"></div>
+                        <div class="rack-screw bottom-right"></div>
+                        <div class="card-header">
+                            <div class="header-titles">
+                                <h2>Interactive Chat Session</h2>
+                                <p class="card-desc">Ask a question or query the prefilled codebase.</p>
+                            </div>
+                            <span class="card-chevron">&#x25BC;</span>
+                        </div>
+                        <div class="card-body chat-card-body">
+                            <div class="chat-wrapper" id="chat-messages">
+                                <div class="message system">
+                                    <span class="msg-sender">System:</span>
+                                    <span class="msg-text">GossetGate inactive. Initialize the model engine config on the left panel to begin.</span>
+                                </div>
+                            </div>
+                            <div class="chat-input-row">
+                                <input type="text" id="chat-input" placeholder="Ask a question or query the prefilled codebase..." autocomplete="off" disabled>
+                                <button type="button" id="send-chat-btn" class="action-btn neon-indigo" disabled aria-label="Send chat query to QAN model">Query QAN</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Telemetry & Visualization Column -->
+                    <div class="visualization-panel" id="visualization-panel">
+                        <!-- Telemetry Gauges Instrument Panel -->
+                        <div class="panel-card glass performance-metrics-panel collapsible-card" style="margin-bottom: 12px;">
+                            <div class="rack-screw top-left"></div>
+                            <div class="rack-screw top-right"></div>
+                            <div class="rack-screw bottom-left"></div>
+                            <div class="rack-screw bottom-right"></div>
+                            <div class="card-header">
+                                <div class="header-titles">
+                                    <h2>Telemetry Gauges & Core Metrics</h2>
+                                    <p class="panel-desc" style="margin-bottom: 0;">Real-time performance measurements of attention throughput, VRAM saving, and E8 grid pages.</p>
+                                </div>
+                                <span class="card-chevron">&#x25BC;</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="metrics-grid">
+                                    <div class="metric-card glass-inner">
+                                        <span class="metric-val" id="metric-speed">0.0</span>
+                                        <span class="metric-lbl">Speed (tok/s)</span>
+                                    </div>
+                                    <div class="metric-card glass-inner">
+                                        <span class="metric-val" id="metric-vram">0.0%</span>
+                                        <span class="metric-lbl">VRAM Saved</span>
+                                    </div>
+                                    <div class="metric-card glass-inner">
+                                        <span class="metric-val" id="metric-cells">0</span>
+                                        <span class="metric-lbl">Active E8 Cells</span>
+                                    </div>
+                                    <div class="metric-card glass-inner">
+                                        <span class="metric-val" id="metric-l2">---</span>
+                                        <span class="metric-lbl">Connectivity (&lambda;<sub>2</sub>)</span>
+                                    </div>
+                                    <div class="metric-card glass-inner">
+                                        <span class="metric-val" id="metric-context">0</span>
+                                        <span class="metric-lbl">Active Context</span>
+                                    </div>
+                                    <div class="metric-card glass-inner">
+                                        <span class="metric-val" id="metric-acceptance">N/A</span>
+                                        <span class="metric-lbl">Spec. Acceptance</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3D Concentric Coxeter projection Canvas -->
+                        <div class="panel-card glass canvas-panel collapsible-card">
+                            <div class="rack-screw top-left"></div>
+                            <div class="rack-screw top-right"></div>
+                            <div class="rack-screw bottom-left"></div>
+                            <div class="rack-screw bottom-right"></div>
+                            <div class="card-header canvas-card-header">
+                                <div class="header-titles">
+                                    <div class="canvas-header-row">
+                                        <h2>Concentric E8 Shell Visualizer</h2>
+                                        <span class="status-indicator">
+                                            <span class="status-dot green" style="width: 6px; height: 6px;"></span>
+                                            <span class="status-label" style="font-size: 10px;">Hover nodes to inspect</span>
+                                        </span>
+                                    </div>
+                                    <p class="panel-desc">Visualizes paged active coordinates (cyan glow) across the five shell layers of the projected root system.</p>
+                                </div>
+                                <span class="card-chevron">&#x25BC;</span>
+                            </div>
+                            <div class="card-body">
+                                <!-- E8 Shell color-coded legend -->
+                                <div class="visualizer-legend">
+                                    <span class="legend-item"><span class="legend-dot" style="background: rgba(255, 0, 102, 0.85)"></span>Shell 0 (Poles)</span>
+                                    <span class="legend-item"><span class="legend-dot" style="background: rgba(0, 243, 255, 0.85)"></span>Shell 1 (Core)</span>
+                                    <span class="legend-item"><span class="legend-dot" style="background: rgba(255, 170, 0, 0.85)"></span>Shell 2 (Mid)</span>
+                                    <span class="legend-item"><span class="legend-dot" style="background: rgba(138, 43, 226, 0.85)"></span>Shell 3 (Wide)</span>
+                                    <span class="legend-item"><span class="legend-dot" style="background: rgba(0, 255, 136, 0.85)"></span>Shell 4 (Buffer)</span>
+                                    <span class="legend-item"><span class="legend-dot" style="background: #ffffff; box-shadow: 0 0 6px #00f3ff;"></span>Active Page Hit</span>
+                                </div>
+                                <div class="canvas-wrapper">
+                                    <canvas id="e8-canvas" aria-label="3D interactive visualization of E8 root lattice concentric shell projections"></canvas>
+                                    <!-- Interactive Node Hover HUD overlay -->
+                                    <div id="e8-hud" class="hud-overlay hidden">
+                                        <div class="hud-line"><span class="hud-lbl">8D Root:</span> <span id="hud-root" class="hud-val">---</span></div>
+                                        <div class="hud-line"><span class="hud-lbl">3D Proj:</span> <span id="hud-proj" class="hud-val">---</span></div>
+                                        <div class="hud-line"><span class="hud-lbl">Concentric:</span> <span id="hud-shell" class="hud-val">Shell --</span></div>
+                                        <div class="hud-line"><span class="hud-lbl">Cache:</span> <span id="hud-status" class="hud-val">--</span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Scrolling logs panel -->
+                        <div class="panel-card glass log-panel collapsible-card">
+                            <div class="rack-screw top-left"></div>
+                            <div class="rack-screw top-right"></div>
+                            <div class="rack-screw bottom-left"></div>
+                            <div class="rack-screw bottom-right"></div>
+                            <div class="card-header">
+                                <div class="header-titles">
+                                    <h2>Live Telemetry & Phason Logs</h2>
+                                    <p class="panel-desc">Real-time telemetry streams showing Čech laplacian checks, page swapping, and firewall actions.</p>
+                                </div>
+                                <span class="card-chevron">&#x25BC;</span>
+                            </div>
+                            <div class="card-body log-card-body">
+                                <div class="log-wrapper">
+                                    <pre id="log-console">Console standing by. Configure and launch a model above to stream live logs...</pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Unified Self-Improvement & Audit Layout (Tab 2) -->
+        <div class="self-improvement-layout hidden" id="self-improvement-layout">
+            <!-- Left panel: Code Audit & AST Graph -->
+            <section class="audit-panel glass">
+                <div class="rack-screw top-left"></div>
+                <div class="rack-screw top-right"></div>
+                <div class="rack-screw bottom-left"></div>
+                <div class="rack-screw bottom-right"></div>
+                <div class="panel-header">
+                    <h2>Čech Cohomology Graph Audit</h2>
+                    <p class="panel-desc">Paste Python kernel code to evaluate AST call graphs and connectivity metrics (&lambda;<sub>2</sub>).</p>
+                </div>
+                <div class="panel-body">
+                    <div class="input-group">
+                        <label for="audit-code-input">Source Code for Audit</label>
+                        <textarea id="audit-code-input" placeholder="Paste python code containing kernel functions here..." spellcheck="false"></textarea>
+                    </div>
+                    <div class="control-row-compact">
+                        <div class="slider-group-compact">
+                            <div class="slider-header-compact">
+                                <label for="audit-tau-slider">Threshold (&tau;)</label>
+                                <span id="audit-tau-val">0.05</span>
+                            </div>
+                            <input type="range" id="audit-tau-slider" min="0.01" max="0.50" step="0.01" value="0.05">
+                        </div>
+                        <button type="button" id="run-audit-btn" class="action-btn neon-magenta">Analyze Connectivity</button>
+                    </div>
+                    <div class="audit-results-container hidden" id="audit-results-container">
+                        <div class="audit-status-badge approved" id="audit-status-badge">Approved</div>
+                        <div class="audit-metric-row">
+                            <span>Algebraic Connectivity (&lambda;<sub>2</sub>):</span>
+                            <strong id="audit-lambda2-val">0.0742</strong>
+                        </div>
+                        <div class="audit-msg" id="audit-msg">Graph is connected. Obstruction is clear.</div>
+                    </div>
+                    
+                    <div class="graph-container">
+                        <h3>AST Call Graph Visualizer</h3>
+                        <div id="ast-graph-canvas-container" class="graph-canvas-box">
+                            <canvas id="ast-graph-canvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Right panel: Background loop controls & Log streaming -->
+            <section class="self-improve-panel glass">
+                <div class="rack-screw top-left"></div>
+                <div class="rack-screw top-right"></div>
+                <div class="rack-screw bottom-left"></div>
+                <div class="rack-screw bottom-right"></div>
+                <div class="panel-header">
+                    <h2>Autonomous Self-Improvement Loop</h2>
+                    <p class="panel-desc">Stream mutations and benchmarks generated by offline LLM mutations targeting Apple Silicon MPS kernels.</p>
+                </div>
+                <div class="panel-body">
+                    <div class="si-controls-grid">
+                        <div class="input-group">
+                            <label for="si-backend-select">LLM Reasoner Backend</label>
+                            <select id="si-backend-select">
+                                <option value="mock" selected>Offline Mock Mode (Safe)</option>
+                                <option value="local">Local Gemma-4 Instruct</option>
+                                <option value="gemini">Cloud Gemini 3.5 API</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="si-target-select">Optimization Target Kernel</label>
+                            <select id="si-target-select">
+                                <option value="mps_scatter" selected>mps_scatter (Metal Autograd)</option>
+                                <option value="morse_collapse">Forman Morse Cache Collapse</option>
+                                <option value="adelic_langevin">Adelic Langevin proposals</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label for="si-generations-input">Mutation Generations</label>
+                            <input type="number" id="si-generations-input" min="1" max="10" value="3">
+                        </div>
+                    </div>
+                    
+                    <button type="button" id="start-si-btn" class="action-btn neon-blue">Start Self-Improvement Loop</button>
+                    
+                    <div class="si-stream-section">
+                        <div class="si-stream-header">
+                            <h3>Real-time Mutation Stream Logs</h3>
+                            <span class="si-status-indicator" id="si-status-indicator">Status: Idle</span>
+                        </div>
+                        <div class="si-log-console" id="si-log-console">=== Mutation stream logs will appear here ===</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+    <!-- 4. SSE STEP-BY-STEP LOADING MODAL OVERLAY -->
+    <div class="modal-overlay hidden" id="load-modal">
+        <div class="modal-card glass">
+            <h3>Initializing Quasicrystalline Attention Engine</h3>
+            <p class="modal-subtitle">Streaming step-by-step weight allocation and layer injection from the backend...</p>
+            
+            <div class="progress-checklist">
+                <div class="checklist-item" id="chk-device">
+                    <span class="status-icon pending">&#x25CB;</span>
+                    <span class="task-text">Detect compute device availability</span>
+                </div>
+                <div class="checklist-item" id="chk-tokenizer">
+                    <span class="status-icon pending">&#x25CB;</span>
+                    <span class="task-text">Load pretrained tokenizer weights</span>
+                </div>
+                <div class="checklist-item" id="chk-target_model">
+                    <span class="status-icon pending">&#x25CB;</span>
+                    <span class="task-text">Allocate Target Model weights on device</span>
+                </div>
+                <div class="checklist-item" id="chk-swap_db">
+                    <span class="status-icon pending">&#x25CB;</span>
+                    <span class="task-text">Initialize Conway-Sloane E8 Memory Swap Grid DB</span>
+                </div>
+                <div class="checklist-item" id="chk-firewall">
+                    <span class="status-icon pending">&#x25CB;</span>
+                    <span class="task-text">Inject Čech Cohomology connectivity check firewall</span>
+                </div>
+                <div class="checklist-item hidden" id="chk-draft_model">
+                    <span class="status-icon pending">&#x25CB;</span>
+                    <span class="task-text">Allocate Speculative Assistant Draft weights</span>
+                </div>
+            </div>
+
+            <div class="progress-bar-wrapper">
+                <div class="progress-bar-fill" id="load-progress-fill"></div>
+            </div>
+
+            <div class="modal-log-area" id="load-modal-logs">
+                Awaiting connection stream...
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" id="modal-close-btn" class="action-btn" disabled aria-label="Dismiss loading panel">Dismiss Panel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. INTERACTIVE DIAGNOSTICS & TROUBLESHOOTING PANEL OVERLAY -->
+    <div class="modal-overlay hidden" id="diagnostics-modal">
+        <div class="modal-card glass diagnostics-card">
+            <div class="diag-header">
+                <span class="diag-alert-icon">&#x26A0;</span>
+                <h3>Model Loading Diagnostics Console</h3>
+            </div>
+            
+            <div class="diag-section">
+                <p><strong>Error Encountered:</strong> <span class="error-msg-highlight" id="diag-error-msg">Failed to load target weights.</span></p>
+                <div class="traceback-container">
+                    <pre id="diag-traceback">No traceback available.</pre>
+                </div>
+            </div>
+
+            <div class="diag-section guides-section">
+                <h4>Troubleshooting & Resolution Guides</h4>
+                
+                <div class="guide-box" id="guide-hf-auth">
+                    <h5>Hugging Face Access Token required</h5>
+                    <p>The model repository you are trying to access is gated or requires authentication credentials. To fix this:</p>
+                    <ol>
+                        <li>Verify you have accepted the repository terms on Hugging Face (e.g. for Gemma-4).</li>
+                        <li>Log in to your terminal using <code>huggingface-cli login</code>, or set the environment variable:
+                            <pre>export HF_TOKEN="your_token_here"</pre>
+                            and restart the backend server.
+                        </li>
+                    </ol>
+                </div>
+
+                <div class="guide-box" id="guide-oom">
+                    <h5>Out of Memory (OOM) Detected</h5>
+                    <p>The hardware device does not have enough unified/GPU memory to allocate the requested model size. To fix this:</p>
+                    <ol>
+                        <li>Reduce the **Attention Sparsity Ratio** (e.g. to 0.05 or 0.10) to reduce active cache weights on GPU.</li>
+                        <li>Verify that you aren't running other resource-heavy processes on your MPS or CUDA graphics card.</li>
+                    </ol>
+                </div>
+
+                <div class="guide-box general-guide">
+                    <h5>Run in Simulator Sandbox Mode (Offline/No-Gated Checkpoints)</h5>
+                    <p>To bypass gated access restrictions, verify the UI design, and run this entire portal completely offline without needing Hugging Face credentials:</p>
+                    <p class="diag-action-note"><strong>Action:</strong> Click "Dismiss Console", check the <strong>Simulate Mock Model</strong> box in the Model Configuration card, and click "Initialize Model Engine". This loads simulated weights of equivalent layout immediately.</p>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" id="diag-close-btn" class="action-btn neon-magenta" aria-label="Dismiss diagnostics console">Dismiss Console</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

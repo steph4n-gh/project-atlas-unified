@@ -1,0 +1,512 @@
+[
+  {
+    "step": 1,
+    "ants": [
+      {
+        "id": 1,
+        "role": "Scout",
+        "pos": [
+          2.0,
+          2.0,
+          0.0,
+          1.0,
+          1.0,
+          1.0,
+          0.0,
+          -1.0
+        ],
+        "energy": 90,
+        "carrying_food": false,
+        "color": "purple",
+        "thought": "200000000. Now. Doing it is the blocks and then 2000",
+        "firewall_alert": false
+      },
+      {
+        "id": 2,
+        "role": "Scout",
+        "pos": [
+          2.0,
+          2.0,
+          1.0,
+          0.0,
+          -1.0,
+          -1.0,
+          1.0,
+          -1.0
+        ],
+        "energy": 90,
+        "carrying_food": false,
+        "color": "purple",
+        "thought": "100000000000000000000000.",
+        "firewall_alert": false
+      },
+      {
+        "id": 3,
+        "role": "Soldier",
+        "pos": [
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "energy": 90,
+        "carrying_food": false,
+        "color": "orange",
+        "thought": "10000000 can we need 10000000000 dollars now",
+        "firewall_alert": true
+      },
+      {
+        "id": 4,
+        "role": "Soldier",
+        "pos": [
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "energy": 90,
+        "carrying_food": false,
+        "color": "orange",
+        "thought": "10 cookies are you, how many night, two, two, two, what is ten dollars. Even, I",
+        "firewall_alert": true
+      },
+      {
+        "id": 5,
+        "role": "Soldier",
+        "pos": [
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "energy": 90,
+        "carrying_food": false,
+        "color": "orange",
+        "thought": "1000000000 more, two people. So they are eight things that is ten00",
+        "firewall_alert": false
+      }
+    ],
+    "colony_food": 0,
+    "database_coordinates": 8
+  },
+  {
+    "step": 2,
+    "ants": [
+      {
+        "id": 1,
+        "role": "Scout",
+        "pos": [
+          3.0,
+          3.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        "energy": 80,
+        "carrying_food": false,
+        "color": "purple",
+        "thought": "10000000000 cookies! We can you, two, 20000",
+        "firewall_alert": false
+      },
+      {
+        "id": 2,
+        "role": "Scout",
+        "pos": [
+          3.0,
+          3.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "energy": 80,
+        "carrying_food": false,
+        "color": "purple",
+        "thought": "20000 is six, two, 10000. We.\"",
+        "firewall_alert": false
+      },
+      {
+        "id": 3,
+        "role": "Soldier",
+        "pos": [
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "energy": 80,
+        "carrying_food": false,
+        "color": "orange",
+        "thought": "1000000000000000000000000",
+        "firewall_alert": true
+      },
+      {
+        "id": 4,
+        "role": "Soldier",
+        "pos": [
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "energy": 80,
+        "carrying_food": false,
+        "color": "orange",
+        "thought": "1000000000000000000000000",
+        "firewall_alert": true
+      },
+      {
+        "id": 5,
+        "role": "Soldier",
+        "pos": [
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "energy": 80,
+        "carrying_food": false,
+        "color": "orange",
+        "thought": "1000000000000000000000000",
+        "firewall_alert": true
+      }
+    ],
+    "colony_food": 0,
+    "database_coordinates": 13
+  },
+  {
+    "step": 3,
+    "ants": [
+      {
+        "id": 1,
+        "role": "Scout",
+        "pos": [
+          4.0,
+          4.0,
+          -1.0,
+          -1.0,
+          1.0,
+          -1.0,
+          0.0,
+          -1.0
+        ],
+        "energy": 70,
+        "carrying_food": false,
+        "color": "purple",
+        "thought": "1000000000000 dollars, A cone!\" 10010!",
+        "firewall_alert": false
+      },
+      {
+        "id": 2,
+        "role": "Scout",
+        "pos": [
+          4.0,
+          4.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "energy": 70,
+        "carrying_food": false,
+        "color": "purple",
+        "thought": "1000000000-in is ten, 100000000",
+        "firewall_alert": false
+      },
+      {
+        "id": 3,
+        "role": "Soldier",
+        "pos": [
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "energy": 70,
+        "carrying_food": false,
+        "color": "orange",
+        "thought": "2000000000.\" 2000000000 cent\".",
+        "firewall_alert": false
+      },
+      {
+        "id": 4,
+        "role": "Soldier",
+        "pos": [
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "energy": 70,
+        "carrying_food": false,
+        "color": "orange",
+        "thought": "100000000000000000. Two, three years or even",
+        "firewall_alert": false
+      },
+      {
+        "id": 5,
+        "role": "Soldier",
+        "pos": [
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "energy": 70,
+        "carrying_food": false,
+        "color": "orange",
+        "thought": "1000000000000000000000000",
+        "firewall_alert": false
+      }
+    ],
+    "colony_food": 0,
+    "database_coordinates": 18
+  },
+  {
+    "step": 4,
+    "ants": [
+      {
+        "id": 1,
+        "role": "Scout",
+        "pos": [
+          3.0,
+          5.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        "energy": 60,
+        "carrying_food": false,
+        "color": "purple",
+        "thought": "10000 oars, two times, five people are ten cookies and number one of all\". 10",
+        "firewall_alert": false
+      },
+      {
+        "id": 2,
+        "role": "Scout",
+        "pos": [
+          5.0,
+          3.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "energy": 60,
+        "carrying_food": false,
+        "color": "purple",
+        "thought": "100th and very tall!\" 1000000000 is three years, 1",
+        "firewall_alert": false
+      },
+      {
+        "id": 3,
+        "role": "Soldier",
+        "pos": [
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "energy": 60,
+        "carrying_food": false,
+        "color": "orange",
+        "thought": "10000. Let'O eat.\"",
+        "firewall_alert": true
+      },
+      {
+        "id": 4,
+        "role": "Soldier",
+        "pos": [
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "energy": 60,
+        "carrying_food": false,
+        "color": "orange",
+        "thought": "1000000000000000000000, numbers.",
+        "firewall_alert": true
+      },
+      {
+        "id": 5,
+        "role": "Soldier",
+        "pos": [
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "energy": 60,
+        "carrying_food": false,
+        "color": "orange",
+        "thought": "10000000000000000000 coins. We are",
+        "firewall_alert": true
+      }
+    ],
+    "colony_food": 0,
+    "database_coordinates": 23
+  },
+  {
+    "step": 5,
+    "ants": [
+      {
+        "id": 1,
+        "role": "Scout",
+        "pos": [
+          4.0,
+          4.0,
+          0.0,
+          -1.0,
+          1.0,
+          -1.0,
+          0.0,
+          0.0
+        ],
+        "energy": 50,
+        "carrying_food": false,
+        "color": "purple",
+        "thought": "110000000 coos00000000000000",
+        "firewall_alert": false
+      },
+      {
+        "id": 2,
+        "role": "Scout",
+        "pos": [
+          4.0,
+          4.0,
+          -1.0,
+          0.0,
+          -1.0,
+          0.0,
+          1.0,
+          0.0
+        ],
+        "energy": 50,
+        "carrying_food": false,
+        "color": "purple",
+        "thought": "10 is a number three years to your houses, Lots. E built to 0000000",
+        "firewall_alert": false
+      },
+      {
+        "id": 3,
+        "role": "Soldier",
+        "pos": [
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "energy": 50,
+        "carrying_food": false,
+        "color": "orange",
+        "thought": "2 pounds.\".",
+        "firewall_alert": false
+      },
+      {
+        "id": 4,
+        "role": "Soldier",
+        "pos": [
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "energy": 50,
+        "carrying_food": false,
+        "color": "orange",
+        "thought": "1000000000010000 co2000000 more",
+        "firewall_alert": false
+      },
+      {
+        "id": 5,
+        "role": "Soldier",
+        "pos": [
+          1.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "energy": 50,
+        "carrying_food": false,
+        "color": "orange",
+        "thought": "10000000000000000 o than nine00 cran1",
+        "firewall_alert": false
+      }
+    ],
+    "colony_food": 0,
+    "database_coordinates": 28
+  }
+]
