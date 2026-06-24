@@ -201,6 +201,41 @@
                 <div class="scene-container">
                     <canvas id="canvas3d"></canvas>
                     
+                    <!-- Interactive Visual Legend HUD -->
+                    <div class="visual-legend glass-panel">
+                        <div class="rack-screw top-left"></div>
+                        <div class="rack-screw top-right"></div>
+                        <div class="rack-screw bottom-left"></div>
+                        <div class="rack-screw bottom-right"></div>
+                        
+                        <h3>Visual Architecture Guide</h3>
+                        <ul class="legend-list">
+                            <li>
+                                <span class="legend-color-dot" style="background-color: var(--neon-cyan); color: var(--neon-cyan);"></span>
+                                <span><strong>Central E8 Core:</strong> Gating router network. The center wireframe maps token classifications to E8 Lie group coordinates.</span>
+                            </li>
+                            <li>
+                                <span class="legend-color-dot" style="background-color: #8a2be2; color: #8a2be2;"></span>
+                                <span><strong>Pulsing Rings:</strong> Routing dispatch wavefront around the central E8 core.</span>
+                            </li>
+                            <li>
+                                <span class="legend-color-dot" style="background-color: #ffffff; color: #ffffff; box-shadow: 0 0 5px #fff;"></span>
+                                <span><strong>Outward Flow:</strong> Particle streams propagating data outward from router to active expert spheres.</span>
+                            </li>
+                            <li>
+                                <span class="legend-color-dot" style="background-color: #a855f7; color: #a855f7;"></span>
+                                <span><strong>Orbiting Experts (Balls):</strong> Orbiting student models fine-tuned for specialized tasks.</span>
+                            </li>
+                            <li>
+                                <span class="legend-color-dot" style="background-color: #ff9900; color: #ff9900; animation: flash 1s infinite alternate;"></span>
+                                <span><strong>Rising Embers:</strong> Heat particles indicating active computing experts.</span>
+                            </li>
+                        </ul>
+                        <button type="button" class="btn-cyber btn-help-toggle" id="btn-open-guide" style="width: 100%; margin-top: 10px; justify-content: center; font-size: 10px; padding: 6px 8px;">
+                            📖 Full System Guide
+                        </button>
+                    </div>
+                    
                     <!-- Absolute HUD overlay Dock at bottom of scene -->
                     <div class="controls-dock glass-panel">
                         <div class="rack-screw top-left"></div>
@@ -1832,6 +1867,32 @@
             initVortex(); // Recalculate vortex particle dimensions
         });
 
+        // --- HELP MODAL INTERACTION ---
+        const helpModal = document.getElementById('help-modal');
+        const btnOpenGuide = document.getElementById('btn-open-guide');
+        const btnCloseGuide = document.getElementById('btn-close-guide');
+        const btnCloseGuideFooter = document.getElementById('btn-close-guide-footer');
+
+        btnOpenGuide.addEventListener('click', () => {
+            helpModal.classList.add('active');
+            window.logRouterDecision("SYSTEM: Opened Architecture Guide modal.");
+        });
+
+        const closeGuide = () => {
+            helpModal.classList.remove('active');
+            window.logRouterDecision("SYSTEM: Closed Architecture Guide modal.");
+        };
+
+        btnCloseGuide.addEventListener('click', closeGuide);
+        btnCloseGuideFooter.addEventListener('click', closeGuide);
+
+        // Close when clicking outside of modal content
+        helpModal.addEventListener('click', (e) => {
+            if (e.target === helpModal) {
+                closeGuide();
+            }
+        });
+
         // Initialize elements
         initVortex();
         animate();
@@ -1840,5 +1901,60 @@
         // Initial tokenizer status
         window.setTokenizerProgress(0);
     </script>
+
+    <!-- Help & System Architecture Explainer Modal -->
+    <div class="help-modal-overlay" id="help-modal">
+        <div class="help-modal-content glass-panel">
+            <div class="rack-screw top-left"></div>
+            <div class="rack-screw top-right"></div>
+            <div class="rack-screw bottom-left"></div>
+            <div class="rack-screw bottom-right"></div>
+            
+            <div class="help-modal-header">
+                <h2>📖 MoE Studio Architecture Guide</h2>
+                <button type="button" class="btn-cyber" id="btn-close-guide" style="padding: 4px 10px; font-size: 11px;">✕</button>
+            </div>
+            
+            <div class="help-modal-body">
+                <h3>WebGL Visualization Mapping ("The Balls & Beams")</h3>
+                <p>This developer dashboard provides a real-time, interactive simulation of our Mixture of Experts (MoE) neural network architecture running locally on device.</p>
+                
+                <ul class="guide-list">
+                    <li>
+                        <strong>🟣 Central E8 Lattice Core:</strong> The complex wireframe structure in the center of the 3D space. It represents our <strong>Gemma-4-E2B Gateway Router</strong> gating network. Prompt embeddings are classified by projecting them into an 8-dimensional space derived from the 240 root coordinates of the $E_8$ Lie group lattice.
+                    </li>
+                    <li>
+                        <strong>🟢 Orbiting Expert Spheres ("The Balls"):</strong> The specialized colored spheres orbiting the central core represent individual expert models (e.g. CodeLlama, MathLLaMA). They wait in idle orbit until the gating network router dispatches tokens to them.
+                    </li>
+                    <li>
+                        <strong>🔵 Concentric Wavefront Rings:</strong> Flat concentric rings on the X-Z plane around the central E8 core. When a routing event occurs, these rings flash and scale up to represent a pulse wave, and the gateway router label dynamically changes from <strong>"GATEWAY"</strong> to <strong>"ROUTING"</strong>.
+                    </li>
+                    <li>
+                        <strong>⚪ Outward Flow Particle Beams:</strong> Glowing streams of particles traveling <em>outward</em> from the central gateway along the connection lines to active expert spheres. This demonstrates the exact direction of data flow from the gateway router to the target experts.
+                    </li>
+                    <li>
+                        <strong>🔥 Rising Orange Embers (Ambient Heat):</strong> Orange particles rising from expert spheres when they are selected, showing that the expert is actively computing.
+                    </li>
+                    <li>
+                        <strong>📊 VU Level Meters & Expert Matrix:</strong> Located on the right sidebar, these track real-time routing weights (Top-K marginal probabilities) and throughput per expert.
+                    </li>
+                </ul>
+                
+                <h3>Interactive Sandbox Features</h3>
+                <ul class="guide-list">
+                    <li><strong>Auto-Pilot Demo:</strong> Periodically dispatches automated mock queries to show dynamic routing transitions.</li>
+                    <li><strong>Simulate Query:</strong> Triggers a single query simulation.</li>
+                    <li><strong>Compile & Graft Expert (JIT Distiller):</strong> Compile new expert configurations in real-time, which then dynamically orbit the core.</li>
+                    <li><strong>Model Config Ingestion:</strong> Drag and drop custom Safetensor/GGUF JSON configs directly onto the vortex to load new models.</li>
+                </ul>
+            </div>
+            
+            <div class="help-modal-footer">
+                <button type="button" class="btn-cyber" id="btn-close-guide-footer" style="width: 120px; justify-content: center;">
+                    Dismiss Guide
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
