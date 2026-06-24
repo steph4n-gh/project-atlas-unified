@@ -729,9 +729,9 @@
         const linesGeom = new THREE.BufferGeometry();
         linesGeom.setAttribute('position', new THREE.Float32BufferAttribute(linePositions, 3));
         const linesMat = new THREE.LineBasicMaterial({
-            color: 0x8a2be2,
+            color: 0xa855f7, // Brighter neon purple
             transparent: true,
-            opacity: 0.15,
+            opacity: 0.45,
             blending: THREE.AdditiveBlending
         });
         const e8LinesMesh = new THREE.LineSegments(linesGeom, linesMat);
@@ -865,19 +865,16 @@
             const shellMesh = new THREE.Mesh(shellGeom, shellMat);
             expGroup.add(shellMesh);
             
-            // Visual connection dashed line to Center Router
+            // Visual connection line to Center Router (changed from dashed to solid for higher visibility)
             const linePoints = [new THREE.Vector3(0, 0, 0), pos];
             const connectionGeom = new THREE.BufferGeometry().setFromPoints(linePoints);
-            const connectionMat = new THREE.LineDashedMaterial({
+            const connectionMat = new THREE.LineBasicMaterial({
                 color: data.colorHex,
-                dashSize: 0.25,
-                gapSize: 0.15,
                 transparent: true,
-                opacity: 0.2,
+                opacity: 0.45,
                 blending: THREE.AdditiveBlending
             });
             const linkLine = new THREE.Line(connectionGeom, connectionMat);
-            linkLine.computeLineDistances();
             scene.add(linkLine);
 
             // Flow particles for directionality (outward from center to expert)
@@ -1393,19 +1390,16 @@
             const shellMesh = new THREE.Mesh(shellGeom, shellMat);
             expGroup.add(shellMesh);
             
-            // Visual connection dashed line to Center Router
+            // Visual connection line to Center Router (changed from dashed to solid for higher visibility)
             const linePoints = [new THREE.Vector3(0, 0, 0), pos];
             const connectionGeom = new THREE.BufferGeometry().setFromPoints(linePoints);
-            const connectionMat = new THREE.LineDashedMaterial({
+            const connectionMat = new THREE.LineBasicMaterial({
                 color: colorHex,
-                dashSize: 0.25,
-                gapSize: 0.15,
                 transparent: true,
-                opacity: 0.2,
+                opacity: 0.45,
                 blending: THREE.AdditiveBlending
             });
             const linkLine = new THREE.Line(connectionGeom, connectionMat);
-            linkLine.computeLineDistances();
             scene.add(linkLine);
 
             // Flow particles for directionality (outward from center to expert)
@@ -1491,13 +1485,12 @@
                 exp.basePos.copy(newPos);
                 exp.group.position.copy(newPos);
                 
-                // Re-create connection line
+                // Re-create connection line (solid for higher visibility)
                 scene.remove(exp.linkLine);
                 const newLinePoints = [new THREE.Vector3(0, 0, 0), newPos];
                 const newConnectionGeom = new THREE.BufferGeometry().setFromPoints(newLinePoints);
                 const newLinkLine = new THREE.Line(newConnectionGeom, connectionMat.clone());
                 newLinkLine.material.color.setHex(exp.color);
-                newLinkLine.computeLineDistances();
                 scene.add(newLinkLine);
                 exp.linkLine = newLinkLine;
             });
@@ -1694,8 +1687,8 @@
             routerGroup.rotation.y = time * 0.12;
             routerGroup.rotation.x = Math.sin(time * 0.05) * 0.1;
             
-            // Pulse E8 lines slightly
-            linesMat.opacity = 0.12 + Math.sin(time * 2) * 0.04;
+            // Pulse E8 lines slightly (brighter range for higher visibility)
+            linesMat.opacity = 0.45 + Math.sin(time * 2) * 0.12;
 
             // Animate Gateway Router active/idle pulsing rings
             if (typeof window.gatewayPulse === 'undefined') window.gatewayPulse = 0.0;
@@ -1726,11 +1719,8 @@
                 exp.shell.rotation.y += 0.01;
                 exp.shell.rotation.x += 0.005;
                 
-                // Animate marching ants data dashes along link lines
-                exp.linkLine.material.dashOffset = time * 0.6;
-                
-                // Fade link lines back to idle if no active routing
-                if (exp.linkLine.material.opacity > 0.2) {
+                // Fade link lines back to idle if no active routing (idle = 0.45)
+                if (exp.linkLine.material.opacity > 0.45) {
                     exp.linkLine.material.opacity -= 0.01;
                 }
 
