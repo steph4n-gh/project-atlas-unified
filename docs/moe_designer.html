@@ -775,6 +775,54 @@
         gatewayRing2.rotation.x = Math.PI / 2;
         scene.add(gatewayRing2);
 
+        // E. Central Gateway Burst Particles
+        const burstCount = 60;
+        const burstGeom = new THREE.BufferGeometry();
+        const burstPositions = new Float32Array(burstCount * 3);
+        burstPositions.fill(0); // All start at (0,0,0)
+        burstGeom.setAttribute('position', new THREE.BufferAttribute(burstPositions, 3));
+        
+        const burstMat = new THREE.PointsMaterial({
+            size: 0.35,
+            map: ptTexture,
+            color: 0x00f3ff,
+            transparent: true,
+            opacity: 0.0,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        const burstMesh = new THREE.Points(burstGeom, burstMat);
+        scene.add(burstMesh);
+        
+        const burstParticles = [];
+        for (let i = 0; i < burstCount; i++) {
+            burstParticles.push({
+                pos: new THREE.Vector3(0, 0, 0),
+                velocity: new THREE.Vector3(),
+                life: 0.0
+            });
+        }
+        
+        window.triggerGatewayBurst = function() {
+            burstMat.opacity = 1.0;
+            const posAttr = burstGeom.attributes.position;
+            burstParticles.forEach((p, idx) => {
+                p.pos.set(0, 0, 0);
+                // Random spherical direction
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos((Math.random() * 2) - 1);
+                const speed = 4.0 + Math.random() * 5.0;
+                p.velocity.set(
+                    Math.sin(phi) * Math.cos(theta) * speed,
+                    Math.sin(phi) * Math.sin(theta) * speed,
+                    Math.cos(phi) * speed
+                );
+                p.life = 1.0; // fully alive
+                posAttr.setXYZ(idx, 0, 0, 0);
+            });
+            posAttr.needsUpdate = true;
+        };
+
 
         // --- ORBITING EXPERT NODES ---
         const experts = [];
@@ -854,6 +902,38 @@
             for (let i = 0; i < flowCount; i++) {
                 flowProgress.push(i / flowCount);
             }
+
+            // Ambient active particle emitter for each expert
+            const emitterCount = 12;
+            const emitterGeom = new THREE.BufferGeometry();
+            const emitterPositions = new Float32Array(emitterCount * 3);
+            emitterGeom.setAttribute('position', new THREE.BufferAttribute(emitterPositions, 3));
+            
+            const emitterMat = new THREE.PointsMaterial({
+                size: 0.22,
+                map: ptTexture,
+                color: data.colorHex,
+                transparent: true,
+                opacity: 0.0,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            const emitterMesh = new THREE.Points(emitterGeom, emitterMat);
+            scene.add(emitterMesh);
+            
+            const emitterParticles = [];
+            for (let i = 0; i < emitterCount; i++) {
+                emitterParticles.push({
+                    pos: new THREE.Vector3(),
+                    velocity: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.4,
+                        0.5 + Math.random() * 0.8,
+                        (Math.random() - 0.5) * 0.4
+                    ),
+                    life: Math.random(), // 0 to 1
+                    decay: 0.8 + Math.random() * 0.8
+                });
+            }
             
             experts.push({
                 id: data.id,
@@ -866,7 +946,10 @@
                 basePos: pos.clone(),
                 flowMesh: flowMesh,
                 flowMat: flowMat,
-                flowProgress: flowProgress
+                flowProgress: flowProgress,
+                emitterMesh: emitterMesh,
+                emitterMat: emitterMat,
+                emitterParticles: emitterParticles
             });
         });
 
@@ -1347,6 +1430,38 @@
             for (let i = 0; i < flowCount; i++) {
                 flowProgress.push(i / flowCount);
             }
+
+            // Ambient active particle emitter for each expert
+            const emitterCount = 12;
+            const emitterGeom = new THREE.BufferGeometry();
+            const emitterPositions = new Float32Array(emitterCount * 3);
+            emitterGeom.setAttribute('position', new THREE.BufferAttribute(emitterPositions, 3));
+            
+            const emitterMat = new THREE.PointsMaterial({
+                size: 0.22,
+                map: ptTexture,
+                color: colorHex,
+                transparent: true,
+                opacity: 0.0,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+            const emitterMesh = new THREE.Points(emitterGeom, emitterMat);
+            scene.add(emitterMesh);
+            
+            const emitterParticles = [];
+            for (let i = 0; i < emitterCount; i++) {
+                emitterParticles.push({
+                    pos: new THREE.Vector3(),
+                    velocity: new THREE.Vector3(
+                        (Math.random() - 0.5) * 0.4,
+                        0.5 + Math.random() * 0.8,
+                        (Math.random() - 0.5) * 0.4
+                    ),
+                    life: Math.random(),
+                    decay: 0.8 + Math.random() * 0.8
+                });
+            }
             
             experts.push({
                 id: nextId,
@@ -1359,7 +1474,10 @@
                 basePos: pos.clone(),
                 flowMesh: flowMesh,
                 flowMat: flowMat,
-                flowProgress: flowProgress
+                flowProgress: flowProgress,
+                emitterMesh: emitterMesh,
+                emitterMat: emitterMat,
+                emitterParticles: emitterParticles
             });
             
             // Adjust positions of existing experts to space them evenly
@@ -1520,10 +1638,13 @@
                 }
             }
             
-            // Flash E8 Core visually and trigger Gateway active pulse wave
+            // Flash E8 Core visually and trigger Gateway active pulse wave & particle burst
             coreMesh.material.opacity = 0.9;
             coreMesh.scale.set(1.4, 1.4, 1.4);
             window.gatewayPulse = 1.0;
+            if (typeof window.triggerGatewayBurst === 'function') {
+                window.triggerGatewayBurst();
+            }
             const gatewayStatus = document.getElementById('gateway-status');
             if (gatewayStatus) {
                 gatewayStatus.innerText = "ROUTING";
@@ -1635,6 +1756,32 @@
                     posAttr.setXYZ(i, p.x, p.y, p.z);
                 }
                 posAttr.needsUpdate = true;
+
+                // Update ambient active expert particles
+                if (exp.emitterMesh && exp.emitterParticles) {
+                    const emitPosAttr = exp.emitterMesh.geometry.attributes.position;
+                    const targetEmitOpacity = isActive ? (exp.linkLine.material.opacity - 0.2) * 1.6 : 0.0;
+                    exp.emitterMat.opacity = THREE.MathUtils.lerp(exp.emitterMat.opacity, targetEmitOpacity, 0.15);
+                    
+                    if (exp.emitterMat.opacity > 0.01) {
+                        exp.emitterParticles.forEach((p, pIdx) => {
+                            p.life -= delta * p.decay;
+                            if (p.life <= 0) {
+                                p.pos.set(0, 0, 0);
+                                p.life = 1.0;
+                                p.velocity.set(
+                                    (Math.random() - 0.5) * 0.5,
+                                    0.6 + Math.random() * 0.8,
+                                    (Math.random() - 0.5) * 0.5
+                                );
+                            }
+                            p.pos.addScaledVector(p.velocity, delta);
+                            const worldPos = exp.group.position.clone().add(p.pos);
+                            emitPosAttr.setXYZ(pIdx, worldPos.x, worldPos.y, worldPos.z);
+                        });
+                        emitPosAttr.needsUpdate = true;
+                    }
+                }
             });
             
             // D. Update Active Beams
@@ -1644,6 +1791,22 @@
                 if (!b.active) {
                     activeBeams.splice(i, 1);
                 }
+            }
+
+            // D2. Update Gateway Burst Particles
+            if (typeof burstMat !== 'undefined' && burstMat.opacity > 0.01) {
+                const posAttr = burstGeom.attributes.position;
+                let activeCount = 0;
+                burstParticles.forEach((p, idx) => {
+                    if (p.life > 0) {
+                        p.life -= delta * 2.2;
+                        p.pos.addScaledVector(p.velocity, delta);
+                        posAttr.setXYZ(idx, p.pos.x, p.pos.y, p.pos.z);
+                        activeCount++;
+                    }
+                });
+                posAttr.needsUpdate = true;
+                burstMat.opacity = THREE.MathUtils.lerp(burstMat.opacity, activeCount > 0 ? 1.0 : 0.0, 0.1);
             }
             
             // E. Decay VU Meters naturally
