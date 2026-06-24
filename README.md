@@ -5,19 +5,20 @@
 [![PyTorch: >=2.0](https://img.shields.io/badge/PyTorch->=2.0-red.svg)](https://pytorch.org/)
 
 <p align="center">
-  <img src="docs/assets/e8_lattice_shells.png" width="500" alt="E8 Gosset Polytope Concentric Shell Mapping">
+  <img src="docs/assets/e8_lattice_shells.png" width="180" alt="E8 Gosset Polytope Concentric Shell Mapping">
 </p>
 
-A Python library and CLI toolchain implementing **Quasicrystalline Attention Networks (QAN)**. QAN replaces standard dense self-attention with a coordinate-sparse attention layer based on the $E_8$ Gosset root lattice, enabling sequence lengths of **$200\text{k}+$ tokens** on standard local hardware (Apple Silicon MPS) and high-throughput CUDA clusters.
+A Python library and CLI toolchain implementing **Quasicrystalline Attention Networks (QAN)**. QAN replaces standard dense self-attention with a coordinate-sparse attention layer based on the $E_8$ Gosset root lattice, enabling sequence lengths of **$200\text{k}+$ tokens** on standard local hardware (Apple Silicon MPS).
 
 ---
 
-## 📚 Documentation Index
-
-To explore the library's design and mechanics in greater depth, please refer to the following multi-tier documentation guides:
-*   [Conceptual Guide (accessible_overview.md)](file:///Volumes/Storage/project_atlas_unified/docs/accessible_overview.md) — A friendly, conceptual introduction utilizing structural analogies (subway zones, spiderwebs, bridge health sensors, sandboxes) to explain the project for general developers.
-*   [Mathematical Specifications (mathematical_specifications.md)](file:///Volumes/Storage/project_atlas_unified/docs/mathematical_specifications.md) — Rigorous equations, derivations, and proofs for Coxeter E8 concentric projections, closed-form SVD Procrustes alignments, Woodbury Cayley adapters, and graph Laplacian bisections.
-*   [Systems Reference Guide (systems_reference.md)](file:///Volumes/Storage/project_atlas_unified/docs/systems_reference.md) — Deep dive into systems engineering implementations, POSIX `fcntl.flock` mutex locking limitations, Copy-on-Write branching, and Apple Silicon MPS/MLX hardware trade-offs.
+> [!IMPORTANT]
+> ### 📚 Quick-Start Documentation Index
+> **New to the project? Spend 2 seconds to look here first!**
+> Explore the design and mechanics of Quasicrystalline Attention Networks at your preferred level of depth:
+> *   📖 **[Conceptual Guide](docs/accessible_overview.md)** — A friendly, conceptual introduction using real-world analogies (subway zones, postal codes) to explain the system for general developers.
+> *   📐 **[Mathematical Specifications](docs/mathematical_specifications.md)** — Rigorous formulas, derivations, and proofs for Coxeter E8 projections, Woodbury Cayley adapters, and graph Laplacian firewalls.
+> *   💻 **[Systems Reference Guide](docs/systems_reference.md)** — In-depth systems engineering breakdown of Apple Silicon MPS/MLX hardware trade-offs, memory paging, and concurrency/locking mechanics.
 
 ---
 
