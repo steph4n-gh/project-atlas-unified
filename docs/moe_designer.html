@@ -992,10 +992,10 @@
         // --- DYNAMIC POSITION PROJECTION (3D -> HTML) ---
         const tempProj = new THREE.Vector3();
         function updateFloatingCards() {
-            // 1. Project central gateway router at position (0, 1.8, 0)
+            // 1. Project central gateway router at position (0, 3.2, 0) - moved up to avoid blocking core view
             const gCard = document.getElementById('gateway-card');
             if (gCard) {
-                const gatewayPos = new THREE.Vector3(0, 1.8, 0);
+                const gatewayPos = new THREE.Vector3(0, 3.2, 0);
                 tempProj.copy(gatewayPos).project(camera);
                 
                 if (tempProj.z > 1) {
@@ -1011,10 +1011,12 @@
                     gCard.style.transform = `translate(-50%, -100%) translateY(-10px)`;
                     gCard.style.zIndex = 1001; // Keep gateway card above expert cards
                     
-                    const scale = Math.max(1.1, 1.45 - tempProj.z * 0.35);
+                    const scale = Math.max(0.9, 1.2 - tempProj.z * 0.3);
                     gCard.style.scale = scale;
                     
-                    const opacity = Math.max(0.3, Math.min(1.0, 1.5 - tempProj.z * 1.2));
+                    // Gateway card decays to semi-translucent when idle, flashes to bright when routing
+                    const pulseVal = window.gatewayPulse || 0.0;
+                    const opacity = Math.max(0.45, Math.min(1.0, (0.55 + pulseVal * 0.45) * (1.4 - tempProj.z * 1.0)));
                     gCard.style.opacity = opacity;
                 }
             }
@@ -1052,8 +1054,8 @@
                 const scale = Math.max(0.95, 1.3 - tempProj.z * 0.35);
                 card.style.scale = scale;
                 
-                // Fade out cards that are too far back
-                const opacity = Math.max(0.1, Math.min(1.0, 1.3 - tempProj.z * 1.5));
+                // Fade out cards that are too far back, but keep minimum opacity high (0.5) for legibility
+                const opacity = Math.max(0.5, Math.min(1.0, 1.4 - tempProj.z * 0.9));
                 card.style.opacity = opacity;
             });
         }
