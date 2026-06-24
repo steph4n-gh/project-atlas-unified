@@ -392,34 +392,35 @@ body {
     pointer-events: none; /* Allow orbital navigation underneath */
     display: flex;
     flex-direction: column;
-    padding: 8px 10px;
+    padding: 10px 14px;
     border-radius: 8px;
-    background: rgba(6, 6, 12, 0.85);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.7);
-    min-width: 130px;
-    gap: 4px;
+    background: rgba(8, 8, 16, 0.94); /* More opaque background for legibility */
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.12); /* Brighter border */
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.8);
+    min-width: 160px; /* Wider */
+    gap: 5px;
     z-index: 100;
     opacity: 0;
     transition: scale 0.1s ease;
 }
 
 .gateway-floating-card {
-    min-width: 155px;
-    border: 1.5px solid rgba(0, 243, 255, 0.45);
-    background: rgba(8, 8, 18, 0.92);
-    box-shadow: 0 0 15px rgba(0, 243, 255, 0.25), 0 4px 20px rgba(0, 0, 0, 0.85);
-    border-radius: 8px;
+    min-width: 180px; /* Wider */
+    padding: 12px 16px;
+    border: 2px solid rgba(0, 243, 255, 0.65); /* Stronger neon cyan border */
+    background: rgba(10, 10, 20, 0.96);
+    box-shadow: 0 0 20px rgba(0, 243, 255, 0.35), 0 6px 25px rgba(0, 0, 0, 0.9);
+    border-radius: 10px;
 }
 
 .floating-card-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 10px;
-    font-weight: 600;
+    font-size: 12px; /* Bigger */
+    font-weight: 700; /* Bolder */
     color: #ffffff;
     gap: 6px;
 }
@@ -434,22 +435,24 @@ body {
 }
 
 .floating-card-dot {
-    width: 5px;
-    height: 5px;
+    width: 6px; /* Bigger status dot */
+    height: 6px;
     border-radius: 50%;
     box-shadow: 0 0 6px currentColor;
 }
 
 .floating-card-status {
     font-family: var(--font-mono);
-    font-size: 8px;
+    font-size: 9.5px; /* Bigger */
     text-transform: uppercase;
+    font-weight: 700;
 }
 
 .floating-card-weight {
     font-family: var(--font-mono);
-    font-size: 9px;
-    color: var(--text-muted);
+    font-size: 11px; /* Bigger */
+    font-weight: 600;
+    color: #ffffff; /* Brighter */
     display: flex;
     justify-content: space-between;
 }

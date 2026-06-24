@@ -545,14 +545,14 @@
                         <span>Weight:</span>
                         <span id="float-weight-val-${exp.id}">0%</span>
                     </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:2px;">
-                        <span style="font-size:7.5px; color:var(--text-muted);">${exp.description}</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                        <span style="font-size:10px; color:var(--text-white); font-weight:500;">${exp.description}</span>
                         <div class="mini-vu-container" id="vu-meter-float-${exp.id}" style="color: ${exp.color};">
-                            <div class="vu-bar" style="width:2px; height:15%;"></div>
-                            <div class="vu-bar" style="width:2px; height:15%;"></div>
-                            <div class="vu-bar" style="width:2px; height:15%;"></div>
-                            <div class="vu-bar" style="width:2px; height:15%;"></div>
-                            <div class="vu-bar" style="width:2px; height:15%;"></div>
+                            <div class="vu-bar" style="width:3px; height:15%;"></div>
+                            <div class="vu-bar" style="width:3px; height:15%;"></div>
+                            <div class="vu-bar" style="width:3px; height:15%;"></div>
+                            <div class="vu-bar" style="width:3px; height:15%;"></div>
+                            <div class="vu-bar" style="width:3px; height:15%;"></div>
                         </div>
                     </div>
                 `;
@@ -571,7 +571,7 @@
         
         // Camera
         const camera = new THREE.PerspectiveCamera(45, sceneContainer.clientWidth / sceneContainer.clientHeight, 0.1, 100);
-        camera.position.set(0, 8, 22);
+        camera.position.set(0, 6, 17.5);
         
         // Renderer
         const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
@@ -794,8 +794,8 @@
             expGroup.position.copy(pos);
             scene.add(expGroup);
             
-            // Core sphere
-            const sphereGeom = new THREE.SphereGeometry(0.4, 16, 16);
+            // Core sphere (increased from 0.4 to 0.6)
+            const sphereGeom = new THREE.SphereGeometry(0.6, 16, 16);
             const sphereMat = new THREE.MeshBasicMaterial({
                 color: data.colorHex,
                 transparent: true,
@@ -804,8 +804,8 @@
             const mesh = new THREE.Mesh(sphereGeom, sphereMat);
             expGroup.add(mesh);
             
-            // Outer wireframe shell
-            const shellGeom = new THREE.IcosahedronGeometry(0.7, 1);
+            // Outer wireframe shell (increased from 0.7 to 0.95)
+            const shellGeom = new THREE.IcosahedronGeometry(0.95, 1);
             const shellMat = new THREE.MeshBasicMaterial({
                 color: data.colorHex,
                 wireframe: true,
@@ -1009,7 +1009,7 @@
                     gCard.style.transform = `translate(-50%, -100%) translateY(-10px)`;
                     gCard.style.zIndex = 1001; // Keep gateway card above expert cards
                     
-                    const scale = Math.max(0.85, 1.15 - tempProj.z * 0.35);
+                    const scale = Math.max(1.1, 1.45 - tempProj.z * 0.35);
                     gCard.style.scale = scale;
                     
                     const opacity = Math.max(0.3, Math.min(1.0, 1.5 - tempProj.z * 1.2));
@@ -1047,7 +1047,7 @@
                 const zIndex = Math.round((1 - tempProj.z) * 1000);
                 card.style.zIndex = zIndex;
                 
-                const scale = Math.max(0.7, 1 - tempProj.z * 0.4);
+                const scale = Math.max(0.95, 1.3 - tempProj.z * 0.35);
                 card.style.scale = scale;
                 
                 // Fade out cards that are too far back
@@ -1285,8 +1285,8 @@
             expGroup.position.copy(pos);
             scene.add(expGroup);
             
-            // Core sphere
-            const sphereGeom = new THREE.SphereGeometry(0.4, 16, 16);
+            // Core sphere (increased from 0.4 to 0.6)
+            const sphereGeom = new THREE.SphereGeometry(0.6, 16, 16);
             const sphereMat = new THREE.MeshBasicMaterial({
                 color: colorHex,
                 transparent: true,
@@ -1295,8 +1295,8 @@
             const mesh = new THREE.Mesh(sphereGeom, sphereMat);
             expGroup.add(mesh);
             
-            // Outer wireframe shell
-            const shellGeom = new THREE.IcosahedronGeometry(0.7, 1);
+            // Outer wireframe shell (increased from 0.7 to 0.95)
+            const shellGeom = new THREE.IcosahedronGeometry(0.95, 1);
             const shellMat = new THREE.MeshBasicMaterial({
                 color: colorHex,
                 wireframe: true,
