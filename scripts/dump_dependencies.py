@@ -22,18 +22,24 @@ EXTRAS_RE = re.compile(r';\s*extra\s*==')
 def parse_req_name(req_str):
     """Extract and normalize the package name from a PEP 508 requirement string.
 
-    Returns None if the requirement is gated behind an extras marker
-    (e.g., 'pytest; extra == "dev"') since those represent optional
-    dependency groups that inflate the graph with phantom edges.
+    Evaluates environment markers (like python_version or sys_platform) against
+    the current environment to avoid phantom edges. Returns None if the
+    requirement is gated behind an extra or unmet platform constraint.
     """
-    # Filter out extras-gated dependencies — they create phantom edges
-    # to packages that may not be installed or relevant to production.
-    if EXTRAS_RE.search(req_str):
+    try:
+        from packaging.requirements import Requirement
+        req = Requirement(req_str)
+        if req.marker and not req.marker.evaluate():
+            return None
+        return normalize_name(req.name)
+    except Exception:
+        # Fallback if packaging is not installed or parsing fails
+        if EXTRAS_RE.search(req_str):
+            return None
+        m = REQ_NAME_RE.match(req_str)
+        if m:
+            return normalize_name(m.group(1))
         return None
-    m = REQ_NAME_RE.match(req_str)
-    if m:
-        return normalize_name(m.group(1))
-    return None
 
 def main():
     parser = argparse.ArgumentParser(description="Dump Python dependency graph as JSON for spectral-pruner.")
