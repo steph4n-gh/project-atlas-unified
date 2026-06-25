@@ -156,18 +156,22 @@ $$
 
 ### 1. Installation
 
-Install the library in editable mode from the repository root:
+Clone the repository and install the library in editable mode:
 
 ```bash
+# Clone the repository
+git clone https://github.com/steph4n-gh/project-atlas-unified.git
+cd project-atlas-unified
+
 # Set up virtual environment and install qan_transformers
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
 ```
 
-### 2. Cache & Volume Storage Setup
+### 2. Cache & Volume Storage Setup (Optional)
 
-To prevent your home partition from running out of space during model downloads or database paging, set the following environment variables to redirect caches to the `/Volumes/Storage/` volume:
+To prevent your home partition from running out of space during model downloads or database paging, you can optionally set the following environment variables to redirect caches to a secondary volume (e.g., `/Volumes/Storage/`):
 
 ```bash
 # Redirect Hugging Face caches
@@ -179,7 +183,18 @@ export QAN_CACHE_DIR="/Volumes/Storage/qan_cache"
 export ATLAS_SWAP_DB_DIR="/Volumes/Storage/atlas_swap_db"
 ```
 
-### 3. Command Line Interface (`qan-cli`)
+### 3. Verify Installation (Hello World)
+
+To verify that the library and mathematical backend are working correctly on your machine, run the first-run experience Hello World script:
+
+```bash
+python3 examples/hello_world.py
+```
+
+This will load the distilled 139 KiB expert, project coordinates onto the E8 lattice, run the Cohomology Firewall, and print:
+`✓ FIRST RUN EXPERIENCE PASSED SUCCESSFULLY!`
+
+### 4. Command Line Interface (`qan-cli`)
 
 The library includes a unified CLI (`qan-cli`) to graft attention configurations, run stable LoRA fine-tuning, audit python files for logic fractures, launch the web dashboard, index codebases, and start interactive chat sessions.
 

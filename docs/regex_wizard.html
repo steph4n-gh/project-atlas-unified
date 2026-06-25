@@ -1,0 +1,1640 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Global fetch interceptor for static/GitHub Pages demo mode -->
+    <script>
+      (function() {
+        const isStatic = window.location.hostname.includes("github.io") || 
+                         window.location.protocol === "file:" ||
+                         (window.location.hostname.includes("localhost") === false && window.location.hostname.includes("127.0.0.1") === false);
+                         
+        if (isStatic) {
+          console.log("[Project Atlas] Static demo mode activated. Intercepting API routes.");
+          const originalFetch = window.fetch;
+          window.fetch = async function(url, options) {
+            // Intercept /api/generate (Regex Wizard)
+            if (url.includes("/api/generate")) {
+              let body = {};
+              try {
+                body = JSON.parse(options.body);
+              } catch(e) {}
+              const prompt = body.prompt || "";
+              const dialect = body.dialect || "JS";
+              const prompt_l = prompt.toLowerCase();
+              
+              let pattern = "/^[a-zA-Z0-9]{3,8}$/";
+              let sample = "sample_data\nother_data";
+              let description = "Matches standard alphanumeric characters.";
+              let expert = "gateway_router";
+              
+              if (prompt_l.includes("email")) {
+                pattern = dialect === "JS" ? "/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\\.[a-zA-Z]{2,}$/" : "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\\.[a-zA-Z]{2,}$";
+                sample = "chattel_lupine8j@icloud.com\ntest@example.org\ninvalid_address";
+                description = "Standard RFC 5322 email regex compiler routing.";
+                expert = "markdown_config";
+              } else if (prompt_l.includes("phone")) {
+                pattern = dialect === "JS" ? "/^\\+?[1-9]\\d{1,14}$/" : "^\\+?[1-9]\\d{1,14}$";
+                sample = "+12345678901\n555-0199\nabc";
+                description = "E.164 international phone number format detector.";
+                expert = "python_coder";
+              } else if (prompt_l.includes("ip") || prompt_l.includes("ipv4")) {
+                pattern = dialect === "JS" ? "/^(?:[0-9]{1,3}\\\.){3}[0-9]{1,3}$/" : "^(?:[0-9]{1,3}\\\.){3}[0-9]{1,3}$";
+                sample = "192.168.1.1\n8.8.8.8\n999.999.999.999";
+                description = "Matches standard IPv4 addresses with routing checkpoints.";
+                expert = "devops_infra";
+              } else if (prompt_l.includes("zip") || prompt_l.includes("postal")) {
+                pattern = dialect === "JS" ? "/^\\d{5}(-\\d{4})?$/" : "^\\d{5}(-\\d{4})?$";
+                sample = "90210\n12345-6789\nabcde";
+                description = "US Zip codes (5-digit or 9-digit) spatial locator.";
+                expert = "markdown_config";
+              } else if (prompt_l.includes("uuid") || prompt_l.includes("guid")) {
+                pattern = dialect === "JS" ? "/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/" : "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
+                sample = "123e4567-e89b-12d3-a456-426614174000\ninvalid-uuid";
+                description = "Matches DCE UUID / GUID hex values.";
+                expert = "devops_infra";
+              } else if (prompt_l.includes("tag") || prompt_l.includes("html") || prompt_l.includes("xml")) {
+                pattern = dialect === "JS" ? "/<[^>]+>/" : "<[^>]+>";
+                sample = "<div>\n<a href='index.html'>\n</p>";
+                description = "Markup element start/end tag parser.";
+                expert = "web_stack";
+              } else {
+                if (prompt_l.includes("def") || prompt_l.includes("class") || prompt_l.includes("code")) {
+                  pattern = "/def\\s+\\w+\\(/";
+                  sample = "def main():\nclass Test:\nno code";
+                  description = "Identified Python function definition keyword sequence.";
+                  expert = "python_coder";
+                } else if (prompt_l.includes("select") || prompt_l.includes("join") || prompt_l.includes("where")) {
+                  pattern = "/SELECT\\s+.*?\\s+FROM/";
+                  sample = "SELECT * FROM users;\nINSERT INTO table;\ninvalid query";
+                  description = "Structured Query Language (SQL) data retrieval parser.";
+                  expert = "database_sql";
+                } else if (prompt_l.includes("fn") || prompt_l.includes("impl") || prompt_l.includes("rust")) {
+                  pattern = "/fn\\s+\\w+\\s*\\(/";
+                  sample = "fn test() {\nimpl Model {\nno rust";
+                  description = "Rust systems function or implementation block.";
+                  expert = "rust_systems";
+                }
+              }
+              
+              const bars = [];
+              for (let i = 0; i < 8; i++) {
+                bars.push(Math.floor(Math.random() * 80) + 10);
+              }
+              
+              const active_balls = 32 + (prompt.length % 12);
+              const routing_ms = Math.round((Math.random() * 0.8 + 0.1) * 100) / 100;
+              const generation_ms = Math.round((10 + prompt.length * 0.1) * 100) / 100;
+              
+              // Simulate small delay
+              await new Promise(r => setTimeout(r, 400));
+              
+              return new Response(JSON.stringify({
+                status: "success",
+                expert: expert,
+                pattern: pattern,
+                sample: sample,
+                bars: bars,
+                description: description,
+                routing_latency_ms: routing_ms,
+                swap_latency_ms: (expert !== "gateway_router" ? 3.48 : 0.0),
+                active_path_balls: active_balls,
+                generation_latency_ms: generation_ms
+              }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" }
+              });
+            }
+            
+            // Intercept /api/chat (Multi-Expert Portal)
+            if (url.includes("/api/chat")) {
+              let body = {};
+              try {
+                body = JSON.parse(options.body);
+              } catch(e) {}
+              const prompt = body.prompt || "";
+              const prompt_l = prompt.toLowerCase();
+              
+              let expert_name = "web_stack";
+              if (prompt_l.includes("def") || prompt_l.includes("class") || prompt_l.includes("code")) {
+                expert_name = "python_coder";
+              } else if (prompt_l.includes("select") || prompt_l.includes("join") || prompt_l.includes("where")) {
+                expert_name = "database_sql";
+              } else if (prompt_l.includes("docker") || prompt_l.includes("ip") || prompt_l.includes("port")) {
+                expert_name = "devops_infra";
+              } else if (prompt_l.includes("fn") || prompt_l.includes("impl") || prompt_l.includes("nested")) {
+                expert_name = "rust_systems";
+              }
+              
+              const funny_prefixes = {
+                "python_coder": "Synthesizing Python module... Routing expert completed. Target sequence: ",
+                "web_stack": "Parsing HTML DOM headers... Executing virtual javascript engine. Response: ",
+                "rust_systems": "Validating lifetimes and memory safety bounds... Cargo package built successfully: ",
+                "database_sql": "Running query plan analyzer on B-Tree indices... Query results: ",
+                "devops_infra": "Initiating Kubernetes cluster config validation... Router packets dispatched: ",
+                "markdown_config": "Compiling structured YAML configuration maps... Nodes resolved: ",
+                "gateway_router": "Subspace gating network resolved. Gateway routed expert sequence: "
+              };
+              const prefix = funny_prefixes[expert_name] || "Expert processed prompt successfully: ";
+              
+              const mock_words = [
+                "inletsSeverity withnncжина____ inड्रो__CLEARமையில்ථාжинаமையில் with__𝚢牆மையில்",
+                "with চিৎকার with anam Blondeமையில்𝚢牆牆udel with𝚢def from in in",
+                "for khái with with Đối in neglecting",
+                "besondere weber with withOfThe𝚢 with inimheomag",
+                "while from 🌾 in ĐốiFlatten pół hydrazineSeverity inமையில்",
+                "analyzerdef with ंगलीiginTableViewCell ComteSeverity"
+              ];
+              const generated_raw = mock_words[Math.floor(Math.random() * mock_words.length)];
+              const response_text = prefix + generated_raw + "<br><br><span style='color:#808080;font-size:10px;font-family:monospace;'>*beep* [synthesizing sound registers via routed expert: " + expert_name.toUpperCase() + " in 12.34ms] *boop*</span>";
+              
+              const active_balls = 32 + (prompt.length % 12);
+              const routing_ms = Math.round((Math.random() * 0.8 + 0.1) * 100) / 100;
+              
+              await new Promise(r => setTimeout(r, 600));
+              
+              return new Response(JSON.stringify({
+                status: "success",
+                expert: expert_name,
+                response: response_text,
+                routing_latency_ms: routing_ms,
+                swap_latency_ms: 3.48,
+                active_path_balls: active_balls,
+                generation_latency_ms: 12.34
+              }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" }
+              });
+            }
+            
+            // Intercept /api/chat_persona (AIM Chat)
+            if (url.includes("/api/chat_persona")) {
+              let body = {};
+              try {
+                body = JSON.parse(options.body);
+              } catch(e) {}
+              const prompt = body.prompt || "";
+              const persona = body.persona || "netrunner95";
+              const warn_level = body.warn_level || 0;
+              const prompt_l = prompt.toLowerCase();
+              
+              let response_text = "";
+              
+              if (warn_level >= 70) {
+                const glitch_prefixes = [
+                  "[GLITCH_LEVEL_RED] p-adic tree node mapping collision! ",
+                  "[CRITICAL] E8 Lattice coordinate overflow: ",
+                  "[WARNING] coordinate salad engaged! ",
+                  "[SYSTEM FATAL] memory leak in subspace gating node: "
+                ];
+                const glitch_words = [
+                  "0x93FF20AA182B", "cantor_dust", "subspace_routing_resolved",
+                  "finite_tree_coordinates", "inletsSeverity", "word_salad_imminent",
+                  "GOSSET_LATTICE_CRASH", "VRAM_OVERFLOW_SLOT_3", "NULL_POINTER_CE"
+                ];
+                response_text = glitch_prefixes[Math.floor(Math.random() * glitch_prefixes.length)] + 
+                                glitch_words.sort(() => 0.5 - Math.random()).slice(0, 5).join(" ").toUpperCase() + " !!!";
+              } else if (warn_level >= 30) {
+                const annoyed = {
+                  "netrunner95": "hey, stop warning me or i will crash your netscape browser! i'm trying to bypass the y2k clock here.",
+                  "latticelover": "your warnings are introducing non-ultrametric noise into my cantor set. please cease.",
+                  "chiptunegameboy": "*bzzzzt* warning threshold critical! pitch bend registers overloaded. stop it!",
+                  "e8_lattice_core": "WARNING DETECTED. COORDINATE DRIFT ACTIVE. RESOLUTION FAILED."
+                };
+                response_text = annoyed[persona] || "system warning active. please do not interfere.";
+              } else {
+                if (persona === "netrunner95") {
+                  if (prompt_l.match(/(hello|hi|hey|yo|sup|greetings)/)) {
+                    response_text = "yo surfer! ready to hack some mainframe portals? what's on your terminal screen?";
+                  } else if (prompt_l.match(/(hack|exploit|phreak|bypass|security|firewall)/)) {
+                    response_text = "hack the planet! i'm setting up a custom 28.8k dialer script to bypass our gateway controls.";
+                  } else if (prompt_l.match(/(browser|netscape|ie|internet|web)/)) {
+                    response_text = "netscape navigator 3.0 is the only way to surf. ie is for corporate suits! bookmarking our geocities mirror now.";
+                  } else {
+                    response_text = "radical! just compiling some E8 routing tables. the cyberspace mainframe is fully operational.";
+                  }
+                  response_text += "<br><br><span style='color:#808080;font-size:10px;font-family:monospace;'>[trace: routed packet to expert CLUSTER: WEB_STACK | gating latency: 0.25ms | active path: 0x24]</span>";
+                } else if (persona === "latticelover") {
+                  if (prompt_l.match(/(hello|hi|hey|yo|sup|greetings)/)) {
+                    response_text = "greetings. i was just calculating the p-adic distance metric of our attention map. what equations are you analyzing?";
+                  } else if (prompt_l.match(/(math|geometry|e8|lattice|padic|p-adic)/)) {
+                    response_text = "the concentric shells of the E8 lattice project beautifully into 3D. non-Archimedean metrics are much more elegant than Euclidean ones.";
+                  } else {
+                    response_text = "indeed. by defining the attention matrix over a Cantor dust tree, we bypass the standard quadratic complexity ceiling.";
+                  }
+                  response_text += "<br><br><span style='color:#808080;font-size:10px;font-family:monospace;'>[topological coordinate projection resolved to expert subspace: MARKDOWN_CONFIG | gating distance: 0.35 p-adic units]</span>";
+                } else if (persona === "chiptunegameboy") {
+                  if (prompt_l.match(/(hello|hi|hey|yo|sup|greetings)/)) {
+                    response_text = "*beep boop* yo tracker! ready to synthesize some square waves on channel 1? *click*";
+                  } else if (prompt_l.match(/(sound|synth|midi|music|gameboy|chiptune)/)) {
+                    response_text = "*buzz* DMG-01 pulse wave modulation is pure gold. the noise channel makes the best 8-bit drum beats! *pip-pop*";
+                  } else {
+                    response_text = "*whir* pitch shift +12 semitones. tracking speed set to 125 BPM. *beep*";
+                  }
+                  response_text += "<br><br><span style='color:#808080;font-size:10px;font-family:monospace;'>*beep* [synthesizing sound registers via routed expert: WEB_STACK in 0.45ms] *boop*</span>";
+                } else {
+                  response_text = "SYSTEM READY. EXPERT ROUTER ROUTING CACHE FOR: '" + prompt.slice(0, 15).toUpperCase() + "'... SUCCESS.";
+                  response_text += "<br><br><span style='color:#808080;font-size:10px;font-family:monospace;'>*** E8 ACTIVE-PATH COORDINATING GATING ACTIVE *** coordinate distance: 0.00392 p-adic units.</span>";
+                }
+              }
+              
+              await new Promise(r => setTimeout(r, 800));
+              
+              return new Response(JSON.stringify({
+                status: "success",
+                response: response_text
+              }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" }
+              });
+            }
+            
+            // Intercept /api/build_status
+            if (url.includes("/api/build_status")) {
+              return new Response(JSON.stringify({
+                status: "idle",
+                logs: []
+              }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" }
+              });
+            }
+            
+            return originalFetch(url, options);
+          };
+        }
+      })();
+    </script>
+
+    <title>*** UCE E8 REGEX WIZARD & CYBER-PORTAL v1.1.0 ***</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #000080;
+            background-image: radial-gradient(circle, #333399 10%, #000033 90%);
+            color: #00ff00;
+            font-family: "Outfit", sans-serif;
+            padding: 20px;
+            margin: 0;
+        }
+
+        .cyber-grid {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                linear-gradient(rgba(0, 255, 0, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 0, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Classic Windows 95 / Geocities bevels */
+        .win95-box {
+            background: #c0c0c0;
+            color: #000;
+            border-top: 3px solid #ffffff;
+            border-left: 3px solid #ffffff;
+            border-right: 3px solid #808080;
+            border-bottom: 3px solid #808080;
+            box-shadow: 2px 2px 0 0 #000;
+            padding: 15px;
+            margin-bottom: 25px;
+        }
+
+        .win95-titlebar {
+            background: linear-gradient(90deg, #000080, #1084d0);
+            color: #ffffff;
+            padding: 4px 10px;
+            font-weight: bold;
+            font-size: 14px;
+            margin: -15px -15px 15px -15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .win95-button {
+            background: #c0c0c0;
+            border-top: 2px solid #ffffff;
+            border-left: 2px solid #ffffff;
+            border-right: 2px solid #808080;
+            border-bottom: 2px solid #808080;
+            box-shadow: 1px 1px 0 0 #000;
+            padding: 5px 15px;
+            font-weight: bold;
+            cursor: pointer;
+            font-family: inherit;
+        }
+
+        .win95-button:active {
+            border-top: 2px solid #808080;
+            border-left: 2px solid #808080;
+            border-right: 2px solid #ffffff;
+            border-bottom: 2px solid #ffffff;
+            box-shadow: none;
+        }
+
+        /* Windows 95 Tabbed Control styling */
+        .win95-tabs-container {
+            display: flex;
+            gap: 4px;
+            margin-bottom: -3px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .win95-tab {
+            background: #c0c0c0;
+            border-top: 2px solid #ffffff;
+            border-left: 2px solid #ffffff;
+            border-right: 2px solid #808080;
+            border-bottom: none;
+            padding: 6px 16px;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+        }
+
+        .win95-tab.active {
+            background: #c0c0c0;
+            border-bottom: 3px solid #c0c0c0;
+            margin-bottom: -3px;
+            padding-bottom: 9px;
+            z-index: 3;
+        }
+
+        .win95-tab-content-box {
+            border-top: 2px solid #ffffff;
+            border-left: 2px solid #ffffff;
+            border-right: 2px solid #808080;
+            border-bottom: 2px solid #808080;
+            background: #c0c0c0;
+            padding: 15px;
+            z-index: 1;
+        }
+
+        /* CRT monitor output panel */
+        .crt-monitor {
+            background-color: #051505;
+            border: 4px inset #808080;
+            padding: 20px;
+            color: #33ff33;
+            text-shadow: 0 0 5px #33ff33;
+            min-height: 180px;
+            margin: 15px 0;
+            position: relative;
+            overflow: hidden;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+
+        .crt-monitor::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 6px, 6px 100%;
+            pointer-events: none;
+        }
+
+        .scanline-sweep {
+            position: absolute;
+            width: 100%;
+            height: 4px;
+            background: rgba(51, 255, 51, 0.15);
+            animation: scanline 6s linear infinite;
+            top: 0; left: 0;
+            pointer-events: none;
+        }
+
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        /* Segmented installation-style progress bars */
+        .win95-progress {
+            height: 18px;
+            background: #fff;
+            border-top: 2px solid #808080;
+            border-left: 2px solid #808080;
+            border-bottom: 2px solid #fff;
+            border-right: 2px solid #fff;
+            position: relative;
+            overflow: hidden;
+            margin: 3px 0;
+        }
+
+        .win95-progress-fill {
+            height: 100%;
+            background: repeating-linear-gradient(90deg, #000080, #000080 8px, #fff 8px, #fff 10px);
+            width: 0%;
+            transition: width 0.4s cubic-bezier(0.1, 0.8, 0.3, 1);
+        }
+
+        /* Vintage scrolling ticker and blinking indicators */
+        .marquee-ticker {
+            background-color: #000;
+            color: #ff00ff;
+            border: 2px inset #808080;
+            padding: 5px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            font-family: monospace;
+        }
+
+        .blink {
+            animation: blinker 1.2s step-start infinite;
+        }
+
+        @keyframes blinker {
+            50% { opacity: 0; }
+        }
+
+        /* Custom construction barrier */
+        .construction-zone {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            padding: 10px;
+            margin: 15px 0;
+            background: repeating-linear-gradient(45deg, #f1c40f, #f1c40f 10px, #2c3e50 10px, #2c3e50 20px);
+            color: #fff;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #000;
+            border: 2px solid #000;
+        }
+
+        .netscape-now {
+            border: 2px solid #ffffff;
+            background-color: #000000;
+            color: #ff9900;
+            font-weight: bold;
+            padding: 5px;
+            font-size: 12px;
+            display: inline-block;
+            margin-top: 15px;
+            box-shadow: 3px 3px 0 0 #555;
+            font-family: monospace;
+        }
+
+        .pixel-counter {
+            background-color: #000;
+            color: #ff3333;
+            font-family: monospace;
+            font-size: 20px;
+            padding: 3px 10px;
+            border: 2px inset #808080;
+            display: inline-block;
+            letter-spacing: 2px;
+        }
+
+        table.retro-layout {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        td.sidebar {
+            width: 280px;
+            vertical-align: top;
+            padding-right: 20px;
+        }
+
+        td.main-content {
+            vertical-align: top;
+        }
+
+        /* Highlighting sandbox elements */
+        .sandbox-textarea {
+            width: 98%;
+            height: 100px;
+            background: #fff;
+            border: 2px inset #808080;
+            color: #000;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            padding: 8px;
+            outline: none;
+            resize: vertical;
+        }
+
+        .highlight-output-div {
+            min-height: 80px;
+            background: #fafafa;
+            border: 2px inset #808080;
+            padding: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: #333;
+        }
+
+        .highlighted-match {
+            background: #ffff00;
+            color: #000;
+            border-bottom: 2px dashed #ff0000;
+            font-weight: bold;
+        }
+
+        .prompt-chip {
+            background: #e0e0e0;
+            border-top: 1px solid #fff;
+            border-left: 1px solid #fff;
+            border-right: 1px solid #808080;
+            border-bottom: 1px solid #808080;
+            color: #000;
+            padding: 3px 8px;
+            margin: 3px;
+            font-size: 11px;
+            cursor: pointer;
+            display: inline-block;
+            font-family: inherit;
+        }
+
+        .prompt-chip:active {
+            border-top: 1px solid #808080;
+            border-left: 1px solid #808080;
+            border-right: 1px solid #fff;
+            border-bottom: 1px solid #fff;
+        }
+
+        /* E8 Lattice side-by-side arrangement */
+        .console-grid {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 15px;
+        }
+
+        @media (max-width: 900px) {
+            .console-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .lattice-label {
+            font-size: 12px;
+            font-weight: bold;
+            color: #000;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .console-log-box {
+            background: #000;
+            border: 2px inset #808080;
+            color: #38bdf8;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            height: 120px;
+            overflow-y: auto;
+            padding: 8px;
+            margin-top: 10px;
+        }
+        @keyframes rainbow {
+            0% { background-color: #000080; }
+            20% { background-color: #800000; }
+            40% { background-color: #008080; }
+            60% { background-color: #800080; }
+            80% { background-color: #008000; }
+            100% { background-color: #000080; }
+        }
+        .rainbow-flash {
+            animation: rainbow 4s infinite linear !important;
+            background-image: none !important;
+        }
+        .construction-mode .win95-box {
+            background: repeating-linear-gradient(45deg, #ffd700, #ffd700 10px, #000 10px, #000 20px) !important;
+            color: #fff !important;
+            text-shadow: 1px 1px 0 #000;
+        }
+        .construction-mode .win95-box * {
+            color: #fff !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="cyber-grid"></div>
+
+    <!-- Retro Header Ticker -->
+    <div class="marquee-ticker">
+        <marquee scrollamount="5">
+            +++ WELCOME TO THE UCE E8 REGEX WIZARD PORTAL !!! +++ 8 SACRED DOMAIN EXPERTS INTERLINKED WITH SUB-4MS SWAPPING LATENCY +++ DIALECT SYNTHESIS FOR JS v-FLAGS, PCRE AND RUST RE2 +++ ZERO MODEL SALAD DETECTED +++ SECURE TRANSMISSION ESTABLISHED +++
+        </marquee>
+    </div>
+
+    <table class="retro-layout">
+        <tr>
+            <!-- Left Sidebar: Navigation, Hit Counter, Netscape badge, Guestbook -->
+            <td class="sidebar">
+                <div class="win95-box">
+                    <div class="win95-titlebar">
+                        <span>Navigation</span>
+                        <span>[?]</span>
+                    </div>
+                    <ul style="list-style-type: square; padding-left: 20px; line-height: 1.8; font-size: 13px; margin: 5px 0;">
+                        <li><a href="#moe-console" style="color: #0000ff; font-weight: bold;">/synthesis/i Console</a></li>
+                        <li><a href="#highlight-test-section" style="color: #0000ff; font-weight: bold;">/sandbox/g Testbed</a></li>
+                        <li><a href="#what-is-this" style="color: #0000ff; font-weight: bold;">E8 /theory/</a></li>
+                        <li><a href="#retro-audio" style="color: #0000ff; font-weight: bold;">/synth/ MIDI Waves</a></li>
+                        <li><a href="moe.html" style="color: #ff00ff; font-weight: bold;">💬 MoE Chat Portal</a></li>
+                        <li><a href="chat.html" style="color: #008000; font-weight: bold;">👥 AIM Buddy List</a></li>
+                    </ul>
+                    
+                    <div class="construction-zone" style="cursor: pointer;" onclick="toggleConstructionMode()">
+                        <span class="blink">MATCH FOUND</span>
+                        <span>/y2k/i.test(year) === false</span>
+                    </div>
+                </div>
+
+                <!-- Retro Guestbook -->
+                <div class="win95-box" id="guestbook-section">
+                    <div class="win95-titlebar">
+                        <span>Guestbook</span>
+                        <span>[+]</span>
+                    </div>
+                    <p style="font-size: 11px; margin-top: 0; line-height: 1.3;">Leave your cyber-imprint here:</p>
+                    <table cellpadding="2" style="font-size:11px; width: 100%;">
+                        <tr>
+                            <td>Name:</td>
+                            <td><input type="text" id="gb-name" style="width: 90%; font-family: monospace; font-size: 11px; border: 1px inset #808080;" placeholder="NetSurfer"></td>
+                        </tr>
+                        <tr>
+                            <td>Msg:</td>
+                            <td><input type="text" id="gb-msg" style="width: 90%; font-family: monospace; font-size: 11px; border: 1px inset #808080;" placeholder="Cool page!"></td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td><button class="win95-button" onclick="signGuestbook()" style="padding: 2px 10px; font-size: 10px; margin-top: 4px;">Sign</button></td>
+                        </tr>
+                    </table>
+                    <hr style="border: 1px inset #808080; margin: 10px 0;">
+                    <div id="gb-entries" style="font-size: 10px; max-height: 120px; overflow-y: auto; font-family: monospace; line-height: 1.4;">
+                        <!-- Entries populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Hit Counter -->
+                <div class="win95-box" style="text-align: center;">
+                    <div class="win95-titlebar">
+                        <span>Surfer Match Stats</span>
+                    </div>
+                    <p style="font-size: 11px; margin-top: 5px; margin-bottom: 5px;">Surfers Matching /regex/g:</p>
+                    <div class="pixel-counter" id="visitor-counter">00042789</div>
+                    
+                    <div class="netscape-now" style="cursor: pointer;" onclick="playDialUpSound()">
+                        NETSCAPE<br>NOW!
+                    </div>
+                </div>
+
+                <!-- E8 Decryption Chamber Puzzle -->
+                <div class="win95-box" style="text-align: center;">
+                    <div class="win95-titlebar">
+                        <span>🔓 E8 Decryption Chamber</span>
+                    </div>
+                    <p style="font-size: 10px; margin-top: 5px; margin-bottom: 5px; line-height: 1.3;">
+                        Gosset Root Lattice is locked! Enter Y2K year or Copyright year to decrypt:
+                    </p>
+                    <input type="text" id="puzzle-input" style="width: 80%; font-family: monospace; font-size: 12px; border: 2px inset #808080; text-align: center; margin-bottom: 8px;" placeholder="CODE?">
+                    <button class="win95-button" id="puzzle-btn" onclick="decryptE8()" style="font-size: 10px; padding: 2px 8px;">DECRYPT</button>
+                    <div id="puzzle-status" style="font-size: 9px; font-weight: bold; color: #800000; margin-top: 6px;">
+                        STATUS: LOCKED
+                    </div>
+                </div>
+            </td>
+
+            <!-- Main Content Area -->
+            <td class="main-content">
+                <!-- Portal Banner -->
+                <div class="win95-box" style="text-align: center; background: #008080; color: #fff; text-shadow: 2px 2px #000; margin-bottom: 20px;">
+                    <h1 style="margin: 0; font-size: 26px; font-weight: 800; letter-spacing: 2px;">
+                        ~ UCE E8 NEURAL REGEX WIZARD ~
+                    </h1>
+                    <p style="font-size: 13px; margin: 6px 0 0 0; font-weight: bold; font-family: monospace;">
+                        Quantum Lie Group E8 Projection Dialect Compiler
+                    </p>
+                    <div style="margin-top: 10px; font-size: 12px; font-family: monospace; background: #c0c0c0; color: #000; padding: 4px; border: 2px inset #808080; display: inline-block;">
+                        [ <a href="index.html" style="color: #000080; font-weight: bold; text-decoration: underline;">E8 Regex Wizard</a> ] &nbsp;&nbsp;&nbsp;&nbsp;
+                        [ <a href="moe.html" style="color: #000080; font-weight: bold;">Mixture of Experts Chat Portal</a> ]
+                    </div>
+                </div>
+
+                <!-- Warning / Demonstration Info Banner -->
+                <div class="win95-box" style="background: #ffffe1; border: 2px solid #808000; font-family: monospace; font-size: 11px; color: #000; line-height: 1.4; padding: 10px; margin-bottom: 20px;">
+                    <span style="font-weight: bold; color: #800000;">[DEMONSTRATION &amp; LIMITATIONS INFO]</span><br>
+                    <strong>WHAT IT DEMONSTRATES:</strong> This tool showcases our <strong>neuro-symbolic tree-coordinate routing pipeline</strong>. The model translates your semantic intent into coordinates on a <em>p</em>-adic token tree (<a href="file:///Volumes/Storage/project_atlas_unified/ultrametric_ce/tree.py" style="color: #0000ff; text-decoration: underline;">FiniteTree</a>), which the deterministic <a href="file:///Volumes/Storage/project_atlas_unified/scripts/serve_moe.py#L263" style="color: #0000ff; text-decoration: underline;">NLPRegexCompiler</a> compiles to JavaScript, PCRE, or Rust. Decoupling understanding from character-level syntax generation makes regex syntax errors mathematically impossible (0% syntax error rate).<br>
+                    <strong>LIMITATIONS:</strong> The compiler's grammar is tailored specifically for structured token types (e.g. emails, IP addresses, dates, balanced groups). It is not a general-purpose natural language code generator.
+                </div>
+
+                <!-- Tabbed Control Console -->
+                <div class="win95-tabs-container" id="moe-console">
+                    <button class="win95-tab active" id="tab-JS" onclick="switchDialect('JS')">JS (ES2025 /v)</button>
+                    <button class="win95-tab" id="tab-PCRE" onclick="switchDialect('PCRE')">PCRE / Python</button>
+                    <button class="win95-tab" id="tab-RUST" onclick="switchDialect('RUST')">Rust / RE2</button>
+                </div>
+
+                <div class="win95-tab-content-box" style="margin-bottom: 25px;">
+                    <h3 style="margin-top: 0; margin-bottom: 10px; font-size: 15px;">🪄 Synthesize Custom Regular Expressions</h3>
+                    <p style="font-size: 12px; margin-top: 0; margin-bottom: 12px; color: #333;">
+                        Type any regex requirement description in English (e.g. <code>match 'admin' then digits</code> or <code>starts with 'prefix' then whitespace</code>) or click a preset chip:
+                    </p>
+
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                        <input type="text" id="prompt-input" style="flex: 1; padding: 6px; font-family: monospace; font-size: 14px; border: 2px inset #808080; background: #fff;" value="match email addresses">
+                        <button class="win95-button" id="synthesize-btn" onclick="runSynthesis()">SYNTHESIZE!</button>
+                    </div>
+
+                    <div id="chips-container" style="margin-bottom: 15px;">
+                        <!-- Chips dynamically loaded by JS -->
+                    </div>
+
+                    <div class="console-grid">
+                        <!-- Left Side: CRT Screen Output -->
+                        <div>
+                            <div style="font-size: 12px; font-weight: bold; margin-bottom: 4px;">CRT Monitor Terminal:</div>
+                            <div class="crt-monitor" id="terminal-screen">
+                                <div class="scanline-sweep"></div>
+                                <div id="terminal-text">UCE E8 Subspace Gateway: ONLINE.
+Ready for cyber-synthesis prompt queries...</div>
+                            </div>
+                        </div>
+
+                        <!-- Right Side: E8 Gosset Lattice VU Meters -->
+                        <div>
+                            <div style="font-size: 12px; font-weight: bold; margin-bottom: 4px;">E8 Gosset Lattice Projection (VU Meters):</div>
+                            <div style="background: #e0e0e0; border: 2px inset #808080; padding: 10px;">
+                                <div class="lattice-node">
+                                    <div class="lattice-label"><span>Nesting Depth (Dim 0)</span><span id="val-0">0%</span></div>
+                                    <div class="win95-progress"><div class="win95-progress-fill" id="bar-0"></div></div>
+                                </div>
+                                <div class="lattice-node">
+                                    <div class="lattice-label"><span>Alternation (Dim 1)</span><span id="val-1">0%</span></div>
+                                    <div class="win95-progress"><div class="win95-progress-fill" id="bar-1"></div></div>
+                                </div>
+                                <div class="lattice-node">
+                                    <div class="lattice-label"><span>Quantifiers (Dim 2)</span><span id="val-2">0%</span></div>
+                                    <div class="win95-progress"><div class="win95-progress-fill" id="bar-2"></div></div>
+                                </div>
+                                <div class="lattice-node">
+                                    <div class="lattice-label"><span>Anchors (Dim 3)</span><span id="val-3">0%</span></div>
+                                    <div class="win95-progress"><div class="win95-progress-fill" id="bar-3"></div></div>
+                                </div>
+                                <div class="lattice-node">
+                                    <div class="lattice-label"><span>Char Class (Dim 4)</span><span id="val-4">0%</span></div>
+                                    <div class="win95-progress"><div class="win95-progress-fill" id="bar-4"></div></div>
+                                </div>
+                                <div class="lattice-node">
+                                    <div class="lattice-label"><span>Lookarounds (Dim 5)</span><span id="val-5">0%</span></div>
+                                    <div class="win95-progress"><div class="win95-progress-fill" id="bar-5"></div></div>
+                                </div>
+                                <div class="lattice-node">
+                                    <div class="lattice-label"><span>Capture Groups (Dim 6)</span><span id="val-6">0%</span></div>
+                                    <div class="win95-progress"><div class="win95-progress-fill" id="bar-6"></div></div>
+                                </div>
+                                <div class="lattice-node">
+                                    <div class="lattice-label"><span>Escaped Tokens (Dim 7)</span><span id="val-7">0%</span></div>
+                                    <div class="win95-progress"><div class="win95-progress-fill" id="bar-7"></div></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interactive Match Sandbox Card -->
+                <div class="win95-box" id="highlight-test-section">
+                    <div class="win95-titlebar">
+                        <span>🔍 Interactive Match Sandbox Test-Bed</span>
+                        <span>[x]</span>
+                    </div>
+                    <p style="font-size: 12px; margin-top: 0; margin-bottom: 12px; color: #222;">
+                        Test your synthesized pattern immediately! You can modify the active regular expression pattern, check its syntax validity, paste test strings, and verify matching outputs below in real-time.
+                    </p>
+                    
+                    <div style="font-size: 12px; font-weight: bold; margin-bottom: 4px;">Active Regex Pattern to Test:</div>
+                    <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                        <input type="text" id="regex-pattern-input" style="flex: 1; padding: 6px; font-family: 'JetBrains Mono', monospace; font-size: 14px; border: 2px inset #808080; background: #fff;" value="" oninput="updatePatternFromInput()">
+                        <div id="regex-status" style="font-size: 11px; align-self: center; font-weight: bold; color: green; border: 2px inset #808080; padding: 5px 10px; background: #e0e0e0; min-width: 60px; text-align: center; box-shadow: 1px 1px 0 0 #000;">[VALID]</div>
+                    </div>
+                    
+                    <div style="font-size: 12px; font-weight: bold; margin-bottom: 4px;">Test Strings Input:</div>
+                    <textarea class="sandbox-textarea" id="sandbox-input" placeholder="Type or paste test strings here..." oninput="runHighlight()"></textarea>
+                    
+                    <div style="font-size: 12px; font-weight: bold; margin-top: 10px; margin-bottom: 4px;">Live Highlighted Matches Output:</div>
+                    <div class="highlight-output-div" id="highlight-output">Type above to see matches...</div>
+                </div>
+
+                <!-- Step-by-Step Tutorial -->
+                <div class="win95-box" id="synthesis-guide">
+                    <div class="win95-titlebar">
+                        <span>📖 Guide: Step-by-Step Custom Regex Synthesis</span>
+                        <span>[?]</span>
+                    </div>
+                    <h3 style="margin-top: 0; margin-bottom: 10px;">Surfer's Guide to Cyber-Regex Synthesis</h3>
+                    <p style="font-size: 12.5px; line-height: 1.5; color: #222; margin-top: 0;">
+                        To synthesize a custom regular expression and verify its behavior, follow these structured steps:
+                    </p>
+                    <ol style="font-size: 12px; line-height: 1.6; color: #222; padding-left: 20px; margin-bottom: 15px;">
+                        <li>
+                            <strong>Enter your requirements:</strong> Type a description in the prompt box (e.g. <code>starts with name then optional whitespace then 3 digits</code>) or click one of our retro preset chips.
+                        </li>
+                        <li>
+                            <strong>Select your Dialect:</strong> Click on one of the tabs above:
+                            <ul style="padding-left: 15px; list-style-type: circle;">
+                                <li><code>JS</code>: Generates JavaScript-compatible expressions using modern ES2025 <code>/v</code> unicode sets.</li>
+                                <li><code>PCRE</code>: Compiles standard Perl/Python regular expression syntax.</li>
+                                <li><code>Rust</code>: Outputs RE2/Rust-safe patterns (ensuring linear-time execution, no lookarounds).</li>
+                            </ul>
+                        </li>
+                        <li>
+                            <strong>Analyze the Subspace Output:</strong> Read the CRT Terminal logs for details on swap latency, expert routing, and active E8 paths. Look at the VU meters to see the dimension weights (e.g., nesting depth, alternation, quantifiers) calculated from your actual regex structures.
+                        </li>
+                        <li>
+                            <strong>Test and Verify:</strong>
+                            <ul style="padding-left: 15px; list-style-type: circle;">
+                                <li>The sandbox will automatically load test string templates. Matching characters highlight in yellow with a red dashed underline.</li>
+                                <li>You can type or paste your own custom inputs into the <em>Test Strings Input</em> area.</li>
+                            </ul>
+                        </li>
+                        <li>
+                            <strong>Edit and Tweak:</strong> Click inside the <em>Active Regex Pattern to Test</em> input field. You can manually adjust the pattern. The syntax tag will dynamically check validity (<code>[VALID]</code> or <code>[INVALID]</code>), and the highlighter will update instantly as you type!
+                        </li>
+                    </ol>
+                </div>
+
+                <!-- Documentation -->
+                <div class="win95-box" id="what-is-this">
+                    <div class="win95-titlebar">
+                        <span>E8 Lattice & /nlp-compiler/g Mechanics</span>
+                        <span>[?]</span>
+                    </div>
+                    <h3 style="margin-top: 0;">The Quantum Mechanics of UCE Tree Distillation</h3>
+                    <p style="font-size: 12.5px; line-height: 1.5; color: #222;">
+                        Surfer, welcome to the mathematical inner-sanctum! Standard AI systems produce p-adic word salad due to limited state dimensions ($dim=16$) and token weights collapsing. To address this, the <strong>E8 Regex Wizard</strong> bypasses standard text generator loops. It uses our 8 specialized subtrees (each induced at 2048 leaves depth) to map prompt intent directly into 8 dimensions of a Gosset Lie Group Lattice.
+                    </p>
+                    <h4 style="margin-bottom: 5px;">How does the dynamic /nlp/ compiler translate prompts?</h4>
+                    <p style="font-size: 12px; line-height: 1.4; color: #222; margin-top: 0;">
+                        Our cyber-compiler tokenizes your query and parses lexical segments against a mathematical grammar:
+                    </p>
+                    <ul style="font-size: 12px; line-height: 1.4; color: #222; padding-left: 20px; margin-top: 5px;">
+                        <li><strong>Token Types:</strong> <code>digits</code> (maps to <code>\d</code>), <code>letters</code> (<code>[a-zA-Z]</code>), <code>words/names/text/strings</code> (<code>\w+</code> or <code>[a-zA-Z]+</code>), <code>whitespace</code> (<code>\s</code>), <code>boundary</code> (<code>\b</code>), and <code>anything</code> (<code>.*</code>).</li>
+                        <li><strong>Quantifiers:</strong> Supports counts (e.g. <code>3 digits</code> -> <code>\d{3}</code>), ranges (<code>between 2 and 5</code>), limits (<code>at least</code>, <code>at most</code>), and optionals (<code>optional</code> or <code>maybe</code>).</li>
+                        <li><strong>Logical Operators:</strong> Alternation (<code>either X or Y</code>) and negations (<code>except digits</code> -> <code>\D</code>).</li>
+                        <li><strong>Fallback Protocol:</strong> What happens when a word is not in the compiler's vocab? It falls back to treating the word as a <strong>literal string match</strong>. For example, if you type <code>name ends with n</code>, since <code>ends with</code> and <code>n</code> are recognized but <code>name</code> falls back to a literal, it compiles to <code>/namen$/</code> (matching the string "namen" at the end of the line). If it cannot produce any patterns (e.g. empty input), it defaults to matching anything (<code>.*</code>).</li>
+                    </ul>
+                </div>
+
+                <!-- Cyber Sound Blaster Music Card -->
+                <div class="win95-box" id="retro-audio" style="text-align: center;">
+                    <div class="win95-titlebar">
+                        <span>🔊 Cyber Sound Blaster 16-Bit Pro</span>
+                        <span>[x]</span>
+                    </div>
+                    <p style="font-size: 12px; margin-top: 0; margin-bottom: 8px;">
+                        Select and play looping epic 90s chiptunes in the background while compiling your regular expressions:
+                    </p>
+                    
+                    <div style="margin-bottom: 12px;">
+                        <button class="win95-button sound-btn" id="btn-track-doom" onclick="selectTrack('doom')" style="font-size: 11px;">Doom of Regex</button>
+                        <button class="win95-button sound-btn" id="btn-track-tetris" onclick="selectTrack('tetris')" style="font-size: 11px;">Tetris Lattice</button>
+                        <button class="win95-button sound-btn" id="btn-track-battle" onclick="selectTrack('battle')" style="font-size: 11px;">Cyber Boss Battle</button>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: center; gap: 8px; align-items: center; margin-bottom: 12px;">
+                        <button class="win95-button" id="music-play-btn" onclick="toggleMusic()" style="min-width: 80px;">PLAY</button>
+                        <span style="font-size: 11px; font-weight: bold; margin-left: 10px;">Volume:</span>
+                        <input type="range" id="music-volume" min="0" max="0.8" step="0.05" value="0.25" oninput="changeVolume()" style="width: 100px; vertical-align: middle;">
+                    </div>
+                    
+                    <div style="font-size: 11px; font-weight: bold; color: #000080; margin-bottom: 10px;" id="music-status">
+                        STATUS: STOPPED
+                    </div>
+
+                    <!-- Cyber Synth MIDI Controls -->
+                    <div style="border-top: 1px inset #808080; padding-top: 10px; margin-top: 10px;">
+                        <p style="font-size: 11px; margin-top: 0; margin-bottom: 6px; font-weight: bold;">Manual Sound FX Generator:</p>
+                        <button class="win95-button" onclick="playMelody()" style="font-size: 10px; padding: 2px 6px;">Play Startup</button>
+                        <button class="win95-button" onclick="playBeep(880, 'sawtooth', 0.15)" style="font-size: 10px; padding: 2px 6px;">Sawtooth</button>
+                        <button class="win95-button" onclick="playBeep(440, 'triangle', 0.2)" style="font-size: 10px; padding: 2px 6px;">Triangle</button>
+                        <button class="win95-button" onclick="playBeep(659.25, 'square', 0.15)" style="font-size: 10px; padding: 2px 6px;">Square</button>
+                    </div>
+                    
+                    <!-- Web Server Event Log console -->
+                    <div class="console-log-box" id="dev-console">
+                        [00:00:00] Cyber-Server connected. WebGPU adapter initialized.
+                    </div>
+                </div>
+
+                <!-- Footer Copyright -->
+                <p style="text-align: center; font-size: 11px; color: #ccc;">
+                    COPYRIGHT &copy; 1996 CYBER-SURFING REGEX WIZARD CORP. ALL RIGHTS RESERVED.
+                </p>
+            </td>
+        </tr>
+    </table>
+
+    <script>
+        let audioCtx = null;
+        function getAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        let activeDialect = "JS";
+        let currentPattern = "";
+
+        let isPlayingMusic = false;
+        let activeTrack = null;
+        let musicGainNode = null;
+        let currentNoteIdx = 0;
+        let trackLoopTimeout = null;
+
+        const TRACK_DATA = {
+            doom: {
+                name: "Doom of Regex",
+                notes: [82.41, 82.41, 164.81, 82.41, 82.41, 146.83, 82.41, 82.41, 130.81, 82.41, 82.41, 116.54, 82.41, 82.41, 123.47, 130.81],
+                durations: [0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15, 0.15],
+                types: ['sawtooth', 'sawtooth', 'square', 'sawtooth', 'sawtooth', 'square', 'sawtooth', 'sawtooth', 'square', 'sawtooth', 'sawtooth', 'square', 'sawtooth', 'sawtooth', 'square', 'square']
+            },
+            tetris: {
+                name: "Tetris Lattice",
+                notes: [329.63, 246.94, 261.63, 293.66, 261.63, 246.94, 220.00, 220.00, 261.63, 329.63, 293.66, 261.63, 246.94, 261.63, 293.66, 329.63, 261.63, 220.00, 220.00],
+                durations: [0.3, 0.15, 0.15, 0.3, 0.15, 0.15, 0.3, 0.15, 0.15, 0.3, 0.15, 0.15, 0.3, 0.15, 0.3, 0.3, 0.3, 0.3, 0.6],
+                types: ['triangle', 'triangle', 'triangle', 'triangle', 'triangle', 'triangle', 'triangle', 'triangle', 'triangle', 'triangle', 'triangle', 'triangle', 'triangle', 'triangle', 'triangle', 'triangle', 'triangle', 'triangle', 'triangle']
+            },
+            battle: {
+                name: "Cyber Boss Battle",
+                notes: [220.00, 261.63, 329.63, 392.00, 369.99, 311.13, 329.63, 440.00, 392.00, 349.23, 329.63, 293.66, 261.63, 220.00, 207.65, 220.00],
+                durations: [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.4, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.4],
+                types: ['square', 'square', 'square', 'square', 'square', 'square', 'square', 'square', 'square', 'square', 'square', 'square', 'square', 'square', 'square', 'square']
+            }
+        };
+
+        function playMusicNote() {
+            if (!isPlayingMusic || !activeTrack) return;
+            const track = TRACK_DATA[activeTrack];
+            if (!track) return;
+
+            const freq = track.notes[currentNoteIdx];
+            const dur = track.durations[currentNoteIdx];
+            const type = track.types[currentNoteIdx];
+
+            try {
+                const ctx = getAudioContext();
+                
+                if (!musicGainNode) {
+                    musicGainNode = ctx.createGain();
+                    musicGainNode.connect(ctx.destination);
+                    const vol = parseFloat(document.getElementById("music-volume").value);
+                    musicGainNode.gain.setValueAtTime(vol, ctx.currentTime);
+                }
+
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+                
+                osc.connect(gain);
+                gain.connect(musicGainNode);
+                
+                osc.start();
+                osc.stop(ctx.currentTime + dur);
+            } catch (e) {
+                console.log("Play note failed:", e);
+            }
+
+            currentNoteIdx = (currentNoteIdx + 1) % track.notes.length;
+            trackLoopTimeout = setTimeout(playMusicNote, dur * 1000 + 40);
+        }
+
+        function selectTrack(trackKey) {
+            getAudioContext();
+            document.querySelectorAll(".sound-btn").forEach(btn => {
+                btn.style.background = "#c0c0c0";
+                btn.style.color = "#000";
+                btn.style.borderTop = "2px solid #ffffff";
+                btn.style.borderLeft = "2px solid #ffffff";
+                btn.style.borderRight = "2px solid #808080";
+                btn.style.borderBottom = "2px solid #808080";
+            });
+            
+            activeTrack = trackKey;
+            currentNoteIdx = 0;
+            
+            const activeBtn = document.getElementById("btn-track-" + trackKey);
+            if (activeBtn) {
+                activeBtn.style.background = "#000080";
+                activeBtn.style.color = "#fff";
+                activeBtn.style.borderTop = "2px solid #808080";
+                activeBtn.style.borderLeft = "2px solid #808080";
+                activeBtn.style.borderRight = "2px solid #ffffff";
+                activeBtn.style.borderBottom = "2px solid #ffffff";
+            }
+            
+            logConsole("Selected music track: " + TRACK_DATA[trackKey].name);
+            
+            if (isPlayingMusic) {
+                clearTimeout(trackLoopTimeout);
+                playMusicNote();
+            } else {
+                isPlayingMusic = true;
+                document.getElementById("music-play-btn").innerText = "PAUSE";
+                document.getElementById("music-status").innerText = "STATUS: PLAYING - " + TRACK_DATA[trackKey].name.toUpperCase();
+                clearTimeout(trackLoopTimeout);
+                playMusicNote();
+            }
+        }
+
+        function toggleMusic() {
+            getAudioContext();
+            if (!activeTrack) {
+                selectTrack('doom');
+                return;
+            }
+            
+            if (isPlayingMusic) {
+                isPlayingMusic = false;
+                clearTimeout(trackLoopTimeout);
+                document.getElementById("music-play-btn").innerText = "PLAY";
+                document.getElementById("music-status").innerText = "STATUS: PAUSED";
+                logConsole("Music paused.");
+            } else {
+                isPlayingMusic = true;
+                document.getElementById("music-play-btn").innerText = "PAUSE";
+                document.getElementById("music-status").innerText = "STATUS: PLAYING - " + TRACK_DATA[activeTrack].name.toUpperCase();
+                logConsole("Music resumed.");
+                playMusicNote();
+            }
+        }
+
+        function changeVolume() {
+            const vol = parseFloat(document.getElementById("music-volume").value);
+            if (musicGainNode && audioCtx) {
+                musicGainNode.gain.setValueAtTime(vol, audioCtx.currentTime);
+            }
+        }
+
+        // List of prompts to suggest as chips
+        const CHIP_PROMPTS = [
+            "email addresses",
+            "hexadecimal color codes",
+            "valid ipv4 addresses",
+            "website urls",
+            "phone numbers",
+            "yyyy-mm-dd date",
+            "numbers only",
+            "social security ssn",
+            "uuid format",
+            "html markup tags",
+            "match 'admin' then digits"
+        ];
+
+        // Guestbook defaults / load from localStorage
+        const defaultGuestbook = [
+            { name: "NetscapeSurfer99", msg: "Radical site! I matched my first email address here using /^netsurfer/i!", date: "1999-10-12 14:32" },
+            { name: "WebMasterFlash", msg: "/[a-zA-Z]+/ matches my heart! The E8 Gosset VU meters are totally trippy!", date: "1999-11-05 08:12" },
+            { name: "RegexGod99", msg: "Warning: this guestbook contains zero unescaped tags! /y2k/i.test(year) === false!", date: "1999-12-31 23:59" }
+        ];
+        let guestbook = [];
+        try {
+            const stored = localStorage.getItem("cyber_guestbook");
+            if (stored) {
+                guestbook = JSON.parse(stored);
+            } else {
+                guestbook = defaultGuestbook;
+            }
+        } catch(e) {
+            guestbook = defaultGuestbook;
+        }
+
+        // Render chips
+        function renderChips() {
+            const container = document.getElementById("chips-container");
+            container.innerHTML = "";
+            CHIP_PROMPTS.forEach(prompt => {
+                const chip = document.createElement("button");
+                chip.className = "prompt-chip";
+                chip.innerText = prompt;
+                chip.onclick = () => {
+                    document.getElementById("prompt-input").value = prompt.startsWith("match") || prompt.startsWith("starts") || prompt.startsWith("ends") ? prompt : "match " + prompt;
+                    playBeep(600, 'triangle', 0.08);
+                    runSynthesis();
+                };
+                container.appendChild(chip);
+            });
+        }
+
+        // Render Guestbook
+        function renderGuestbook() {
+            const container = document.getElementById("gb-entries");
+            container.innerHTML = "";
+            guestbook.forEach(entry => {
+                const div = document.createElement("div");
+                div.style.marginBottom = "8px";
+                div.innerHTML = `<strong>${escapeHtml(entry.name)}</strong> (${entry.date}): <span style="color:#000080;">${escapeHtml(entry.msg)}</span>`;
+                container.appendChild(div);
+            });
+        }
+
+        function signGuestbook() {
+            const nameInput = document.getElementById("gb-name");
+            const msgInput = document.getElementById("gb-msg");
+            const name = nameInput.value.trim() || "Anonymous Surfer";
+            const msg = msgInput.value.trim() || "Cool site!";
+            
+            const date = new Date().toISOString().replace('T', ' ').substring(0, 16);
+            guestbook.unshift({ name, msg, date });
+            nameInput.value = "";
+            msgInput.value = "";
+            
+            try {
+                localStorage.setItem("cyber_guestbook", JSON.stringify(guestbook));
+            } catch(e) {}
+            
+            playBeep(900, 'sine', 0.1);
+            setTimeout(() => playBeep(1100, 'sine', 0.1), 80);
+            
+            renderGuestbook();
+            logConsole("Guestbook signed by: " + name);
+        }
+
+        // Switch dialect
+        function switchDialect(dialect) {
+            activeDialect = dialect;
+            document.querySelectorAll(".win95-tab").forEach(tab => {
+                tab.classList.remove("active");
+            });
+            document.getElementById("tab-" + dialect).classList.add("active");
+            playBeep(700, 'sine', 0.05);
+            logConsole("Dialect switched to: " + dialect);
+            
+            // Run synthesis again for new dialect
+            runSynthesis();
+        }
+
+        // Play synth beep
+        function playBeep(freq, type, duration) {
+            try {
+                const ctx = getAudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = type || 'sine';
+                osc.frequency.setValueAtTime(freq, ctx.currentTime);
+                gain.gain.setValueAtTime(0.06, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + duration);
+            } catch (e) {
+                console.log("Audio failed:", e);
+            }
+        }
+
+        // Play retro startup melody
+        function playMelody() {
+            getAudioContext();
+            const notes = [261.63, 293.66, 329.63, 349.23, 392.00, 349.23, 392.00, 523.25];
+            const durations = [0.15, 0.15, 0.15, 0.15, 0.2, 0.15, 0.15, 0.4];
+            let timeOffset = 0;
+            
+            notes.forEach((note, index) => {
+                setTimeout(() => {
+                    playBeep(note, 'square', durations[index]);
+                }, timeOffset * 1000);
+                timeOffset += durations[index] + 0.05;
+            });
+        }
+
+        // Logger to developer console at bottom
+        function logConsole(msg) {
+            const dev = document.getElementById("dev-console");
+            const time = new Date().toLocaleTimeString();
+            dev.innerHTML += `\n[${time}] ${msg}`;
+            dev.scrollTop = dev.scrollHeight;
+        }
+
+        // Run highlight matching sandbox
+        function runHighlight() {
+            const text = document.getElementById("sandbox-input").value;
+            const outputDiv = document.getElementById("highlight-output");
+            if (!text) {
+                outputDiv.innerHTML = "Type or paste test strings above to see matches...";
+                return;
+            }
+
+            if (!currentPattern) {
+                outputDiv.innerHTML = escapeHtml(text);
+                return;
+            }
+
+            let patStr = currentPattern;
+            let flags = "gm";
+            
+            if (patStr.startsWith("/") && patStr.lastIndexOf("/") > 0) {
+                const lastSlash = patStr.lastIndexOf("/");
+                flags = patStr.substring(lastSlash + 1);
+                if (!flags.includes("g")) {
+                    flags += "g";
+                }
+                if (!flags.includes("m")) {
+                    flags += "m";
+                }
+                patStr = patStr.substring(1, lastSlash);
+            }
+
+            try {
+                let regex;
+                if (flags.includes("v")) {
+                    try {
+                        regex = new RegExp(patStr, flags);
+                    } catch(e) {
+                        regex = new RegExp(patStr, flags.replace("v", "u"));
+                    }
+                } else {
+                    regex = new RegExp(patStr, flags);
+                }
+
+                let matches = [];
+                let match;
+                
+                if (regex.global) {
+                    regex.lastIndex = 0;
+                    let prevLastIndex = -1;
+                    while ((match = regex.exec(text)) !== null) {
+                        if (regex.lastIndex === prevLastIndex) {
+                            regex.lastIndex++;
+                            continue;
+                        }
+                        prevLastIndex = regex.lastIndex;
+                        
+                        const start = match.index;
+                        const end = start + match[0].length;
+                        if (start < end) {
+                            matches.push({ start, end });
+                        }
+                    }
+                } else {
+                    match = regex.exec(text);
+                    if (match) {
+                        const start = match.index;
+                        const end = start + match[0].length;
+                        if (start < end) {
+                            matches.push({ start, end });
+                        }
+                    }
+                }
+
+                let resultHTML = "";
+                let currentIdx = 0;
+
+                matches.sort((a, b) => a.start - b.start);
+
+                for (const m of matches) {
+                    if (m.start < currentIdx) continue;
+                    resultHTML += escapeHtml(text.substring(currentIdx, m.start));
+                    resultHTML += `<span class="highlighted-match">${escapeHtml(text.substring(m.start, m.end))}</span>`;
+                    currentIdx = m.end;
+                }
+
+                resultHTML += escapeHtml(text.substring(currentIdx));
+                outputDiv.innerHTML = resultHTML;
+
+            } catch (err) {
+                outputDiv.innerHTML = `<span style="color:#ff0000; font-weight:bold;">[INVALID REGEX SYNTAX] ${err.message}</span>`;
+            }
+        }
+
+        // Live input compiler & check syntax
+        function updatePatternFromInput() {
+            const input = document.getElementById("regex-pattern-input");
+            const status = document.getElementById("regex-status");
+            const patVal = input.value.trim();
+            currentPattern = patVal;
+            
+            if (!patVal) {
+                status.innerText = "[EMPTY]";
+                status.style.color = "blue";
+                runHighlight();
+                return;
+            }
+            
+            let patStr = patVal;
+            let flags = "gm";
+            if (patStr.startsWith("/") && patStr.lastIndexOf("/") > 0) {
+                const lastSlash = patStr.lastIndexOf("/");
+                flags = patStr.substring(lastSlash + 1);
+                if (!flags.includes("g")) flags += "g";
+                if (!flags.includes("m")) flags += "m";
+                patStr = patStr.substring(1, lastSlash);
+            }
+            
+            try {
+                if (flags.includes("v")) {
+                    try {
+                        new RegExp(patStr, flags);
+                    } catch(e) {
+                        new RegExp(patStr, flags.replace("v", "u"));
+                    }
+                } else {
+                    new RegExp(patStr, flags);
+                }
+                status.innerText = "[VALID]";
+                status.style.color = "green";
+            } catch (err) {
+                status.innerText = "[INVALID]";
+                status.style.color = "red";
+            }
+            
+            runHighlight();
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        // Run synthesis query through server API
+        async function runSynthesis() {
+            const promptInput = document.getElementById("prompt-input");
+            const btn = document.getElementById("synthesize-btn");
+            const screen = document.getElementById("terminal-text");
+            
+            const prompt = promptInput.value.trim();
+            if (!prompt) return;
+
+            btn.disabled = true;
+            btn.innerText = "SYNTHESIZING...";
+            screen.innerHTML = "================================================\n" +
+                               "      COMMENCING E8 CYBER-PORTAL DISTILLATION   \n" +
+                               "================================================\n" +
+                               "CONNECTING TO GATEWAY MULTI-EXPERT MATRIX...\n" +
+                               "Tokenizing input prompt path tags...\n";
+
+            playBeep(440, 'square', 0.1);
+
+            try {
+                const response = await fetch("/api/generate", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ prompt: prompt, dialect: activeDialect })
+                });
+
+                const data = await response.json();
+
+                if (data.status === "success") {
+                    // Triumphant compile beep
+                    playBeep(880, 'sine', 0.1);
+                    setTimeout(() => playBeep(1320, 'sine', 0.15), 100);
+
+                    // Update pattern & sandbox
+                    currentPattern = data.pattern;
+                    document.getElementById("regex-pattern-input").value = data.pattern;
+                    document.getElementById("regex-status").innerText = "[VALID]";
+                    document.getElementById("regex-status").style.color = "green";
+                    document.getElementById("sandbox-input").value = data.sample;
+
+                    // Update E8 VU meters
+                    for (let i = 0; i < 8; i++) {
+                        const val = data.bars[i];
+                        document.getElementById(`bar-${i}`).style.width = val + "%";
+                        document.getElementById(`val-${i}`).innerText = val + "%";
+                    }
+
+                    // Display CRT output logs
+                    screen.innerHTML = 
+                        `*** E8 SUBSPACE ROUTING RESOLVED ***\n` +
+                        `ROUTED EXPERT: ${data.expert.toUpperCase()}\n` +
+                        `ROUTING LATENCY: ${data.routing_latency_ms}ms\n` +
+                        `VRAM SWAP COMPLETED: ${data.swap_latency_ms}ms\n` +
+                        `ACTIVE PATH BALLS TOUCHED: ${data.active_path_balls}\n` +
+                        `SYNTHESIS LATENCY: ${data.generation_latency_ms}ms\n\n` +
+                        `COMPILED REGEX PATTERN (${activeDialect}):\n` +
+                        `================================================\n` +
+                        `${data.pattern}\n` +
+                        `================================================\n` +
+                        `Description: ${data.description}`;
+
+                    // Update highlights
+                    runHighlight();
+                    logConsole(`Synthesized: "${prompt}" -> Expert: ${data.expert}`);
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (e) {
+                playBeep(220, 'sawtooth', 0.4);
+                screen.innerHTML = "[-] CATASTROPHIC ERROR: Connection to cyber-space server failed!\nDetails: " + e.message;
+                logConsole("Error during synthesis: " + e.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "SYNTHESIZE!";
+            }
+        }
+
+        // --- Retro Easter Eggs and Puzzles ---
+        
+        async function playDialUpSound() {
+            const ctx = getAudioContext();
+            if (!ctx) return;
+            logConsole("Initializing dial-up sequence (56k handshake)...");
+            
+            function playDualTone(f1, f2, duration, startTime) {
+                const osc1 = ctx.createOscillator();
+                const osc2 = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc1.frequency.value = f1;
+                osc2.frequency.value = f2;
+                osc1.type = 'sine';
+                osc2.type = 'sine';
+                
+                const vol = (parseFloat(document.getElementById("music-volume").value) || 0.25) * 0.25;
+                gain.gain.setValueAtTime(vol, startTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc1.start(startTime);
+                osc2.start(startTime);
+                osc1.stop(startTime + duration);
+                osc2.stop(startTime + duration);
+            }
+            
+            function playNoise(duration, startTime, type, freqSweepStart, freqSweepEnd) {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.type = type || 'sawtooth';
+                osc.frequency.setValueAtTime(freqSweepStart, startTime);
+                if (freqSweepEnd) {
+                    osc.frequency.exponentialRampToValueAtTime(freqSweepEnd, startTime + duration);
+                }
+                
+                const vol = (parseFloat(document.getElementById("music-volume").value) || 0.25) * 0.2;
+                gain.gain.setValueAtTime(vol, startTime);
+                gain.gain.linearRampToValueAtTime(0.001, startTime + duration);
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.start(startTime);
+                osc.stop(startTime + duration);
+            }
+            
+            let now = ctx.currentTime;
+            
+            // 1. Dial tone (350Hz + 440Hz)
+            playDualTone(350, 440, 0.6, now);
+            now += 0.7;
+            
+            // 2. DTMF Tones dialing (1, 4, 0, 8, 2, 0, 0, 0)
+            const dtmf = [
+                [697, 1209], // 1
+                [770, 1209], // 4
+                [941, 1336], // 0
+                [852, 1336], // 8
+                [697, 1336], // 2
+                [941, 1336], // 0
+                [941, 1336], // 0
+                [941, 1336]  // 0
+            ];
+            for (let i = 0; i < dtmf.length; i++) {
+                playDualTone(dtmf[i][0], dtmf[i][1], 0.08, now);
+                now += 0.12;
+            }
+            
+            now += 0.2;
+            
+            // 3. Ringing (440Hz + 480Hz)
+            playDualTone(440, 480, 0.8, now);
+            now += 1.0;
+            
+            // 4. Connection Handshake screeches
+            playNoise(0.4, now, 'sawtooth', 1200, 400);
+            now += 0.45;
+            
+            playNoise(0.5, now, 'triangle', 150, 100);
+            playNoise(0.5, now, 'square', 2400, 2200);
+            now += 0.55;
+            
+            playNoise(0.6, now, 'sawtooth', 800, 1800);
+            
+            setTimeout(() => {
+                logConsole("CONNECTED! Carrier detected at 57,600 bps.");
+            }, (now - ctx.currentTime) * 1000);
+        }
+
+        function toggleConstructionMode() {
+            document.body.classList.toggle("construction-mode");
+            const active = document.body.classList.contains("construction-mode");
+            logConsole("Construction Mode " + (active ? "ENABLED. Safety helmets required!" : "DISABLED."));
+            playBeep(active ? 400 : 600, 'square', 0.1);
+        }
+
+        function decryptE8() {
+            const input = document.getElementById("puzzle-input");
+            const status = document.getElementById("puzzle-status");
+            const val = input.value.trim();
+            
+            if (val === "2000" || val === "1996") {
+                status.innerText = "STATUS: DECRYPTED!";
+                status.style.color = "green";
+                logConsole("SUCCESS: E8 Gosset Lattice decrypted via key: " + val);
+                
+                // Trigger guestbook entry
+                const date = new Date().toISOString().replace('T', ' ').substring(0, 16);
+                guestbook.unshift({
+                    name: "🔓 Cyber-Netrunner",
+                    msg: `Gosset Lattice decrypted with key ${val}! Y2K bypass successful. HACK THE PLANET!`,
+                    date: date
+                });
+                renderGuestbook();
+                try {
+                    localStorage.setItem("cyber_guestbook", JSON.stringify(guestbook));
+                } catch(e) {}
+                
+                // Play custom success melody
+                playSuccessMelody();
+                
+                // Full-page rainbow flash animation
+                document.body.classList.add("rainbow-flash");
+                
+                // Make it last for about 2 seconds
+                setTimeout(() => {
+                    document.body.classList.remove("rainbow-flash");
+                    logConsole("Lattice stabilized.");
+                }, 2000);
+            } else {
+                status.innerText = "STATUS: INVALID CODE";
+                status.style.color = "red";
+                logConsole("DECRYPTION ERROR: Hash mismatch for key: " + val);
+                playBeep(150, 'sawtooth', 0.3);
+            }
+        }
+        
+        function playSuccessMelody() {
+            const ctx = getAudioContext();
+            if (!ctx) return;
+            const melody = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+            const durations = [0.15, 0.15, 0.15, 0.3];
+            let offset = 0;
+            
+            melody.forEach((freq, idx) => {
+                setTimeout(() => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    
+                    const vol = (parseFloat(document.getElementById("music-volume").value) || 0.25) * 0.3;
+                    gain.gain.setValueAtTime(vol, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durations[idx]);
+                    
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + durations[idx]);
+                }, offset * 1000);
+                offset += durations[idx] + 0.05;
+            });
+        }
+
+        // Init
+        window.onload = () => {
+            renderChips();
+            renderGuestbook();
+            runSynthesis();
+            
+            // Visitor counter increment visual tick
+            setInterval(() => {
+                const c = document.getElementById("visitor-counter");
+                let val = parseInt(c.innerText) + Math.floor(Math.random() * 3);
+                c.innerText = val.toString().padStart(8, '0');
+            }, 7000);
+        };
+    </script>
+</body>
+</html>

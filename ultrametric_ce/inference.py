@@ -48,7 +48,22 @@ def load_model_and_tree(
     alpha = float(meta.get("alpha", 0.5))
     am = {int(a): int(t) for a, t in meta["address_map"].items()}
     tree = FiniteTree(p, depth, address_map=am)
-    model = UCEModel(tree, dim=dim, num_diff_layers=ndl, alpha=alpha, weight_manager=weight_manager)
+
+    # Dynamically check if checkpoint contains wormhole_gate parameters
+    try:
+        weights_data = mx.load(str(ckpt_p))
+        has_gate = any("diffusion.floquet" in k or "learned_gate" in k for k in weights_data.keys())
+    except Exception:
+        has_gate = False
+
+    model = UCEModel(
+        tree,
+        dim=dim,
+        num_diff_layers=ndl,
+        alpha=alpha,
+        weight_manager=weight_manager,
+        wormhole_gate=has_gate
+    )
     model.load_weights(str(ckpt_p))
     return tree, model
 

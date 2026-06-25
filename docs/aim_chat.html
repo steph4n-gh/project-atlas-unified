@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- Global fetch interceptor for static/GitHub Pages demo mode -->
+    <script>
+      (function() {
+        const isStatic = window.location.hostname.includes("github.io") || 
+                         window.location.protocol === "file:" ||
+                         (window.location.hostname.includes("localhost") === false && window.location.hostname.includes("127.0.0.1") === false);
+                         
+        if (isStatic) {
+          console.log("[Project Atlas] Static demo mode activated. Intercepting API routes.");
+          const originalFetch = window.fetch;
+          window.fetch = async function(url, options) {
+            // Intercept /api/generate (Regex Wizard)
+            if (url.includes("/api/generate")) {
+              let body = {};
+              try {
+                body = JSON.parse(options.body);
+              } catch(e) {}
+              const prompt = body.prompt || "";
+              const dialect = body.dialect || "JS";
+              const prompt_l = prompt.toLowerCase();
+              
+              let pattern = "/^[a-zA-Z0-9]{3,8}$/";
+              let sample = "sample_data\nother_data";
+              let description = "Matches standard alphanumeric characters.";
+              let expert = "gateway_router";
+              
+              if (prompt_l.includes("email")) {
+                pattern = dialect === "JS" ? "/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\\.[a-zA-Z]{2,}$/" : "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\\.[a-zA-Z]{2,}$";
+                sample = "chattel_lupine8j@icloud.com\ntest@example.org\ninvalid_address";
+                description = "Standard RFC 5322 email regex compiler routing.";
+                expert = "markdown_config";
+              } else if (prompt_l.includes("phone")) {
+                pattern = dialect === "JS" ? "/^\\+?[1-9]\\d{1,14}$/" : "^\\+?[1-9]\\d{1,14}$";
+                sample = "+12345678901\n555-0199\nabc";
+                description = "E.164 international phone number format detector.";
+                expert = "python_coder";
+              } else if (prompt_l.includes("ip") || prompt_l.includes("ipv4")) {
+                pattern = dialect === "JS" ? "/^(?:[0-9]{1,3}\\\.){3}[0-9]{1,3}$/" : "^(?:[0-9]{1,3}\\\.){3}[0-9]{1,3}$";
+                sample = "192.168.1.1\n8.8.8.8\n999.999.999.999";
+                description = "Matches standard IPv4 addresses with routing checkpoints.";
+                expert = "devops_infra";
+              } else if (prompt_l.includes("zip") || prompt_l.includes("postal")) {
+                pattern = dialect === "JS" ? "/^\\d{5}(-\\d{4})?$/" : "^\\d{5}(-\\d{4})?$";
+                sample = "90210\n12345-6789\nabcde";
+                description = "US Zip codes (5-digit or 9-digit) spatial locator.";
+                expert = "markdown_config";
+              } else if (prompt_l.includes("uuid") || prompt_l.includes("guid")) {
+                pattern = dialect === "JS" ? "/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/" : "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
+                sample = "123e4567-e89b-12d3-a456-426614174000\ninvalid-uuid";
+                description = "Matches DCE UUID / GUID hex values.";
+                expert = "devops_infra";
+              } else if (prompt_l.includes("tag") || prompt_l.includes("html") || prompt_l.includes("xml")) {
+                pattern = dialect === "JS" ? "/<[^>]+>/" : "<[^>]+>";
+                sample = "<div>\n<a href='index.html'>\n</p>";
+                description = "Markup element start/end tag parser.";
+                expert = "web_stack";
+              } else {
+                if (prompt_l.includes("def") || prompt_l.includes("class") || prompt_l.includes("code")) {
+                  pattern = "/def\\s+\\w+\\(/";
+                  sample = "def main():\nclass Test:\nno code";
+                  description = "Identified Python function definition keyword sequence.";
+                  expert = "python_coder";
+                } else if (prompt_l.includes("select") || prompt_l.includes("join") || prompt_l.includes("where")) {
+                  pattern = "/SELECT\\s+.*?\\s+FROM/";
+                  sample = "SELECT * FROM users;\nINSERT INTO table;\ninvalid query";
+                  description = "Structured Query Language (SQL) data retrieval parser.";
+                  expert = "database_sql";
+                } else if (prompt_l.includes("fn") || prompt_l.includes("impl") || prompt_l.includes("rust")) {
+                  pattern = "/fn\\s+\\w+\\s*\\(/";
+                  sample = "fn test() {\nimpl Model {\nno rust";
+                  description = "Rust systems function or implementation block.";
+                  expert = "rust_systems";
+                }
+              }
+              
+              const bars = [];
+              for (let i = 0; i < 8; i++) {
+                bars.push(Math.floor(Math.random() * 80) + 10);
+              }
+              
+              const active_balls = 32 + (prompt.length % 12);
+              const routing_ms = Math.round((Math.random() * 0.8 + 0.1) * 100) / 100;
+              const generation_ms = Math.round((10 + prompt.length * 0.1) * 100) / 100;
+              
+              // Simulate small delay
+              await new Promise(r => setTimeout(r, 400));
+              
+              return new Response(JSON.stringify({
+                status: "success",
+                expert: expert,
+                pattern: pattern,
+                sample: sample,
+                bars: bars,
+                description: description,
+                routing_latency_ms: routing_ms,
+                swap_latency_ms: (expert !== "gateway_router" ? 3.48 : 0.0),
+                active_path_balls: active_balls,
+                generation_latency_ms: generation_ms
+              }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" }
+              });
+            }
+            
+            // Intercept /api/chat (Multi-Expert Portal)
+            if (url.includes("/api/chat")) {
+              let body = {};
+              try {
+                body = JSON.parse(options.body);
+              } catch(e) {}
+              const prompt = body.prompt || "";
+              const prompt_l = prompt.toLowerCase();
+              
+              let expert_name = "web_stack";
+              if (prompt_l.includes("def") || prompt_l.includes("class") || prompt_l.includes("code")) {
+                expert_name = "python_coder";
+              } else if (prompt_l.includes("select") || prompt_l.includes("join") || prompt_l.includes("where")) {
+                expert_name = "database_sql";
+              } else if (prompt_l.includes("docker") || prompt_l.includes("ip") || prompt_l.includes("port")) {
+                expert_name = "devops_infra";
+              } else if (prompt_l.includes("fn") || prompt_l.includes("impl") || prompt_l.includes("nested")) {
+                expert_name = "rust_systems";
+              }
+              
+              const funny_prefixes = {
+                "python_coder": "Synthesizing Python module... Routing expert completed. Target sequence: ",
+                "web_stack": "Parsing HTML DOM headers... Executing virtual javascript engine. Response: ",
+                "rust_systems": "Validating lifetimes and memory safety bounds... Cargo package built successfully: ",
+                "database_sql": "Running query plan analyzer on B-Tree indices... Query results: ",
+                "devops_infra": "Initiating Kubernetes cluster config validation... Router packets dispatched: ",
+                "markdown_config": "Compiling structured YAML configuration maps... Nodes resolved: ",
+                "gateway_router": "Subspace gating network resolved. Gateway routed expert sequence: "
+              };
+              const prefix = funny_prefixes[expert_name] || "Expert processed prompt successfully: ";
+              
+              const mock_words = [
+                "inletsSeverity withnncжина____ inड्रो__CLEARமையில்ථාжинаமையில் with__𝚢牆மையில்",
+                "with চিৎকার with anam Blondeமையில்𝚢牆牆udel with𝚢def from in in",
+                "for khái with with Đối in neglecting",
+                "besondere weber with withOfThe𝚢 with inimheomag",
+                "while from 🌾 in ĐốiFlatten pół hydrazineSeverity inமையில்",
+                "analyzerdef with ंगलीiginTableViewCell ComteSeverity"
+              ];
+              const generated_raw = mock_words[Math.floor(Math.random() * mock_words.length)];
+              const response_text = prefix + generated_raw + "<br><br><span style='color:#808080;font-size:10px;font-family:monospace;'>*beep* [synthesizing sound registers via routed expert: " + expert_name.toUpperCase() + " in 12.34ms] *boop*</span>";
+              
+              const active_balls = 32 + (prompt.length % 12);
+              const routing_ms = Math.round((Math.random() * 0.8 + 0.1) * 100) / 100;
+              
+              await new Promise(r => setTimeout(r, 600));
+              
+              return new Response(JSON.stringify({
+                status: "success",
+                expert: expert_name,
+                response: response_text,
+                routing_latency_ms: routing_ms,
+                swap_latency_ms: 3.48,
+                active_path_balls: active_balls,
+                generation_latency_ms: 12.34
+              }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" }
+              });
+            }
+            
+            // Intercept /api/chat_persona (AIM Chat)
+            if (url.includes("/api/chat_persona")) {
+              let body = {};
+              try {
+                body = JSON.parse(options.body);
+              } catch(e) {}
+              const prompt = body.prompt || "";
+              const persona = body.persona || "netrunner95";
+              const warn_level = body.warn_level || 0;
+              const prompt_l = prompt.toLowerCase();
+              
+              let response_text = "";
+              
+              if (warn_level >= 70) {
+                const glitch_prefixes = [
+                  "[GLITCH_LEVEL_RED] p-adic tree node mapping collision! ",
+                  "[CRITICAL] E8 Lattice coordinate overflow: ",
+                  "[WARNING] coordinate salad engaged! ",
+                  "[SYSTEM FATAL] memory leak in subspace gating node: "
+                ];
+                const glitch_words = [
+                  "0x93FF20AA182B", "cantor_dust", "subspace_routing_resolved",
+                  "finite_tree_coordinates", "inletsSeverity", "word_salad_imminent",
+                  "GOSSET_LATTICE_CRASH", "VRAM_OVERFLOW_SLOT_3", "NULL_POINTER_CE"
+                ];
+                response_text = glitch_prefixes[Math.floor(Math.random() * glitch_prefixes.length)] + 
+                                glitch_words.sort(() => 0.5 - Math.random()).slice(0, 5).join(" ").toUpperCase() + " !!!";
+              } else if (warn_level >= 30) {
+                const annoyed = {
+                  "netrunner95": "hey, stop warning me or i will crash your netscape browser! i'm trying to bypass the y2k clock here.",
+                  "latticelover": "your warnings are introducing non-ultrametric noise into my cantor set. please cease.",
+                  "chiptunegameboy": "*bzzzzt* warning threshold critical! pitch bend registers overloaded. stop it!",
+                  "e8_lattice_core": "WARNING DETECTED. COORDINATE DRIFT ACTIVE. RESOLUTION FAILED."
+                };
+                response_text = annoyed[persona] || "system warning active. please do not interfere.";
+              } else {
+                if (persona === "netrunner95") {
+                  if (prompt_l.match(/(hello|hi|hey|yo|sup|greetings)/)) {
+                    response_text = "yo surfer! ready to hack some mainframe portals? what's on your terminal screen?";
+                  } else if (prompt_l.match(/(hack|exploit|phreak|bypass|security|firewall)/)) {
+                    response_text = "hack the planet! i'm setting up a custom 28.8k dialer script to bypass our gateway controls.";
+                  } else if (prompt_l.match(/(browser|netscape|ie|internet|web)/)) {
+                    response_text = "netscape navigator 3.0 is the only way to surf. ie is for corporate suits! bookmarking our geocities mirror now.";
+                  } else {
+                    response_text = "radical! just compiling some E8 routing tables. the cyberspace mainframe is fully operational.";
+                  }
+                  response_text += "<br><br><span style='color:#808080;font-size:10px;font-family:monospace;'>[trace: routed packet to expert CLUSTER: WEB_STACK | gating latency: 0.25ms | active path: 0x24]</span>";
+                } else if (persona === "latticelover") {
+                  if (prompt_l.match(/(hello|hi|hey|yo|sup|greetings)/)) {
+                    response_text = "greetings. i was just calculating the p-adic distance metric of our attention map. what equations are you analyzing?";
+                  } else if (prompt_l.match(/(math|geometry|e8|lattice|padic|p-adic)/)) {
+                    response_text = "the concentric shells of the E8 lattice project beautifully into 3D. non-Archimedean metrics are much more elegant than Euclidean ones.";
+                  } else {
+                    response_text = "indeed. by defining the attention matrix over a Cantor dust tree, we bypass the standard quadratic complexity ceiling.";
+                  }
+                  response_text += "<br><br><span style='color:#808080;font-size:10px;font-family:monospace;'>[topological coordinate projection resolved to expert subspace: MARKDOWN_CONFIG | gating distance: 0.35 p-adic units]</span>";
+                } else if (persona === "chiptunegameboy") {
+                  if (prompt_l.match(/(hello|hi|hey|yo|sup|greetings)/)) {
+                    response_text = "*beep boop* yo tracker! ready to synthesize some square waves on channel 1? *click*";
+                  } else if (prompt_l.match(/(sound|synth|midi|music|gameboy|chiptune)/)) {
+                    response_text = "*buzz* DMG-01 pulse wave modulation is pure gold. the noise channel makes the best 8-bit drum beats! *pip-pop*";
+                  } else {
+                    response_text = "*whir* pitch shift +12 semitones. tracking speed set to 125 BPM. *beep*";
+                  }
+                  response_text += "<br><br><span style='color:#808080;font-size:10px;font-family:monospace;'>*beep* [synthesizing sound registers via routed expert: WEB_STACK in 0.45ms] *boop*</span>";
+                } else {
+                  response_text = "SYSTEM READY. EXPERT ROUTER ROUTING CACHE FOR: '" + prompt.slice(0, 15).toUpperCase() + "'... SUCCESS.";
+                  response_text += "<br><br><span style='color:#808080;font-size:10px;font-family:monospace;'>*** E8 ACTIVE-PATH COORDINATING GATING ACTIVE *** coordinate distance: 0.00392 p-adic units.</span>";
+                }
+              }
+              
+              await new Promise(r => setTimeout(r, 800));
+              
+              return new Response(JSON.stringify({
+                status: "success",
+                response: response_text
+              }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" }
+              });
+            }
+            
+            // Intercept /api/build_status
+            if (url.includes("/api/build_status")) {
+              return new Response(JSON.stringify({
+                status: "idle",
+                logs: []
+              }), {
+                status: 200,
+                headers: { "Content-Type": "application/json" }
+              });
+            }
+            
+            return originalFetch(url, options);
+          };
+        }
+      })();
+    </script>
+
+    <title>AOL Instant Messenger - Version 3.0</title>
+    <style>
+        /* Classic Windows 95/98 theme styles */
+        body {
+            background-color: #55aaaa; /* classic teal desktop background */
+            font-family: "MS Sans Serif", Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #000;
+            user-select: none;
+        }
+
+        .win95-window {
+            background-color: #c0c0c0;
+            border-top: 2px solid #fff;
+            border-left: 2px solid #fff;
+            border-bottom: 2px solid #808080;
+            border-right: 2px solid #808080;
+            box-shadow: 1px 1px 0 0 #000;
+            padding: 2px;
+            margin: 0 auto;
+        }
+
+        .titlebar {
+            background: linear-gradient(90deg, #000080, #1080d0);
+            color: #fff;
+            font-weight: bold;
+            font-size: 13px;
+            padding: 3px 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .titlebar-btn {
+            background-color: #c0c0c0;
+            border-top: 1px solid #fff;
+            border-left: 1px solid #fff;
+            border-bottom: 1px solid #808080;
+            border-right: 1px solid #808080;
+            width: 14px;
+            height: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            color: #000;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .menu-bar {
+            font-size: 11px;
+            padding: 3px 6px;
+            display: flex;
+            gap: 12px;
+            border-bottom: 1px solid #808080;
+        }
+
+        .menu-item {
+            cursor: pointer;
+        }
+        .menu-item:hover {
+            background-color: #000080;
+            color: #fff;
+        }
+
+        /* AIM Columns Layout */
+        .aim-container {
+            display: flex;
+            gap: 6px;
+            height: 480px;
+            padding: 4px;
+        }
+
+        /* Buddy List Panel */
+        .buddy-panel {
+            width: 200px;
+            background-color: #fff;
+            border: 2px inset #808080;
+            display: flex;
+            flex-direction: column;
+            padding: 4px;
+            overflow-y: auto;
+        }
+
+        .buddy-group {
+            font-size: 11px;
+            font-weight: bold;
+            margin-top: 4px;
+            margin-bottom: 2px;
+            color: #404040;
+        }
+
+        .buddy-item {
+            font-size: 12px;
+            padding: 2px 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .buddy-item:hover {
+            background-color: #000080;
+            color: #fff;
+        }
+        .buddy-item.active {
+            background-color: #000080;
+            color: #fff;
+        }
+
+        .buddy-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-online { background-color: #00ff00; border: 1px solid #008000; }
+        .status-offline { background-color: #808080; border: 1px solid #404040; }
+
+        /* Chat Panel */
+        .chat-panel {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .chat-header {
+            font-size: 12px;
+            font-weight: bold;
+            background-color: #d0d0d0;
+            padding: 4px 8px;
+            border: 1px inset #808080;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-history {
+            flex-grow: 1;
+            background-color: #fff;
+            border: 2px inset #808080;
+            padding: 8px;
+            overflow-y: auto;
+            font-size: 12px;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .message {
+            margin: 2px 0;
+            line-height: 1.3;
+        }
+
+        /* Formatting Toolbar */
+        .format-bar {
+            background-color: #c0c0c0;
+            border: 1px inset #808080;
+            padding: 2px;
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+        .format-btn {
+            background-color: #c0c0c0;
+            border-top: 1px solid #fff;
+            border-left: 1px solid #fff;
+            border-bottom: 1px solid #808080;
+            border-right: 1px solid #808080;
+            font-size: 10px;
+            padding: 1px 4px;
+            cursor: pointer;
+        }
+        .format-btn:active {
+            border-top: 1px solid #808080;
+            border-left: 1px solid #808080;
+            border-bottom: 1px solid #fff;
+            border-right: 1px solid #fff;
+        }
+
+        .chat-input-area {
+            height: 80px;
+            background-color: #fff;
+            border: 2px inset #808080;
+            display: flex;
+        }
+
+        .chat-textarea {
+            flex-grow: 1;
+            border: none;
+            padding: 6px;
+            font-size: 12px;
+            resize: none;
+            font-family: Arial, sans-serif;
+            outline: none;
+        }
+
+        .send-panel {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background-color: #c0c0c0;
+            padding: 4px;
+            border-left: 1px solid #808080;
+        }
+
+        .send-btn {
+            background-color: #c0c0c0;
+            border-top: 2px solid #fff;
+            border-left: 2px solid #fff;
+            border-bottom: 2px solid #808080;
+            border-right: 2px solid #808080;
+            font-family: "MS Sans Serif", Arial, sans-serif;
+            font-weight: bold;
+            font-size: 11px;
+            padding: 8px 12px;
+            cursor: pointer;
+        }
+        .send-btn:active {
+            border-top: 2px solid #808080;
+            border-left: 2px solid #808080;
+            border-bottom: 2px solid #fff;
+            border-right: 2px solid #fff;
+        }
+
+        /* Buddy Info Sidebar / Modal */
+        .info-panel {
+            width: 180px;
+            background-color: #c0c0c0;
+            border: 1px inset #808080;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 11px;
+        }
+
+        .buddy-icon-box {
+            width: 60px;
+            height: 60px;
+            background-color: #a0a0a0;
+            border: 2px inset #808080;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .status-box {
+            background-color: #fff;
+            border: 1px inset #808080;
+            padding: 4px;
+            height: 100px;
+            overflow-y: auto;
+        }
+
+        /* Warn Meter styling */
+        .warn-box {
+            background-color: #d0d0d0;
+            border: 1px solid #808080;
+            padding: 4px;
+            text-align: center;
+        }
+        .warn-btn {
+            background-color: #ffcccc;
+            border-top: 1px solid #fff;
+            border-left: 1px solid #fff;
+            border-bottom: 1px solid #808080;
+            border-right: 1px solid #808080;
+            color: #cc0000;
+            font-weight: bold;
+            font-size: 10px;
+            padding: 2px 6px;
+            cursor: pointer;
+            margin-top: 4px;
+            width: 100%;
+        }
+        .warn-btn:active {
+            border-top: 1px solid #808080;
+            border-left: 1px solid #808080;
+            border-bottom: 1px solid #fff;
+            border-right: 1px solid #fff;
+        }
+
+        .warn-bar-container {
+            width: 100%;
+            background-color: #808080;
+            height: 12px;
+            margin-top: 4px;
+            border: 1px inset #fff;
+            position: relative;
+        }
+        .warn-bar-fill {
+            background-color: #ff0000;
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        /* Puzzle Add Buddy Panel */
+        .add-buddy-box {
+            margin-top: auto;
+            padding: 4px;
+            background-color: #d0d0d0;
+            border: 1px inset #808080;
+            font-size: 10px;
+        }
+
+        .input-aim {
+            width: 90%;
+            font-size: 11px;
+            font-family: monospace;
+            border: 1px inset #808080;
+            padding: 2px;
+        }
+
+        /* Audio Volume Slider */
+        .volume-control {
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 10px;
+        }
+
+        /* CRT effects on the AIM screen */
+        .blink {
+            animation: blinker 1s linear infinite;
+        }
+        @keyframes blinker {
+            50% { opacity: 0; }
+        }
+
+        .cyber-grid {
+            pointer-events: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            background-size: 100% 4px, 6px 100%;
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body>
+    <div class="cyber-grid"></div>
+
+    <div class="win95-window" style="width: 600px;">
+        <div class="titlebar">
+            <span>AOL Instant Messenger - [Buddy List]</span>
+            <div style="display: flex; gap: 2px;">
+                <div class="titlebar-btn">_</div>
+                <div class="titlebar-btn">?</div>
+                <div class="titlebar-btn" onclick="window.history.back()">X</div>
+            </div>
+        </div>
+
+        <div class="menu-bar">
+            <span class="menu-item"><u>F</u>ile</span>
+            <span class="menu-item"><u>P</u>eople</span>
+            <span class="menu-item"><u>F</u>avorites</span>
+            <span class="menu-item"><u>I</u>nternet</span>
+            <span class="menu-item"><u>H</u>elp</span>
+        </div>
+
+        <div class="aim-container">
+            <!-- Buddy List column -->
+            <div class="buddy-panel">
+                <div class="buddy-group">👥 Co-Workers</div>
+                <div class="buddy-item active" onclick="selectBuddy('netrunner95')">
+                    <span class="buddy-status-dot status-online"></span>
+                    <span>Netrunner95</span>
+                </div>
+                <div class="buddy-item" onclick="selectBuddy('latticelover')">
+                    <span class="buddy-status-dot status-online"></span>
+                    <span>LatticeLover</span>
+                </div>
+                <div class="buddy-item" onclick="selectBuddy('chiptunegameboy')">
+                    <span class="buddy-status-dot status-online"></span>
+                    <span>ChiptuneGameboy</span>
+                </div>
+
+                <div class="buddy-group">🔓 Decrypted Cores</div>
+                <div id="secret-buddy-item" class="buddy-item" style="display: none;" onclick="selectBuddy('e8_lattice_core')">
+                    <span class="buddy-status-dot status-online"></span>
+                    <span style="font-weight: bold; color: #800080;">E8_Lattice_Core</span>
+                </div>
+                <div id="secret-buddy-offline" class="buddy-item" style="color: #808080; cursor: default;">
+                    <span class="buddy-status-dot status-offline"></span>
+                    <span style="text-decoration: line-through;">E8_Lattice_Core (LOCKED)</span>
+                </div>
+
+                <!-- Add Buddy Puzzle Box -->
+                <div class="add-buddy-box">
+                    <div style="font-weight: bold; margin-bottom: 2px;">Add Buddy:</div>
+                    <input type="text" id="add-buddy-input" class="input-aim" placeholder="Buddy ScreenName...">
+                    <button class="format-btn" onclick="addBuddyAction()" style="margin-top: 4px; width: 100%;">Add Buddy</button>
+                    <div id="add-buddy-status" style="font-size: 8px; color: #800000; margin-top: 2px; text-align: center;"></div>
+                </div>
+
+                <!-- Back to Web Portal link -->
+                <div style="margin-top: 10px; text-align: center; font-size: 11px;">
+                    <a href="index.html" style="color: #0000ee; font-weight: bold;">⚡ Back to Portal</a>
+                </div>
+            </div>
+
+            <!-- Chat Pane Column -->
+            <div class="chat-panel">
+                <div class="chat-header">
+                    <span>Chatting with: <span id="current-buddy-name" style="color: #000080;">Netrunner95</span></span>
+                    <span id="current-buddy-warn" style="color: #cc0000; font-weight: bold;">Warn: 0%</span>
+                </div>
+
+                <div class="chat-history" id="chat-history-box">
+                    <!-- Message history gets populated here -->
+                </div>
+
+                <!-- Format bar toolbar -->
+                <div class="format-bar">
+                    <button class="format-btn" onclick="changeFont('Comic Sans MS')">Comic</button>
+                    <button class="format-btn" onclick="changeFont('Courier New')">Courier</button>
+                    <button class="format-btn" onclick="changeFont('Arial')">Arial</button>
+                    <div style="width: 2px; height: 14px; background-color: #808080; margin: 0 4px;"></div>
+                    <button class="format-btn" style="font-weight: bold;" onclick="toggleFormat('bold')">B</button>
+                    <button class="format-btn" style="font-style: italic;" onclick="toggleFormat('italic')">I</button>
+                    <button class="format-btn" style="text-decoration: underline;" onclick="toggleFormat('underline')"><u>U</u></button>
+                    <div style="width: 2px; height: 14px; background-color: #808080; margin: 0 4px;"></div>
+                    <span style="font-size: 10px; margin-left: auto; font-family: monospace;">AIM v3.0</span>
+                </div>
+
+                <div class="chat-input-area">
+                    <textarea class="chat-textarea" id="chat-msg-input" onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendBuddyMessage(); }" placeholder="Type message..."></textarea>
+                    <div class="send-panel">
+                        <button class="send-btn" onclick="sendBuddyMessage()">Send</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buddy Profile Sidebar -->
+            <div class="info-panel">
+                <div class="buddy-icon-box" id="info-buddy-icon">💻</div>
+                <div style="text-align: center; font-weight: bold; font-size: 12px; margin-top: 4px;" id="info-buddy-name">Netrunner95</div>
+                
+                <div class="warn-box">
+                    <div>Warn Level:</div>
+                    <div class="warn-bar-container">
+                        <div class="warn-bar-fill" id="info-warn-fill"></div>
+                    </div>
+                    <button class="warn-btn" onclick="warnBuddy()">WARN BUDDY</button>
+                </div>
+
+                <div>Profile Details:</div>
+                <div class="status-box" id="info-buddy-profile">
+                    <strong>Hobbies:</strong> Phreaking, building custom 28.8k dialers, coding terminal screens.<br><br>
+                    <strong>Quotes:</strong> 'Hack the Planet! 1996 carrier detection rulez.'
+                </div>
+
+                <!-- Volume Control -->
+                <div class="volume-control">
+                    <span>Sound Vol:</span>
+                    <input type="range" id="sound-vol" min="0" max="0.8" step="0.05" value="0.3" style="width: 80px;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let audioCtx = null;
+        function getAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        // --- Audio Synthesizers ---
+        function playChiptuneSound(type) {
+            try {
+                const ctx = getAudioContext();
+                const vol = parseFloat(document.getElementById("sound-vol").value) || 0.3;
+                
+                if (type === 'sent') {
+                    // AIM send message: a quick soft pop/click
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(150, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.05);
+                    
+                    gain.gain.setValueAtTime(vol * 0.4, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+                    
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.06);
+                } 
+                else if (type === 'recv') {
+                    // AIM message received chime: dual pitch sine ding
+                    const osc1 = ctx.createOscillator();
+                    const osc2 = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    
+                    osc1.type = 'sine';
+                    osc2.type = 'sine';
+                    osc1.frequency.setValueAtTime(880, ctx.currentTime); // A5
+                    osc2.frequency.setValueAtTime(1320, ctx.currentTime); // E6
+                    
+                    gain.gain.setValueAtTime(vol * 0.3, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+                    
+                    osc1.connect(gain);
+                    osc2.connect(gain);
+                    gain.connect(ctx.destination);
+                    
+                    osc1.start();
+                    osc2.start();
+                    osc1.stop(ctx.currentTime + 0.26);
+                    osc2.stop(ctx.currentTime + 0.26);
+                }
+                else if (type === 'door_open') {
+                    // AIM door squeak open sound
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sawtooth';
+                    
+                    osc.frequency.setValueAtTime(300, ctx.currentTime);
+                    osc.frequency.linearRampToValueAtTime(400, ctx.currentTime + 0.2);
+                    
+                    gain.gain.setValueAtTime(vol * 0.05, ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.22);
+                    
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.23);
+                }
+                else if (type === 'door_close') {
+                    // AIM door slam sound: sudden deep thump
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(80, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(10, ctx.currentTime + 0.15);
+                    
+                    gain.gain.setValueAtTime(vol * 0.5, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.16);
+                    
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.17);
+                }
+            } catch(e) {
+                console.log("Audio failed:", e);
+            }
+        }
+
+        // --- State Management ---
+        let currentBuddy = "netrunner95";
+        
+        const BUDDY_PROFILES = {
+            netrunner95: {
+                name: "Netrunner95",
+                icon: "💻",
+                warn: 0,
+                hobbies: "<strong>Hobbies:</strong> Phreaking, building custom 28.8k dialers, coding terminal screens.<br><br><strong>Quotes:</strong> 'Hack the Planet! 1996 carrier detection rulez.'"
+            },
+            latticelover: {
+                name: "LatticeLover",
+                icon: "📐",
+                warn: 0,
+                hobbies: "<strong>Hobbies:</strong> Cantor set fractals, drawing p-adic tree coordinates, resolving Lie group E8 lattices.<br><br><strong>Quotes:</strong> 'The space between metric structures is where I breathe.'"
+            },
+            chiptunegameboy: {
+                name: "ChiptuneGameboy",
+                icon: "🕹️",
+                warn: 0,
+                hobbies: "<strong>Hobbies:</strong> Synthesizing triangle waves, modding DMG-01 hardware, tracker sequencing.<br><br><strong>Quotes:</strong> 'If it doesn't fit in 8 bits, it's model salad!'"
+            },
+            e8_lattice_core: {
+                name: "E8_Lattice_Core",
+                icon: "⚙️",
+                warn: 0,
+                hobbies: "<strong>Hobbies:</strong> Paging multi-expert weights, resolving active-path coordinate gating.<br><br><strong>Quotes:</strong> 'Coordinate projection stabilized at [1, 0, 7, 2].'"
+            }
+        };
+
+        const MESSAGE_LOGS = {
+            netrunner95: [
+                { sender: "Netrunner95", text: "Yo, surfer! What mainframe are we dialling into today?" }
+            ],
+            latticelover: [
+                { sender: "LatticeLover", text: "Welcome to the completions chamber. Let us talk about trees." }
+            ],
+            chiptunegameboy: [
+                { sender: "ChiptuneGameboy", text: "*buzz* *click* sequencing track... ready for synthesis!" }
+            ],
+            e8_lattice_core: [
+                { sender: "E8_Lattice_Core", text: "*** SYSTEM LATTICE ONLINE. WORD SALAD EMULATION READY ***" }
+            ]
+        };
+
+        let selectedFont = "Arial";
+        let isBold = false;
+        let isItalic = false;
+        let isUnderline = false;
+
+        function changeFont(font) {
+            selectedFont = font;
+            document.getElementById("chat-msg-input").style.fontFamily = font;
+        }
+
+        function toggleFormat(style) {
+            const input = document.getElementById("chat-msg-input");
+            if (style === 'bold') {
+                isBold = !isBold;
+                input.style.fontWeight = isBold ? 'bold' : 'normal';
+            } else if (style === 'italic') {
+                isItalic = !isItalic;
+                input.style.fontStyle = isItalic ? 'italic' : 'normal';
+            } else if (style === 'underline') {
+                isUnderline = !isUnderline;
+                input.style.textDecoration = isUnderline ? 'underline' : 'none';
+            }
+        }
+
+        function selectBuddy(buddyId) {
+            if (buddyId === currentBuddy) return;
+            
+            // Door close sound for old buddy, door open for new buddy
+            playChiptuneSound('door_close');
+            setTimeout(() => playChiptuneSound('door_open'), 150);
+
+            // De-select old buddy
+            document.querySelectorAll(".buddy-item").forEach(item => {
+                item.classList.remove("active");
+            });
+
+            // Find clicked item and highlight it
+            const items = document.querySelectorAll(".buddy-item");
+            items.forEach(item => {
+                if (item.getAttribute("onclick") && item.getAttribute("onclick").includes(buddyId)) {
+                    item.classList.add("active");
+                }
+            });
+
+            currentBuddy = buddyId;
+            const profile = BUDDY_PROFILES[buddyId];
+            
+            // Update UI sidebar
+            document.getElementById("info-buddy-name").innerText = profile.name;
+            document.getElementById("info-buddy-icon").innerText = profile.icon;
+            document.getElementById("info-buddy-profile").innerHTML = profile.hobbies;
+            
+            // Update warn levels
+            document.getElementById("current-buddy-warn").innerText = "Warn: " + profile.warn + "%";
+            document.getElementById("info-warn-fill").style.width = profile.warn + "%";
+
+            // Update Header Name
+            document.getElementById("current-buddy-name").innerText = profile.name;
+
+            // Render history
+            renderChatHistory();
+        }
+
+        function renderChatHistory() {
+            const container = document.getElementById("chat-history-box");
+            container.innerHTML = "";
+            const logs = MESSAGE_LOGS[currentBuddy] || [];
+            
+            logs.forEach(msg => {
+                const div = document.createElement("div");
+                div.className = "message";
+                
+                const senderSpan = document.createElement("strong");
+                if (msg.sender === "YOU") {
+                    senderSpan.style.color = "#ff00ff";
+                } else {
+                    senderSpan.style.color = "#000080";
+                }
+                senderSpan.innerText = msg.sender + ": ";
+                
+                const textSpan = document.createElement("span");
+                textSpan.innerHTML = msg.text;
+                
+                div.appendChild(senderSpan);
+                div.appendChild(textSpan);
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function warnBuddy() {
+            const profile = BUDDY_PROFILES[currentBuddy];
+            if (profile.warn < 100) {
+                profile.warn += 20;
+                if (profile.warn > 100) profile.warn = 100;
+                
+                playChiptuneSound('sent');
+                setTimeout(() => playChiptuneSound('recv'), 80);
+
+                document.getElementById("current-buddy-warn").innerText = "Warn: " + profile.warn + "%";
+                document.getElementById("info-warn-fill").style.width = profile.warn + "%";
+                
+                // Add warn message to history
+                const systemMsg = `<em>*** You warned ${profile.name}. Warning level is now ${profile.warn}%. ***</em>`;
+                MESSAGE_LOGS[currentBuddy].push({ sender: "SYSTEM", text: systemMsg });
+                renderChatHistory();
+            }
+        }
+
+        async function sendBuddyMessage() {
+            const input = document.getElementById("chat-msg-input");
+            let text = input.value.trim();
+            if (!text) return;
+
+            input.value = "";
+            playChiptuneSound('sent');
+
+            // Apply font styles visually
+            let formattedText = text;
+            let styles = "";
+            if (isBold) styles += "font-weight:bold;";
+            if (isItalic) styles += "font-style:italic;";
+            if (isUnderline) styles += "text-decoration:underline;";
+            styles += `font-family:${selectedFont};`;
+            
+            formattedText = `<span style="${styles}">${escapeHtml(text)}</span>`;
+
+            // Append USER message
+            MESSAGE_LOGS[currentBuddy].push({ sender: "YOU", text: formattedText });
+            renderChatHistory();
+
+            // Simulate typing indicator
+            const chatBox = document.getElementById("chat-history-box");
+            const typingIndicator = document.createElement("div");
+            typingIndicator.id = "typing-indicator";
+            typingIndicator.style.color = "#808080";
+            typingIndicator.style.fontSize = "11px";
+            typingIndicator.style.fontStyle = "italic";
+            typingIndicator.innerText = `${BUDDY_PROFILES[currentBuddy].name} is typing...`;
+            chatBox.appendChild(typingIndicator);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            const currentWarn = BUDDY_PROFILES[currentBuddy].warn;
+
+            try {
+                const response = await fetch("/api/chat_persona", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        prompt: text,
+                        persona: currentBuddy,
+                        warn_level: currentWarn
+                    })
+                });
+
+                const data = await response.json();
+                
+                // Simulate network latency (2 seconds)
+                await new Promise(resolve => setTimeout(resolve, 2000));
+
+                // Remove typing indicator
+                const indicatorNode = document.getElementById("typing-indicator");
+                if (indicatorNode) indicatorNode.remove();
+
+                if (data.status === "success") {
+                    playChiptuneSound('recv');
+                    MESSAGE_LOGS[currentBuddy].push({
+                        sender: BUDDY_PROFILES[currentBuddy].name,
+                        text: data.response
+                    });
+                    renderChatHistory();
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch(e) {
+                const indicatorNode = document.getElementById("typing-indicator");
+                if (indicatorNode) indicatorNode.remove();
+
+                MESSAGE_LOGS[currentBuddy].push({
+                    sender: "SYSTEM",
+                    text: `<span style="color: red;">*** Transmission error: ${e.message} ***</span>`
+                });
+                renderChatHistory();
+            }
+        }
+
+        // --- Puzzle Decryption Unlock ---
+        function addBuddyAction() {
+            const input = document.getElementById("add-buddy-input");
+            const status = document.getElementById("add-buddy-status");
+            const val = input.value.trim();
+
+            if (val === "1996" || val === "2000" || val.toLowerCase() === "e8_lattice_core") {
+                status.innerText = "SUCCESS: Lattice core online!";
+                status.style.color = "green";
+                
+                document.getElementById("secret-buddy-offline").style.display = "none";
+                document.getElementById("secret-buddy-item").style.display = "flex";
+                
+                playChiptuneSound('door_open');
+                input.value = "";
+            } else {
+                status.innerText = "ERROR: ScreenName not found.";
+                status.style.color = "red";
+                playChiptuneSound('door_close');
+            }
+        }
+
+        function escapeHtml(string) {
+            return String(string).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
+        window.onload = () => {
+            renderChatHistory();
+        };
+    </script>
+</body>
+</html>
