@@ -48,7 +48,7 @@ class WormholeConfig:
         max_batch_size: Maximum tokens to batch in a single API call.
     """
     api_key: Optional[str] = None
-    model_name: str = "gemini-2.5-flash"
+    model_name: str = "gemini-embedding-001"
     local_dim: int = 3584  # Gemma 12B hidden dim
     cayley_rank: int = 16
     soft_threshold: float = 0.8

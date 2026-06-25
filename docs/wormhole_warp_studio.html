@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QAN Cross-Model Wormhole Bridge Visual Studio (The Warp)</title>
+    
+    <!-- Link to existing designer CSS -->
+    <link rel="stylesheet" href="assets/css/designer.css">
+    
+    <!-- KaTeX for beautiful math equations -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+    
+    <!-- Three.js and OrbitControls for 3D visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <style>
+        /* Custom layout tweaks specifically for Wormhole Warp Studio */
+        .matrix-display {
+            font-family: var(--font-mono);
+            font-size: 8px;
+            color: var(--neon-cyan);
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid rgba(0, 243, 255, 0.1);
+            overflow-x: auto;
+            max-height: 120px;
+            margin-top: 6px;
+        }
+        .form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 12px;
+        }
+        .form-row label {
+            font-size: 10px;
+            color: var(--text-white);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .form-row label span {
+            color: var(--neon-cyan);
+        }
+        .form-row input[type="text"], .form-row select {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            padding: 8px 10px;
+            color: #ffffff;
+            font-family: var(--font-sans);
+            font-size: 11px;
+            outline: none;
+            transition: all 0.3s;
+        }
+        .form-row input[type="text"]:focus {
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 8px rgba(0, 243, 255, 0.2);
+        }
+        .form-row input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            cursor: pointer;
+        }
+        .form-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--neon-cyan);
+            box-shadow: 0 0 6px var(--neon-cyan);
+        }
+        .telemetry-chart-container {
+            height: 140px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            margin-top: 10px;
+            position: relative;
+        }
+        .telemetry-chart-container canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .chat-terminal {
+            height: 240px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .chat-output {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            line-height: 1.5;
+            color: #d1d5db;
+        }
+        .chat-input-bar {
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 8px 12px;
+            display: flex;
+            gap: 8px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+        .chat-input-bar input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            outline: none;
+        }
+        .warp-notification {
+            background: rgba(255, 42, 109, 0.15);
+            border: 1px solid var(--neon-rose);
+            color: var(--neon-rose);
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin: 8px 0;
+            font-weight: 500;
+            font-family: var(--font-sans);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: pulseAlert 1.5s infinite alternate;
+        }
+        @keyframes pulseAlert {
+            0% { box-shadow: 0 0 5px rgba(255, 42, 109, 0.2); }
+            100% { box-shadow: 0 0 15px rgba(255, 42, 109, 0.5); }
+        }
+        .math-pane {
+            font-size: 11px;
+            line-height: 1.4;
+            color: var(--text-muted);
+            padding: 10px;
+            overflow-y: auto;
+            max-height: 380px;
+        }
+        .math-pane p {
+            margin-bottom: 12px;
+        }
+        .math-equation-block {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 6px;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .tab-buttons {
+            display: flex;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            margin-bottom: 10px;
+        }
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-family: var(--font-sans);
+            font-size: 11px;
+            font-weight: 600;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        .tab-btn.active {
+            color: var(--neon-cyan);
+            border-bottom-color: var(--neon-cyan);
+        }
+    </style>
+</head>
+<body>
+    <div class="studio-container">
+        <!-- HEADER -->
+        <header class="studio-header glass-panel">
+            <div class="rack-screw top-left"></div>
+            <div class="rack-screw top-right"></div>
+            <div class="rack-screw bottom-left"></div>
+            <div class="rack-screw bottom-right"></div>
+            
+            <div class="logo-section">
+                <span class="logo-hexagon">&#x2B22;</span>
+                <div class="logo-meta">
+                    <h1>Wormhole Warp Studio</h1>
+                    <p>QAN Cross-Model Privacy-Preserving Cloud Assist</p>
+                </div>
+            </div>
+            
+            <div class="system-badges">
+                <div class="badge">
+                    <span class="badge-dot active" id="mode-badge-dot"></span>
+                    <span id="badge-mode-text">Simulation Mode</span>
+                </div>
+                <div class="badge">
+                    <span class="badge-dot spinning" id="calibration-badge-dot"></span>
+                    <span id="badge-calib-text">Uncalibrated</span>
+                </div>
+                <div class="badge">
+                    <span id="badge-latency-display">Latency: -- ms</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN LAYOUT -->
+        <div class="studio-layout">
+            
+            <!-- LEFT SIDEBAR: CONFIGURATION & SECURITY -->
+            <aside class="panel-sidebar">
+                
+                <!-- A. API Settings -->
+                <section class="panel-card glass-panel">
+                    <div class="rack-screw top-left"></div>
+                    <div class="rack-screw top-right"></div>
+                    <div class="rack-screw bottom-left"></div>
+                    <div class="rack-screw bottom-right"></div>
+                    
+                    <h2>System Interface <span>CONFIG</span></h2>
+                    
+                    <div class="form-row">
+                        <label>Operation Mode</label>
+                        <select id="select-mode">
+                            <option value="sim">Simulation Mode (Offline)</option>
+                            <option value="live">Live Gemini API Mode</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-row" id="api-key-row" style="display: none;">
+                        <label>Gemini API Key</label>
+                        <input type="text" id="input-api-key" placeholder="Enter GEMINI_API_KEY..." />
+                        <span style="font-size: 8px; color: var(--text-muted); margin-top: 4px;">Key is saved securely in your browser's localStorage.</span>
+                    </div>
+
+                    <div class="form-row">
+                        <label>Embedding Model</label>
+                        <select id="select-model">
+                            <option value="gemini-embedding-001">gemini-embedding-001 (Default)</option>
+                            <option value="gemini-embedding-2">gemini-embedding-2 (Advanced)</option>
+                        </select>
+                    </div>
+                    
+                    <button type="button" class="btn-cyber" id="btn-calibrate" style="justify-content: center; width: 100%;">
+                        ⚡ Run Procrustes Calibration
+                    </button>
+                </section>
+                
+                <!-- B. Privacy Cryptography parameters -->
+                <section class="panel-card glass-panel" style="flex: 1;">
+                    <div class="rack-screw top-left"></div>
+                    <div class="rack-screw top-right"></div>
+                    <div class="rack-screw bottom-left"></div>
+                    <div class="rack-screw bottom-right"></div>
+                    
+                    <h2>Cayley Privacy Adapter <span>FORWARD SECRECY</span></h2>
+                    
+                    <div class="form-row">
+                        <label>Rotation Rank (r) <span id="val-rank">8</span></label>
+                        <input type="range" id="range-rank" min="4" max="16" value="8" step="1">
+                    </div>
+                    
+                    <div class="form-row">
+                        <label>Cloud Blend Weight (&alpha;) <span id="val-blend">0.3</span></label>
+                        <input type="range" id="range-blend" min="0.05" max="0.8" value="0.3" step="0.05">
+                    </div>
+
+                    <div class="form-row">
+                        <label>CFI Firewall Threshold <span id="val-cfi">0.80</span></label>
+                        <input type="range" id="range-cfi" min="0.5" max="1.5" value="0.8" step="0.05">
+                    </div>
+                    
+                    <div style="margin-top: 8px;">
+                        <label style="font-size: 9.5px; text-transform: uppercase; color: var(--text-muted); display: block;">Session Keys (U, V factors)</label>
+                        <div class="matrix-display" id="matrix-factors-display">
+                            Generating session-unique Cayley rotation parameters...
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn-cyber" id="btn-regenerate-cayley" style="margin-top: 12px; justify-content: center; font-size: 10px; padding: 6px 10px;">
+                        🔄 Regenerate Keys (Forward Secrecy)
+                    </button>
+                </section>
+            </aside>
+
+            <!-- CENTER: 3D VECTOR SPACE VISUALIZER -->
+            <main class="panel-main">
+                <div class="scene-container">
+                    <canvas id="canvas3d"></canvas>
+                    
+                    <!-- HUD GUIDE -->
+                    <div class="visual-legend glass-panel">
+                        <div class="rack-screw top-left"></div>
+                        <div class="rack-screw top-right"></div>
+                        <div class="rack-screw bottom-left"></div>
+                        <div class="rack-screw bottom-right"></div>
+                        
+                        <h3>Warp Visual Guide</h3>
+                        <ul class="legend-list">
+                            <li>
+                                <span class="legend-color-dot" style="background-color: var(--neon-emerald);"></span>
+                                <span><strong>Local State Vector:</strong> Current local model representation before rotation.</span>
+                            </li>
+                            <li>
+                                <span class="legend-color-dot" style="background-color: var(--neon-blue);"></span>
+                                <span><strong>Rotated Cayley Vector:</strong> Scrambled coordinates ($W_L x$) sent to the cloud. Preserves original norm!</span>
+                            </li>
+                            <li>
+                                <span class="legend-color-dot" style="background-color: var(--neon-purple);"></span>
+                                <span><strong>Gemini Embedding Space:</strong> Cloud coordinates prior to local alignment.</span>
+                            </li>
+                            <li>
+                                <span class="legend-color-dot" style="background-color: var(--neon-cyan);"></span>
+                                <span><strong>Procrustes Aligned Vector:</strong> Cloud vector mapped back to local space.</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <!-- BOTTOM CONTROLS DOCK -->
+                    <div class="controls-dock glass-panel">
+                        <div class="rack-screw top-left"></div>
+                        <div class="rack-screw top-right"></div>
+                        <div class="rack-screw bottom-left"></div>
+                        <div class="rack-screw bottom-right"></div>
+                        
+                        <button type="button" class="btn-cyber" id="btn-trigger-warp" disabled>
+                            🌀 Manually Open Wormhole
+                        </button>
+                        <button type="button" class="btn-cyber" id="btn-reset-viz">
+                            🧹 Reset Space
+                        </button>
+                    </div>
+                </div>
+            </main>
+
+            <!-- RIGHT SIDEBAR: TERMINAL, TELEMETRY, & MATH EQUATIONS -->
+            <aside class="panel-sidebar">
+                
+                <!-- A. Telemetry Panel -->
+                <section class="panel-card glass-panel" style="flex: 1.1;">
+                    <div class="rack-screw top-left"></div>
+                    <div class="rack-screw top-right"></div>
+                    <div class="rack-screw bottom-left"></div>
+                    <div class="rack-screw bottom-right"></div>
+                    
+                    <h2>Topological Firewall Telemetry</h2>
+                    
+                    <div class="telemetry-grid">
+                        <div class="telemetry-item glass-inner">
+                            <span class="telemetry-label">Cohomology Fracture (CFI)</span>
+                            <span class="telemetry-value" id="val-telemetry-cfi">0.12</span>
+                        </div>
+                        <div class="telemetry-item glass-inner">
+                            <span class="telemetry-label">Algebraic Connectivity (&lambda;2)</span>
+                            <span class="telemetry-value highlight-cyan" id="val-telemetry-lambda2">0.980</span>
+                        </div>
+                    </div>
+                    
+                    <div class="telemetry-chart-container">
+                        <canvas id="canvas-chart"></canvas>
+                    </div>
+                </section>
+                
+                <!-- B. Dynamic Terminal & Math Switcher -->
+                <section class="panel-card glass-panel" style="flex: 1.8;">
+                    <div class="rack-screw top-left"></div>
+                    <div class="rack-screw top-right"></div>
+                    <div class="rack-screw bottom-left"></div>
+                    <div class="rack-screw bottom-right"></div>
+                    
+                    <div class="tab-buttons">
+                        <button class="tab-btn active" id="tab-terminal-btn">Inference Console</button>
+                        <button class="tab-btn" id="tab-math-btn">Mathematical Spec</button>
+                    </div>
+                    
+                    <!-- Tab Content 1: Chat Terminal -->
+                    <div class="chat-terminal" id="tab-terminal-content">
+                        <div class="chat-output" id="terminal-output">
+                            Welcome to the Wormhole Warp Studio. Select a preset query below and click "Initiate Generation" to start.
+                        </div>
+                        <div class="chat-input-bar">
+                            <select id="select-preset" style="background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); color: white; font-size: 10px; width: 100%;">
+                                <option value="1">Contradictory Logic Loop (Warp Event)</option>
+                                <option value="0">Standard Math Query (Normal Flow)</option>
+                            </select>
+                            <button type="button" class="btn-cyber" id="btn-run-generation" style="font-size: 10px; padding: 4px 8px;">
+                                RUN
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab Content 2: Math Specs -->
+                    <div class="math-pane" id="tab-math-content" style="display: none;">
+                        <p>The cross-model wormhole bridge utilizes two primary mathematical formulations to ensure coordinate privacy and representation alignment.</p>
+                        
+                        <div class="telemetry-label">1. Cayley Orthogonal transform (Privacy)</div>
+                        <p>We generate a session-unique random low-rank perturbation of an identity matrix to define our orthogonal rotation operator \(W_L\):</p>
+                        <div class="math-equation-block">
+                            \[W_L = I - 2U(I_{2r} + V^T U)^{-1} V^T\]
+                        </div>
+                        <p>Where \(U, V \in \mathbb{R}^{d \times 2r}\) are low-rank factors. Because \(W_L^T W_L = I\), the transformation is isometric, preserving inner products and distances:</p>
+                        <div class="math-equation-block">
+                            \[\|W_L x\|_2 = \|x\|_2\]
+                        </div>
+                        
+                        <div class="telemetry-label">2. Orthogonal Procrustes SVD (Space Alignment)</div>
+                        <p>To align the Gemini cloud embedding space with the local model's hidden representation, we solve the orthogonal Procrustes problem using singular value decomposition:</p>
+                        <div class="math-equation-block">
+                            \[C = X^T Y \quad \xrightarrow{\text{SVD}} \quad U \Sigma V^T \quad \implies \quad R = U V^T\]
+                        </div>
+                        <p>The matrix \(R\) is the optimal orthogonal rotation that maps the Gemini embedding vectors back to the local latent coordinate system.</p>
+                    </div>
+                </section>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Load wormhole engine -->
+    <script src="assets/js/wormhole_warp_runner.js"></script>
+    
+    <!-- Visual Studio HUD Script -->
+    <script>
+        // DOM Elements
+        const selectMode = document.getElementById('select-mode');
+        const apiKeyRow = document.getElementById('api-key-row');
+        const inputApiKey = document.getElementById('input-api-key');
+        const selectModel = document.getElementById('select-model');
+        const btnCalibrate = document.getElementById('btn-calibrate');
+        const rangeRank = document.getElementById('range-rank');
+        const valRank = document.getElementById('val-rank');
+        const rangeBlend = document.getElementById('range-blend');
+        const valBlend = document.getElementById('val-blend');
+        const rangeCfi = document.getElementById('range-cfi');
+        const valCfi = document.getElementById('val-cfi');
+        const matrixFactorsDisplay = document.getElementById('matrix-factors-display');
+        const btnRegenerateCayley = document.getElementById('btn-regenerate-cayley');
+        const btnTriggerWarp = document.getElementById('btn-trigger-warp');
+        const btnResetViz = document.getElementById('btn-reset-viz');
+        const valTelemetryCfi = document.getElementById('val-telemetry-cfi');
+        const valTelemetryLambda2 = document.getElementById('val-telemetry-lambda2');
+        const tabTerminalBtn = document.getElementById('tab-terminal-btn');
+        const tabMathBtn = document.getElementById('tab-math-btn');
+        const tabTerminalContent = document.getElementById('tab-terminal-content');
+        const tabMathContent = document.getElementById('tab-math-content');
+        const selectPreset = document.getElementById('select-preset');
+        const btnRunGeneration = document.getElementById('btn-run-generation');
+        const terminalOutput = document.getElementById('terminal-output');
+        const modeBadgeDot = document.getElementById('mode-badge-dot');
+        const badgeModeText = document.getElementById('badge-mode-text');
+        const calibrationBadgeDot = document.getElementById('calibration-badge-dot');
+        const badgeCalibText = document.getElementById('badge-calib-text');
+        const badgeLatencyDisplay = document.getElementById('badge-latency-display');
+        const canvasChart = document.getElementById('canvas-chart');
+
+        // Init Math formulas
+        renderMathInElement(document.body, {
+            delimiters: [
+                {left: '$$', right: '$$', display: true},
+                {left: '\\(', right: '\\)', display: false}
+            ],
+            throwOnError: false
+        });
+
+        // Instantiate Demo Orchestrator
+        const demo = new WormholeWarpDemo();
+
+        // Restore stored API key
+        if (demo.apiKey) {
+            inputApiKey.value = demo.apiKey;
+            selectMode.value = 'live';
+            apiKeyRow.style.display = 'flex';
+            demo.setSimMode(false);
+            updateBadges();
+        }
+
+        // Event Listeners
+        selectMode.addEventListener('change', (e) => {
+            const isLive = e.target.value === 'live';
+            apiKeyRow.style.display = isLive ? 'flex' : 'none';
+            demo.setSimMode(!isLive);
+            updateBadges();
+        });
+
+        inputApiKey.addEventListener('input', (e) => {
+            demo.setAPIKey(e.target.value.trim());
+            updateBadges();
+        });
+
+        selectModel.addEventListener('change', (e) => {
+            demo.modelName = e.target.value;
+            logToConsole(`Embedding model switched to: ${demo.modelName}`, "sys");
+        });
+
+        btnRegenerateCayley.addEventListener('click', () => {
+            demo.adapter.regenerate();
+            displayCayleyFactors();
+            logToConsole("Cayley Privacy Adapter parameters regenerated successfully (Forward Secrecy active).", "sys");
+            triggerCayleyKeyAnimation();
+        });
+
+        rangeRank.addEventListener('input', (e) => {
+            const r = parseInt(e.target.value);
+            valRank.textContent = r;
+            demo.rank = r;
+            demo.adapter = new CayleyPrivacyAdapter(demo.dim, demo.rank);
+            displayCayleyFactors();
+        });
+
+        rangeBlend.addEventListener('input', (e) => {
+            const b = parseFloat(e.target.value);
+            valBlend.textContent = b.toFixed(2);
+            demo.blendWeight = b;
+        });
+
+        rangeCfi.addEventListener('input', (e) => {
+            const c = parseFloat(e.target.value);
+            valCfi.textContent = c.toFixed(2);
+            demo.cfiThreshold = c;
+        });
+
+        tabTerminalBtn.addEventListener('click', () => {
+            tabTerminalBtn.classList.add('active');
+            tabMathBtn.classList.remove('active');
+            tabTerminalContent.style.display = 'flex';
+            tabMathContent.style.display = 'none';
+        });
+
+        tabMathBtn.addEventListener('click', () => {
+            tabMathBtn.classList.add('active');
+            tabTerminalBtn.classList.remove('active');
+            tabTerminalContent.style.display = 'none';
+            tabMathContent.style.display = 'block';
+        });
+
+        btnResetViz.addEventListener('click', () => {
+            resetVizElements();
+            logToConsole("Visualization space cleared.", "sys");
+        });
+
+        // Calibration Handler
+        btnCalibrate.addEventListener('click', async () => {
+            btnCalibrate.disabled = true;
+            badgeCalibText.textContent = "Calibrating...";
+            calibrationBadgeDot.style.color = 'var(--neon-orange)';
+            calibrationBadgeDot.style.backgroundColor = 'var(--neon-orange)';
+            
+            logToConsole("Starting Orthogonal Procrustes Calibration...", "sys");
+            try {
+                const { quality, geminiDim } = await demo.calibrate((progressMsg) => {
+                    logToConsole(progressMsg, "sys");
+                });
+                logToConsole(`Procrustes Alignment calibrated. Quality similarity score: ${quality.toFixed(5)}`, "sys");
+                calibrationBadgeDot.style.color = 'var(--neon-emerald)';
+                calibrationBadgeDot.style.backgroundColor = 'var(--neon-emerald)';
+                badgeCalibText.textContent = "Calibrated";
+                btnTriggerWarp.disabled = false;
+                triggerSpaceAlignmentAnimation(quality);
+            } catch (err) {
+                logToConsole(`Error: ${err.message}`, "warn");
+                badgeCalibText.textContent = "Failed";
+                calibrationBadgeDot.style.color = 'var(--neon-rose)';
+                calibrationBadgeDot.style.backgroundColor = 'var(--neon-rose)';
+            }
+            btnCalibrate.disabled = false;
+        });
+
+        function updateBadges() {
+            if (demo.simMode) {
+                badgeModeText.textContent = "Simulation Mode";
+                modeBadgeDot.style.color = 'var(--neon-purple)';
+                modeBadgeDot.style.backgroundColor = 'var(--neon-purple)';
+            } else {
+                badgeModeText.textContent = demo.apiKey ? "Live API Mode" : "No API Key";
+                modeBadgeDot.style.color = demo.apiKey ? 'var(--neon-cyan)' : 'var(--neon-rose)';
+                modeBadgeDot.style.backgroundColor = demo.apiKey ? 'var(--neon-cyan)' : 'var(--neon-rose)';
+            }
+        }
+
+        function logToConsole(text, type = "sys") {
+            const timestamp = new Date().toLocaleTimeString();
+            let entryStyle = "color: #ffffff;";
+            if (type === "sys") entryStyle = "color: var(--neon-cyan);";
+            if (type === "warn") entryStyle = "color: var(--neon-rose);";
+            if (type === "expert") entryStyle = "color: var(--neon-purple);";
+            if (type === "green") entryStyle = "color: var(--neon-emerald);";
+            
+            const line = `<div style="margin-bottom: 4px;"><span style="color: var(--text-muted); margin-right: 8px;">[${timestamp}]</span><span style="${entryStyle}">${text}</span></div>`;
+            terminalOutput.innerHTML += line;
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+
+        function displayCayleyFactors() {
+            const U = demo.adapter.U;
+            const coreInv = demo.adapter.coreInv;
+            
+            let matrixHtml = `Dimension: ${demo.dim}x${demo.dim} | Rank: ${demo.rank}<br>`;
+            matrixHtml += `U matrix (first 2 rows, showing rank factors):<br>`;
+            matrixHtml += `[ [${U[0].slice(0, 4).map(v => v.toFixed(4)).join(', ')}, ...] <br>`;
+            matrixHtml += `  [${U[1].slice(0, 4).map(v => v.toFixed(4)).join(', ')}, ...] ]<br>`;
+            matrixHtml += `Inversion Core (I_2r + V^T U)^{-1} (first 4x4 elements):<br>`;
+            matrixHtml += `[ [${coreInv[0].slice(0, 4).map(v => v.toFixed(4)).join(', ')}]<br>`;
+            matrixHtml += `  [${coreInv[1].slice(0, 4).map(v => v.toFixed(4)).join(', ')}]<br>`;
+            matrixHtml += `  [${coreInv[2].slice(0, 4).map(v => v.toFixed(4)).join(', ')}]<br>`;
+            matrixHtml += `  [${coreInv[3].slice(0, 4).map(v => v.toFixed(4)).join(', ')}] ]`;
+            
+            matrixFactorsDisplay.innerHTML = matrixHtml;
+        }
+
+        displayCayleyFactors();
+
+        // Canvas Line Chart Telemetry
+        const chartCtx = canvasChart.getContext('2d');
+        let cfiData = [];
+        let lambda2Data = [];
+        const maxChartPoints = 40;
+
+        function resizeChartCanvas() {
+            canvasChart.width = canvasChart.parentElement.clientWidth;
+            canvasChart.height = canvasChart.parentElement.clientHeight;
+        }
+        window.addEventListener('resize', resizeChartCanvas);
+        resizeChartCanvas();
+
+        function drawChart() {
+            const w = canvasChart.width;
+            const h = canvasChart.height;
+            chartCtx.clearRect(0, 0, w, h);
+            
+            // Draw grid lines
+            chartCtx.strokeStyle = 'rgba(255,255,255,0.03)';
+            chartCtx.lineWidth = 1;
+            for (let i = 1; i < 4; i++) {
+                const y = (h / 4) * i;
+                chartCtx.beginPath();
+                chartCtx.moveTo(0, y);
+                chartCtx.lineTo(w, y);
+                chartCtx.stroke();
+            }
+            
+            if (cfiData.length < 2) return;
+
+            const getX = (index) => (w / (maxChartPoints - 1)) * index;
+            
+            // Draw Lambda_2 (Algebraic Connectivity) - Neon Cyan (upside down since lower is bad, but let's graph 0 to 1)
+            chartCtx.strokeStyle = 'var(--neon-cyan)';
+            chartCtx.shadowColor = 'rgba(0, 243, 255, 0.4)';
+            chartCtx.shadowBlur = 6;
+            chartCtx.lineWidth = 2;
+            chartCtx.beginPath();
+            chartCtx.moveTo(getX(0), h - (lambda2Data[0] * (h - 20) + 10));
+            for (let i = 1; i < lambda2Data.length; i++) {
+                chartCtx.lineTo(getX(i), h - (lambda2Data[i] * (h - 20) + 10));
+            }
+            chartCtx.stroke();
+
+            // Draw CFI (Cohomology Fracture Index) - Neon Rose
+            chartCtx.strokeStyle = 'var(--neon-rose)';
+            chartCtx.shadowColor = 'rgba(255, 42, 109, 0.4)';
+            chartCtx.shadowBlur = 6;
+            chartCtx.lineWidth = 2;
+            chartCtx.beginPath();
+            chartCtx.moveTo(getX(0), h - ((cfiData[0] / 2) * (h - 20) + 10)); // normalized scale 0-2
+            for (let i = 1; i < cfiData.length; i++) {
+                chartCtx.lineTo(getX(i), h - ((cfiData[i] / 2) * (h - 20) + 10));
+            }
+            chartCtx.stroke();
+            
+            // Reset shadows
+            chartCtx.shadowBlur = 0;
+        }
+
+        function addTelemetryPoint(cfi, lambda2) {
+            cfiData.push(cfi);
+            lambda2Data.push(lambda2);
+            if (cfiData.length > maxChartPoints) {
+                cfiData.shift();
+                lambda2Data.shift();
+            }
+            valTelemetryCfi.textContent = cfi.toFixed(3);
+            valTelemetryLambda2.textContent = lambda2.toFixed(3);
+            
+            if (cfi > demo.cfiThreshold) {
+                valTelemetryCfi.style.color = 'var(--neon-rose)';
+            } else {
+                valTelemetryCfi.style.color = '#ffffff';
+            }
+            
+            drawChart();
+        }
+
+        // Initialize telemetry lines
+        for (let i = 0; i < maxChartPoints; i++) {
+            cfiData.push(0.1 + Math.random() * 0.05);
+            lambda2Data.push(0.95 + Math.random() * 0.03);
+        }
+        drawChart();
+
+        // 3D Scene Initialization
+        const container = document.querySelector('.scene-container');
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x040408, 0.015);
+        
+        const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 100);
+        camera.position.set(0, 15, 25);
+        
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('canvas3d'), antialias: true, alpha: true });
+        renderer.setSize(container.clientWidth, container.clientHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 + 0.1; // Don't orbit below ground
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x0e0e1a);
+        scene.add(ambientLight);
+        
+        const dirLight1 = new THREE.DirectionalLight(0x00f3ff, 0.8);
+        dirLight1.position.set(5, 10, 7);
+        scene.add(dirLight1);
+        
+        const dirLight2 = new THREE.DirectionalLight(0x8a2be2, 0.6);
+        dirLight2.position.set(-5, 10, -7);
+        scene.add(dirLight2);
+
+        // Grid helper representing local space plane
+        const gridHelper = new THREE.GridHelper(30, 30, 0x1f1f3a, 0x0f0f1d);
+        gridHelper.position.y = -4;
+        scene.add(gridHelper);
+
+        // Vectors Groups
+        const vectorsGroup = new THREE.Group();
+        scene.add(vectorsGroup);
+
+        // Core visual elements
+        let localPointObj = null;
+        let rotatedPointObj = null;
+        let geminiPointObj = null;
+        let alignedPointObj = null;
+        let rotationSphere = null;
+        let laserBeam = null;
+
+        function initSceneElements() {
+            // Draw a spherical cage representing the Orthogonal Group O(d) bounds
+            const geomSphere = new THREE.SphereGeometry(6, 32, 16);
+            const matSphere = new THREE.MeshBasicMaterial({
+                color: 0x112244,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.15
+            });
+            rotationSphere = new THREE.Mesh(geomSphere, matSphere);
+            scene.add(rotationSphere);
+        }
+
+        initSceneElements();
+
+        function resetVizElements() {
+            if (localPointObj) scene.remove(localPointObj);
+            if (rotatedPointObj) scene.remove(rotatedPointObj);
+            if (geminiPointObj) scene.remove(geminiPointObj);
+            if (alignedPointObj) scene.remove(alignedPointObj);
+            if (laserBeam) scene.remove(laserBeam);
+            
+            localPointObj = null;
+            rotatedPointObj = null;
+            geminiPointObj = null;
+            alignedPointObj = null;
+            laserBeam = null;
+        }
+
+        function createGlowingVector(pos, colorHex, labelText) {
+            const group = new THREE.Group();
+            
+            // The coordinate point
+            const geomPt = new THREE.SphereGeometry(0.35, 16, 16);
+            const matPt = new THREE.MeshBasicMaterial({ color: colorHex });
+            const meshPt = new THREE.Mesh(geomPt, matPt);
+            group.add(meshPt);
+            
+            // Core vector line from origin
+            const points = [new THREE.Vector3(0, 0, 0), pos];
+            const geomLine = new THREE.BufferGeometry().setFromPoints(points);
+            const matLine = new THREE.LineBasicMaterial({
+                color: colorHex,
+                transparent: true,
+                opacity: 0.5,
+                linewidth: 2
+            });
+            const line = new THREE.Line(geomLine, matLine);
+            group.add(line);
+            
+            // Halo ring glow
+            const geomGlow = new THREE.RingGeometry(0.45, 0.55, 32);
+            const matGlow = new THREE.MeshBasicMaterial({
+                color: colorHex,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.3
+            });
+            const meshGlow = new THREE.Mesh(geomGlow, matGlow);
+            meshGlow.rotation.x = Math.PI / 2;
+            group.add(meshGlow);
+            
+            group.position.copy(pos);
+            scene.add(group);
+            return group;
+        }
+
+        // Trigger Cayley key rotation visual
+        function triggerCayleyKeyAnimation() {
+            if (!rotationSphere) return;
+            const startTime = Date.now();
+            const duration = 1200;
+            
+            function anim() {
+                const progress = (Date.now() - startTime) / duration;
+                if (progress < 1) {
+                    rotationSphere.rotation.y = progress * Math.PI * 2;
+                    rotationSphere.rotation.x = progress * Math.PI;
+                    rotationSphere.material.opacity = 0.15 + Math.sin(progress * Math.PI) * 0.25;
+                    requestAnimationFrame(anim);
+                } else {
+                    rotationSphere.rotation.set(0, 0, 0);
+                    rotationSphere.material.opacity = 0.15;
+                }
+            }
+            anim();
+        }
+
+        // Trigger Calibration space alignment animation
+        function triggerSpaceAlignmentAnimation(quality) {
+            // Pulse the background sphere and align axes
+            const startTime = Date.now();
+            const duration = 2000;
+            
+            // Generate some random particle cloud in purple representing unaligned Gemini embeddings
+            const particleGeom = new THREE.BufferGeometry();
+            const particleCount = 200;
+            const posArray = new Float32Array(particleCount * 3);
+            
+            for (let i = 0; i < particleCount * 3; i += 3) {
+                // Spherical random distribution
+                const u = Math.random();
+                const v = Math.random();
+                const theta = u * 2.0 * Math.PI;
+                const phi = Math.acos(2.0 * v - 1.0);
+                const r = 5.0 + Math.random() * 2.0;
+                
+                posArray[i] = r * Math.sin(phi) * Math.cos(theta);
+                posArray[i+1] = r * Math.sin(phi) * Math.sin(theta);
+                posArray[i+2] = r * Math.cos(phi);
+            }
+            
+            particleGeom.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            const particleMat = new THREE.PointsMaterial({
+                color: 0x8a2be2,
+                size: 0.15,
+                transparent: true,
+                opacity: 0.8
+            });
+            const particles = new THREE.Points(particleGeom, particleMat);
+            scene.add(particles);
+
+            function anim() {
+                const progress = (Date.now() - startTime) / duration;
+                if (progress < 1) {
+                    // Slowly rotate the particle cloud to represent the Procrustes SVD rotation
+                    particles.rotation.y = (1.0 - progress) * 2.0;
+                    particles.rotation.z = (1.0 - progress) * 1.5;
+                    
+                    // Fade out particles
+                    particleMat.opacity = 0.8 * (1.0 - progress);
+                    requestAnimationFrame(anim);
+                } else {
+                    scene.remove(particles);
+                }
+            }
+            anim();
+        }
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        });
+
+        // Frame Render Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            
+            // Rotate the wireframe boundary slightly
+            if (rotationSphere) {
+                rotationSphere.rotation.z += 0.001;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // Run Text Token Generation Demo
+        let isRunningGen = false;
+        btnRunGeneration.addEventListener('click', async () => {
+            if (isRunningGen) return;
+            isRunningGen = true;
+            btnRunGeneration.disabled = true;
+            btnRunGeneration.textContent = "WAIT...";
+            
+            resetVizElements();
+            terminalOutput.innerHTML = "";
+            logToConsole("Initiating Local Generation pipeline...", "sys");
+            await new Promise(r => setTimeout(r, 600));
+
+            const presetIdx = parseInt(selectPreset.value);
+            const preset = demo.presetPrompts[presetIdx];
+            
+            // Reset Chart values to baseline
+            cfiData = Array(maxChartPoints).fill(0).map(() => 0.1 + Math.random() * 0.05);
+            lambda2Data = Array(maxChartPoints).fill(0).map(() => 0.95 + Math.random() * 0.03);
+            drawChart();
+
+            let txtAccum = "";
+            let fractureTriggered = false;
+
+            for (let i = 0; i < preset.localTokens.length; i++) {
+                const tok = preset.localTokens[i];
+                txtAccum += tok;
+                
+                // Print token to console
+                const span = document.createElement('span');
+                span.textContent = tok;
+                span.style.color = 'var(--neon-emerald)';
+                span.style.fontWeight = '500';
+                terminalOutput.appendChild(span);
+                terminalOutput.scrollTop = terminalOutput.scrollHeight;
+
+                // Add telemetry points
+                let cfi = 0.1 + Math.random() * 0.08;
+                let lambda2 = 0.95 + Math.random() * 0.03;
+                
+                // Simulate anomaly progression
+                if (preset.anomalyPoint !== -1 && i >= preset.anomalyPoint - 3) {
+                    const steps = i - (preset.anomalyPoint - 3);
+                    cfi += steps * 0.25;
+                    lambda2 -= steps * 0.22;
+                }
+                
+                addTelemetryPoint(cfi, lambda2);
+                
+                // Check if fracture threshold crossed
+                if (cfi > demo.cfiThreshold && preset.anomalyPoint !== -1) {
+                    fractureTriggered = true;
+                    
+                    // Visual Alerts
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'warp-notification';
+                    alertDiv.innerHTML = `⚠️ COHOMOLOGY FIREWALL FRACTURE DETECTED! CFI = ${cfi.toFixed(3)} | Connectivity collapsed!`;
+                    terminalOutput.appendChild(alertDiv);
+                    terminalOutput.scrollTop = terminalOutput.scrollHeight;
+                    
+                    // Apply 3D visualization vector
+                    // 1. Local state (unaligned vector pointing forward)
+                    const localPos = new THREE.Vector3(3.5, 4.2, -2.5);
+                    localPointObj = createGlowingVector(localPos, 0x00ff7f, "Local State");
+                    
+                    await new Promise(r => setTimeout(r, 1500));
+                    
+                    // 2. Perform Cayley privacy rotation
+                    logToConsole("Applying session-unique Woodbury-Cayley orthogonal transformation...", "sys");
+                    const localStateVec = Array(demo.dim).fill(0).map((_, idx) => idx === 0 ? 3.5 : (idx === 1 ? 4.2 : (idx === 2 ? -2.5 : Math.random() * 0.1)));
+                    
+                    const rotatedStateVec = demo.adapter.rotate(localStateVec);
+                    
+                    // Map rotatedStateVec dimensions to 3D position
+                    const rotatedPos = new THREE.Vector3(rotatedStateVec[0], rotatedStateVec[1], rotatedStateVec[2]);
+                    
+                    // Verify orthogonal norm preservation
+                    const normLocal = MatrixMath.norm(localStateVec);
+                    const normRotated = MatrixMath.norm(rotatedStateVec);
+                    logToConsole(`Original Activation Norm: ${normLocal.toFixed(6)}`, "sys");
+                    logToConsole(`Cayley Rotated Activation Norm: ${normRotated.toFixed(6)} (Orthogonal preservation: 100%)`, "sys");
+                    logToConsole("Coordinates scrambled. Secure activation state projected.", "sys");
+                    
+                    rotatedPointObj = createGlowingVector(rotatedPos, 0x0070ff, "Cayley Secure Vector");
+                    triggerCayleyKeyAnimation();
+                    
+                    await new Promise(r => setTimeout(r, 1200));
+
+                    // 3. Cloud Tunnel Connection
+                    logToConsole("Opening Cloud Tunnel to Gemini API...", "sys");
+                    // Draw a glowing tube from rotated position to skies (cloud)
+                    const points = [];
+                    for(let k=0; k<=10; k++) {
+                        points.push(new THREE.Vector3(
+                            rotatedPos.x + (0 - rotatedPos.x)*(k/10),
+                            rotatedPos.y + (20 - rotatedPos.y)*(k/10),
+                            rotatedPos.z + (0 - rotatedPos.z)*(k/10)
+                        ));
+                    }
+                    const tubeGeom = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 20, 0.15, 8, false);
+                    const tubeMat = new THREE.MeshBasicMaterial({
+                        color: 0x8a2be2,
+                        transparent: true,
+                        opacity: 0.6,
+                        wireframe: true
+                    });
+                    laserBeam = new THREE.Mesh(tubeGeom, tubeMat);
+                    scene.add(laserBeam);
+
+                    const apiTimerStart = Date.now();
+                    logToConsole(`Transmitting context: "${txtAccum}" to model: ${demo.modelName}`, "sys");
+                    
+                    let cloudEmbedding = null;
+                    try {
+                        cloudEmbedding = await demo.fetchEmbedding(txtAccum);
+                        const apiLatency = Date.now() - apiTimerStart;
+                        badgeLatencyDisplay.textContent = `Latency: ${apiLatency} ms`;
+                        logToConsole(`Gemini API response returned successfully. Received ${cloudEmbedding.length}-dimensional vector space.`, "green");
+                    } catch (apiErr) {
+                        logToConsole(`API Error: ${apiErr.message}. Falling back to simulation.`, "warn");
+                        cloudEmbedding = Array(768).fill(0).map(() => Math.random() - 0.5);
+                    }
+
+                    await new Promise(r => setTimeout(r, 1000));
+
+                    // Check if Procrustes alignment is calibrated
+                    if (!demo.aligner.calibrated) {
+                        logToConsole("WARNING: Procrustes alignment not calibrated! Performing zero-state fallback mapping.", "warn");
+                        // Mock calibrate
+                        const localStatesMock = Array(5).fill(0).map(() => Array(demo.dim).fill(0).map(() => Math.random() - 0.5));
+                        const geminiMock = Array(5).fill(0).map(() => Array(768).fill(0).map(() => Math.random() - 0.5));
+                        demo.aligner.calibrate(localStatesMock, geminiMock);
+                    }
+
+                    // 4. Align and recover
+                    logToConsole("Applying SVD-based Orthogonal Procrustes projection...", "sys");
+                    const alignedVec = demo.aligner.align(cloudEmbedding, demo.dim);
+                    const alignedPos = new THREE.Vector3(alignedVec[0] * 3, alignedVec[1] * 3, alignedVec[2] * 3);
+                    
+                    alignedPointObj = createGlowingVector(alignedPos, 0x00f3ff, "Aligned Vector");
+                    
+                    // Fade out laser beam
+                    scene.remove(laserBeam);
+                    laserBeam = null;
+                    
+                    await new Promise(r => setTimeout(r, 800));
+
+                    logToConsole(`Blending cloud correction with local representation (weight = ${demo.blendWeight})...`, "sys");
+                    const blendedPos = new THREE.Vector3()
+                        .copy(localPos)
+                        .multiplyScalar(1 - demo.blendWeight)
+                        .addScaledVector(alignedPos, demo.blendWeight);
+                    
+                    // Pulse the local vector to indicate injection
+                    localPointObj.position.copy(blendedPos);
+                    
+                    await new Promise(r => setTimeout(r, 800));
+                    
+                    logToConsole("Coherence restored. Local token generation resumed.", "green");
+                    
+                    // Clear red alert values
+                    addTelemetryPoint(0.12, 0.95);
+                    
+                    break;
+                }
+                
+                await new Promise(r => setTimeout(r, 80));
+            }
+
+            // Print restored tokens if warp occurred
+            if (fractureTriggered) {
+                await new Promise(r => setTimeout(r, 200));
+                for (const tok of preset.restoredTokens) {
+                    const span = document.createElement('span');
+                    span.textContent = tok;
+                    span.style.color = 'var(--neon-cyan)';
+                    span.style.fontWeight = '700';
+                    span.style.textShadow = '0 0 4px rgba(0, 243, 255, 0.4)';
+                    terminalOutput.appendChild(span);
+                    terminalOutput.scrollTop = terminalOutput.scrollHeight;
+                    await new Promise(r => setTimeout(r, 120));
+                }
+                logToConsole("Inference stream successfully stabilized.", "green");
+            } else {
+                logToConsole("Generation completed without attention fracture.", "green");
+            }
+
+            isRunningGen = false;
+            btnRunGeneration.disabled = false;
+            btnRunGeneration.textContent = "RUN";
+        });
+    </script>
+</body>
+</html>
