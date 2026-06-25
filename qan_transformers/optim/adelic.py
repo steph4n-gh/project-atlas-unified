@@ -28,7 +28,8 @@ class AdelicLangevinOptimizer(Optimizer):
         tree_depth: int = 6,
         p_base: int = 2,
         eta: float = 2.0,
-        omega_f: float = 0.25
+        omega_f: float = 0.25,
+        topological_loss_weight: float = 0.0,
     ):
         if lr < 0.0:
             raise ValueError(f"Invalid learning rate: {lr}")
@@ -44,6 +45,11 @@ class AdelicLangevinOptimizer(Optimizer):
             omega_f=omega_f
         )
         super(AdelicLangevinOptimizer, self).__init__(params, defaults)
+        
+        # Moonshot Phase 4: Topological regularizer integration
+        self.topological_loss_weight = topological_loss_weight
+        self._topological_regularizer = None
+        self._last_topo_loss = 0.0
         
         # Precompute LCA table for fast Vladimirov derivative lookup (Win 57)
         num_states = p_base ** tree_depth
@@ -162,6 +168,15 @@ class AdelicLangevinOptimizer(Optimizer):
             first_state = self.state[active_params[0]]
             step_idx_global = (first_state.get('step', 0) + 1) if len(first_state) > 0 else 1
             T_t_global = T_0 * (1.0 + eta * (np.cos(omega_f * step_idx_global) ** 2))
+            
+            # Moonshot Phase 4: Topological regularizer temperature boost.
+            # High topological fracture (from persistent homology) drives up
+            # the Floquet temperature, encouraging p-adic tunneling to escape
+            # topologically fractured parameter basins.
+            if self._topological_regularizer is not None and self.topological_loss_weight > 0:
+                topo_boost = 1.0 + self.topological_loss_weight * self._last_topo_loss
+                T_t_global *= topo_boost
+            
             sigma = np.sqrt(2.0 * lr * T_t_global)
 
             device = active_params[0].device

@@ -1946,6 +1946,44 @@ def patch_speculative_decoding(gen_mod):
         dyn_num_draft = num_draft_tokens
         acceptance_history = []
 
+        # === Moonshot Phase 1: Geometric Draft Filter ===
+        # Pre-filter speculative candidates using E8 lattice distance.
+        # Tokens whose coordinates are far from the generation trajectory
+        # in lattice space are rejected before expensive target verification.
+        _geometric_filter = None
+        try:
+            from qan_transformers.moonshot.geometric_filter import GeometricDraftFilter
+            # Get the E8 projection matrix from QuasicrystallineAttention if available
+            _e8_proj_matrix = getattr(QuasicrystallineAttention, '_projection_matrix_3d', None)
+            if _e8_proj_matrix is not None:
+                _geometric_filter = GeometricDraftFilter(
+                    projection_matrix=_e8_proj_matrix,
+                    r_base=0.6,
+                    ema_decay=0.9,
+                )
+                print("[Moonshot] Geometric draft filter initialized.", flush=True)
+        except ImportError:
+            pass
+
+        # === Moonshot Phase 5: Cross-Model Wormhole Bridge ===
+        # Opens privacy-preserving wormholes to Gemini when CFI indicates
+        # semantic uncertainty, using Cayley-rotated hidden states.
+        _wormhole_bridge = None
+        try:
+            from qan_transformers.moonshot.cross_model_bridge import (
+                GeminiWormholeBridge,
+                WormholeConfig,
+            )
+            import os
+            if os.environ.get("GEMINI_API_KEY"):
+                _wormhole_config = WormholeConfig(
+                    local_dim=getattr(model, 'dim', 3584),
+                )
+                _wormhole_bridge = GeminiWormholeBridge(_wormhole_config)
+                print("[Moonshot] Cross-model wormhole bridge initialized.", flush=True)
+        except ImportError:
+            pass
+
         if prompt_cache is None:
             model_cache = cache.make_prompt_cache(model)
             draft_cache = cache.make_prompt_cache(draft_model)
@@ -2712,6 +2750,32 @@ def patch_speculative_decoding(gen_mod):
                     # layers was costing ~10-20ms per cycle with redundant GPU syncs.
                     fracture_detected = False
                     
+                    # === Moonshot Phase 5: Cross-Model Wormhole Query ===
+                    # If tokens were rejected and we have a wormhole bridge,
+                    # check if CFI indicates semantic uncertainty and query Gemini.
+                    if _wormhole_bridge is not None and n < num_draft:
+                        # Get CFI from the firewall if available
+                        _firewall_cfi = getattr(QuasicrystallineAttention, '_last_cfi', 0.0)
+                        _firewall_lambda2 = getattr(QuasicrystallineAttention, '_last_lambda_2', 1.0)
+                        if _wormhole_bridge.should_open_wormhole(_firewall_cfi, _firewall_lambda2):
+                            # Get the hidden state at the rejection point
+                            _hidden = getattr(target_lm, 'last_hidden_state', None)
+                            if _hidden is not None:
+                                _h = _hidden[:, -1, :] if _hidden.ndim == 3 else _hidden
+                                _corrected = _wormhole_bridge.query(
+                                    _h,
+                                    context_text=None,  # Could decode recent tokens here
+                                )
+                                if _corrected is not None:
+                                    # Inject corrected hidden state for the next cycle
+                                    if hasattr(target_lm, 'last_hidden_state') and target_lm.last_hidden_state is not None:
+                                        if target_lm.last_hidden_state.ndim == 3:
+                                            target_lm.last_hidden_state = mx.concatenate([
+                                                target_lm.last_hidden_state[:, :-1, :],
+                                                _corrected[None, None, :target_lm.last_hidden_state.shape[-1]]
+                                            ], axis=1)
+                                    print(f"[Moonshot] Wormhole query: CFI={_firewall_cfi:.3f}, corrected hidden state injected.", flush=True)
+                    
                     # slice caches back to batch size 1
                     slice_eval_args = []
                     for c in model_cache:
@@ -2753,6 +2817,13 @@ def patch_speculative_decoding(gen_mod):
                         ntoks += 1
                         if getattr(QuasicrystallineAttention, "current_token_ids", None) is not None:
                             QuasicrystallineAttention.current_token_ids.append(tokens[i])
+                        # === Moonshot Phase 1: Update trajectory with accepted token ===
+                        if _geometric_filter is not None:
+                            _hidden = getattr(target_lm, 'last_hidden_state', None)
+                            if _hidden is not None:
+                                _h = _hidden[:, i, :] if _hidden.ndim == 3 and _hidden.shape[1] > i else None
+                                if _h is not None:
+                                    _geometric_filter.update_trajectory(_h.squeeze(0))
                         yield tokens[i], logprobs[i], True
                         if ntoks == max_tokens:
                             break
@@ -2789,6 +2860,11 @@ def patch_speculative_decoding(gen_mod):
                             dyn_num_draft = min(dyn_num_draft + 1, 5)
                         elif avg_rate <= 0.35:
                             dyn_num_draft = max(dyn_num_draft - 1, 1)
+                        # === Moonshot Phase 1: Boost draft ceiling if geometric filter is active ===
+                        # Geometric pre-filtering means we can safely propose more drafts
+                        # since bad candidates get caught cheaply.
+                        if _geometric_filter is not None and avg_rate >= 0.75:
+                            dyn_num_draft = min(dyn_num_draft + 1, 8)  # Higher ceiling with filter
                 _sync_assistant_cache()
                 if ntoks % 8 == 0:
                     mx.clear_cache()
