@@ -7,16 +7,16 @@ When these outliers are quantized into a tight 4-bit range, their values are cli
 ---
 
 ## 2. The ELQ Solution: Split-Coordinate Quantization
-Embedding Lattice Quantization (ELQ) solves this by splitting the weight matrix $W$ into a dense quantized matrix and a sparse outlier correction matrix:
+Embedding Lattice Quantization (ELQ) solves this by splitting the weight matrix \(W\) into a dense quantized matrix and a sparse outlier correction matrix:
 
 $$W = \text{Dequant}(W_{\text{quant}}) + \Delta W_{\text{outliers}}$$
 
 ### How ELQ Splits the Weights
 Quantizing an LLM without breaking its brain is a delicate art. ELQ does this in a few systematic steps:
-1. **Outlier Identification**: First, we use `MorseAWQCalibrator` to evaluate the weight matrix and activation distributions. It calculates a sensitivity score for each channel (using the AWQ metric: $s_c = \text{mean}(|X_c|) \times \|W_c\|_2$). The top outlier channels (e.g., 10%) are flagged.
-2. **Outlier Isolation**: The high-magnitude weights in these outlier channels are extracted into a coordinate-sparse matrix $\Delta W_{\text{outliers}}$. These precious outliers are stored in their native precision (float16/bfloat16) to avoid any clipping or rounding degradation.
+1. **Outlier Identification**: First, we use `MorseAWQCalibrator` to evaluate the weight matrix and activation distributions. It calculates a sensitivity score for each channel (using the AWQ metric: \(s_c = \text{mean}(|X_c|) \times \|W_c\|_2\)). The top outlier channels (e.g., 10%) are flagged.
+2. **Outlier Isolation**: The high-magnitude weights in these outlier channels are extracted into a coordinate-sparse matrix \(\Delta W_{\text{outliers}}\). These precious outliers are stored in their native precision (float16/bfloat16) to avoid any clipping or rounding degradation.
 3. **Lattice Projection**: The remaining non-outlier weights (with outlier channels zeroed out) are rotated block-by-block (using blocks of size 32) via a deterministic sign-flip and a Walsh-Hadamard Transform (WHT). This mathematical "spin cycle" distributes coordinate energy evenly, preventing any single dimension from hogging the dynamic range.
-4. **E8 Encoding**: The rotated 32D blocks are sliced into 8-dimensional sub-vectors and projected onto the closest point in the 8D $E_8$ lattice using the Conway-Sloane closest-point algorithm. The resulting coordinates are packed into a tidy 32-bit index.
+4. **E8 Encoding**: The rotated 32D blocks are sliced into 8-dimensional sub-vectors and projected onto the closest point in the 8D \(E_8\) lattice using the Conway-Sloane closest-point algorithm. The resulting coordinates are packed into a tidy 32-bit index.
 
 ### Under the Hood: The Parameters
 In `qan_transformers/mlx/modeling.py`, an `ELQLinear` layer stores:
@@ -58,7 +58,7 @@ $$\text{Out} = \text{elq\_fused\_matmul}(x, \text{indices}, \text{scales}) + x_{
 ### The Fused Advantage
 *   `elq_fused_matmul` performs the **dequantization and matrix multiplication in a single GPU kernel dispatch pass**.
 *   It decodes the 4-bit weights on the fly inside the GPU register file *during* the multiplication, completely avoiding allocating a large temporary float32 weight matrix in RAM.
-*   Outliers are added as a residual step: the input vector $x$ is sliced at the outlier coordinates ($x_{\text{outliers}}$), multiplied by the active sparse outliers matrix ($\Delta W_{\text{outliers, active}}^T$), and added to the output.
+*   Outliers are added as a residual step: the input vector \(x\) is sliced at the outlier coordinates (\(x_{\text{outliers}}\)), multiplied by the active sparse outliers matrix (\(\Delta W_{\text{outliers, active}}^T\)), and added to the output.
 
 ---
 
@@ -77,7 +77,7 @@ $$\text{Out} = \text{elq\_fused\_matmul}(x, \text{indices}, \text{scales}) + x_{
 Modern LLMs like Gemma feature gated feedforward network (FFN) layers (using GeGLU activation), which are split into `gate_proj`, `up_proj`, and `down_proj`.
 
 ### The Fusion Dilemma
-In a standard unquantized model, `gate_proj` and `up_proj` can be concatenated along the output feature dimension to create a single fused weight matrix $W_{\text{gate\_up}}$. This allows the model to compute both projections in a single, highly-optimized matrix multiplication (`x @ W_gate_up.T`), improving GPU utilization.
+In a standard unquantized model, `gate_proj` and `up_proj` can be concatenated along the output feature dimension to create a single fused weight matrix \(W_{\text{gate\_up}}\). This allows the model to compute both projections in a single, highly-optimized matrix multiplication (`x @ W_gate_up.T`), improving GPU utilization.
 
 However, attempting this weight-level fusion with ELQ-quantized layers is a recipe for disaster:
 1. **Coordinate Remapping Nightmare**: Concatenating weight matrices would destroy the block-wise structure of the E8-lattice indices.

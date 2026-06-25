@@ -11,7 +11,7 @@ We present the **real performance numbers** logged from our Apple Silicon M4 Pro
 
 Standard Large Language Models (LLMs) store a history of all previous words in a conversation so they can refer back to them. This history is called the **Key-Value (KV) Cache**. 
 *   **The Problem**: The KV Cache grows larger and larger as the sequence length increases. For massive contexts (like reading a 100k-word document), the memory footprint explodes, hitting a "memory cliff" that crashes the GPU (Out of Memory) or slows generation to a crawl.
-*   **Our Solution**: Project Atlas replaces the continuous, word-by-word memory with **Quasicrystalline Attention Networks (QAN)** and **ELQ Quantization**. Instead of saving every single word, we project hidden states onto a predefined set of **240 coordinates** in a highly symmetric 3D projection of the 8-dimensional $E_8$ Gosset root lattice.
+*   **Our Solution**: Project Atlas replaces the continuous, word-by-word memory with **Quasicrystalline Attention Networks (QAN)** and **ELQ Quantization**. Instead of saving every single word, we project hidden states onto a predefined set of **240 coordinates** in a highly symmetric 3D projection of the 8-dimensional \(E_8\) Gosset root lattice.
 
 By combining discrete geometry, topological cache contraction, and low-bit factorization, we compress the model's memory footprint by **85% to 95%** at long context lengths.
 
@@ -91,7 +91,7 @@ From our QA test suite (`results/qa_report.json`), we logged the following train
     *   *Note*: While AdamW achieves a lower absolute final loss on standard training sets, the Adelic Langevin optimizer maintains a lower average mean loss and prevents divergence when training coordinate-sparse attention matrices, ensuring smooth gradient propagation.
 *   **Needle-in-a-Haystack Retrieval**:
     *   **Corpus Size**: 5,000 tokens.
-    *   **Retrieval Latency**: `2.68 ms`.
+    *   **Retrieval Latency**: `78.19 ms`.
     *   **Needle Found**: `True` (100% accuracy on local benchmarks).
 
 ---
@@ -107,7 +107,7 @@ We believe in engineering honesty. No system is perfect, and Project Atlas achie
 4.  **Differentiable Optimizations**: Our custom Metal Performance Shaders (MPS) scatter-gather autograd operators allow the coordinate routing weights to be fine-tuned natively on macOS.
 
 ### 🔴 Minuses (The trade-offs)
-1.  **Initialization Latency**: Projecting vectors onto the $E_8$ coordinate grid and sorting channels introduces a fixed compute overhead, causing short-context prefill to be slower than standard dense prefill.
+1.  **Initialization Latency**: Projecting vectors onto the \(E_8\) coordinate grid and sorting channels introduces a fixed compute overhead, causing short-context prefill to be slower than standard dense prefill.
 2.  **Lossy Cache Contraction**: Restricting attention paths to a discrete coordinate skeleton is lossy. While standard prose, code, and conversations generate perfectly, extremely complex or randomized strings might experience slight loss in precise recall.
 3.  **Hardware Linear Algebra Limits**: Apple MLX does not support SVD or QR solvers on the GPU. We solve this by passing matrices to the CPU (NumPy) for SVD/QR calculations during model initialization. This adds a minor 2-5ms startup delay, though it has no impact on token-by-token generation speeds.
 4.  **Filesystem Concurrency Limits**: The thread-safe database mutex relies on cooperative Unix `fcntl.flock` locks. This works flawlessly on local SSDs, but will block or fail if the workspace is hosted on network drives (like NFS or certain virtual cloud drives).

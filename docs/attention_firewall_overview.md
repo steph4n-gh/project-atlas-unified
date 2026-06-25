@@ -49,4 +49,4 @@ Once a fracture is detected, the next question is: how do we fix it? Instead of 
 
 Essentially, we are giving the AI an active reflection loop. Instead of blindly rushing forward, the model monitors the structural health of its own thoughts, catches itself when it makes a logical slip, and corrects its own course before the words ever reach your screen. It is a design iteration that moves us away from simply hoping models don't make mistakes, and toward systems that actively self-correct in real time.
 
-Read the full technical breakdown: [Mathematical Specifications (mathematical_specifications.md)](file:///Volumes/Storage/project_atlas_unified/docs/mathematical_specifications.md#5-graph-laplacian--fiedler-vector-context-bisection) 💻
+Read the full technical breakdown: [Mathematical Specifications (mathematical_specifications.md)](file:///Volumes/Storage/project_atlas_moonshot/docs/mathematical_specifications.md#5-graph-laplacian--fiedler-vector-context-bisection) 💻

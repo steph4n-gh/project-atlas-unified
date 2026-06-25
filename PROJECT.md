@@ -8,8 +8,8 @@
   - `qan_transformers/optim/adelic.py`: Adelic Langevin Optimizer.
   - `qan_transformers/firewall/cohomology.py`: Cohomology Firewall checking for topological fracture.
   - `qan_transformers/kernels/mps_scatter.py`: Custom MPS gather-scatter PyTorch autograd operators.
-  - `scratch/run_codebase_chat_mlx.py`: MLX-native whole-codebase QA chat CLI (speculative decoding / unified assistant caching).
-  - `scratch/run_codebase_chat.py`: PyTorch whole-codebase QA chat CLI (MPS/CPU).
+  - `scripts/run_codebase_chat_mlx.py`: MLX-native whole-codebase QA chat CLI (speculative decoding / unified assistant caching).
+  - `qan_transformers/cli/chat.py` (run via `qan-cli chat`): PyTorch whole-codebase QA chat CLI (MPS/CPU).
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
@@ -34,4 +34,4 @@
 - Core library: `qan_transformers/`
 - Test suite: `tests/`
 - Benchmarks: `benchmarks/run_validation_suite.py`
-- Codebase QA CLIs: `scratch/run_codebase_chat.py` (PyTorch) and `scratch/run_codebase_chat_mlx.py` (MLX)
+- Codebase QA CLIs: `qan_transformers/cli/chat.py` (run via `qan-cli chat`) (PyTorch) and `scripts/run_codebase_chat_mlx.py` (MLX)

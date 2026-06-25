@@ -461,8 +461,7 @@ class ELQSlidingCache:
     with lazy allocation that avoids the upfront OOM spike.
 
     For very large models, `set_capacity(N)` limits the cache to N layers.
-    When full, the oldest entry is evicted and that layer falls through to
-    the fused Metal matmul kernel (slower but zero memory overhead).
+    When full, it operates on a First-Come, First-Served (FCFS) basis: subsequent cache misses bypass the cache and fall through to the fused Metal matmul kernel (no LRU eviction on inference cache misses, slower but zero memory overhead).
     """
     _instance = None
 

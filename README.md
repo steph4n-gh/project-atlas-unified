@@ -8,7 +8,7 @@
   <img src="docs/assets/github_social_preview.png" width="100%" alt="Project Atlas Banner">
 </p>
 
-A Python library and CLI toolchain implementing **Quasicrystalline Attention Networks (QAN)**. QAN replaces standard dense self-attention with a coordinate-sparse attention layer based on high-dimensional lattices ($E_8$ Gosset root lattice or the 24D Leech lattice $\Lambda_{24}$), enabling sequence lengths of **$200\text{k}+$ tokens** on standard local hardware (Apple Silicon MPS/MLX).
+A Python library and CLI toolchain implementing **Quasicrystalline Attention Networks (QAN)**. QAN replaces standard dense self-attention with a coordinate-sparse attention layer based on high-dimensional lattices (\(E_8\) Gosset root lattice or the 24D Leech lattice \(\Lambda_{24}\)), enabling sequence lengths of **\(200\text{k}+\) tokens** on standard local hardware (Apple Silicon MPS/MLX).
 
 ---
 
@@ -42,7 +42,7 @@ graph TD
 
 ### E8 Root Lattice Projection (Default)
 
-The standard $E_8$ root system contains 240 vectors in $\mathbb{R}^8$ at norm squared equal to $2$. When projecting these points into 3D using the **Icosian Projection** (derived from the golden ratio $\phi = \frac{1+\sqrt{5}}{2}$), we map the discrete 8D root lattice points into scale-invariant 3D concentric shells:
+The standard \(E_8\) root system contains 240 vectors in \(\mathbb{R}^8\) at norm squared equal to \(2\). When projecting these points into 3D using the **Icosian Projection** (derived from the golden ratio \(\phi = \frac{1+\sqrt{5}}{2}\)), we map the discrete 8D root lattice points into scale-invariant 3D concentric shells:
 
 ```text
                . .  *  . .             <- Shell 4 (r=1.000, 80 points)
@@ -56,26 +56,26 @@ The standard $E_8$ root system contains 240 vectors in $\mathbb{R}^8$ at norm sq
                 . .  *  . .
 ```
 
-*   **Shell 0** ($r = 0.0$): $2$ points.
-*   **Shell 1** ($r = 0.588$): $30$ points.
-*   **Shell 2** ($r = 0.866$): $64$ points.
-*   **Shell 3** ($r = 0.951$): $64$ points.
-*   **Shell 4** ($r = 1.000$): $80$ points.
+*   **Shell 0** (\(r = 0.0\)): \(2\) points.
+*   **Shell 1** (\(r = 0.588\)): \(30\) points.
+*   **Shell 2** (\(r = 0.866\)): \(64\) points.
+*   **Shell 3** (\(r = 0.951\)): \(64\) points.
+*   **Shell 4** (\(r = 1.000\)): \(80\) points.
 
 This distribution sums to exactly 240 coordinates, creating a beautifully balanced 3D coordinate map possessing perfect icosahedral rotational symmetry and inversion symmetry. Geodesic spatial distances across these projected shells act as a context highway, allowing tokens to communicate via logarithmic jumps.
 
-### Leech Lattice $\Lambda_{24}$ Projection
+### Leech Lattice \(\Lambda_{24}\) Projection
 
-For giga-scale context windows, QAN supports replacing the E8 lattice with the 24-dimensional Leech lattice $\Lambda_{24}$. The Leech lattice contains **196,560** vectors in its first shell (norm squared equal to 4), generated via the binary Golay code $C_{24}$. Projecting these 24D points into 3D space maps them into exactly **8 scale-invariant concentric shells** with an alignment quality of $\approx 0.73$:
+For giga-scale context windows, QAN supports replacing the E8 lattice with the 24-dimensional Leech lattice \(\Lambda_{24}\). The Leech lattice contains **196,560** vectors in its first shell (norm squared equal to 4), generated via the binary Golay code \(C_{24}\). Projecting these 24D points into 3D space maps them into exactly **8 scale-invariant concentric shells** with an alignment quality of \(\approx 0.73\):
 
-*   **Capacity Advantage:** Provides **819×** more coordinate addresses than E8. This drastically reduces coordinate collisions and verification rollbacks during speculative decoding at extreme context lengths ($200\text{k}+$ tokens).
-*   **Compilation Cost:** Requires a one-time $\approx 890\text{ ms}$ coordinate-mapping compilation overhead at session boot.
+*   **Capacity Advantage:** Provides **819×** more coordinate addresses than E8. This drastically reduces coordinate collisions and verification rollbacks during speculative decoding at extreme context lengths (\(200\text{k}+\) tokens).
+*   **Compilation Cost:** Requires a one-time \(\approx 890\text{ ms}\) coordinate-mapping compilation overhead at session boot.
 
 ---
 
 ## 🗺️ Attention Matrix: Dense vs. Coordinate-Sparse QAN
 
-Instead of computing all $N \times N$ token interactions, QAN computes attention only along geodesic paths defined by active E8 lattice nodes:
+Instead of computing all \(N \times N\) token interactions, QAN computes attention only along geodesic paths defined by active E8 lattice nodes:
 
 ```text
       Dense Attention [O(N²)]             QAN Sparse Attention [O(N log N)]
@@ -104,19 +104,19 @@ Instead of computing all $N \times N$ token interactions, QAN computes attention
 
 ## 🌟 Key Features
 
-*   **Coordinate-Sparse Lattice Attention (E8 / Leech $\Lambda_{24}$)**: Replaces self-attention with a coordinate-sparse attention layer mapped from the 8D $E_8$ Gosset lattice (240 addresses) or the 24D Leech lattice $\Lambda_{24}$ (196,560 addresses), achieving $\ge 85\%$ memory reduction and $97.29\%$ compute sparsity at long context.
-*   **Scale-Invariant Concentric Shells**: Projects standard 240 roots of E8 into 5 3D concentric shells of counts `[2, 30, 64, 64, 80]` or 196,560 vectors of Leech $\Lambda_{24}$ into 8 3D concentric shells while preserving rotational and inversion symmetries.
-*   **Cross-Model KV Cache Sharing**: Allows multiple heterogeneous models (e.g., Gemma 2B and Gemma 9B) to share the same GPU coordinate space. Computes a closed-form orthogonal Procrustes alignment ($M_{align} = UV^T$) on centered hidden states via SVD, guaranteeing cosine similarity rank correlation $\ge 0.85$ on validation sets.
+*   **Coordinate-Sparse Lattice Attention (E8 / Leech \(\Lambda_{24}\))**: Replaces self-attention with a coordinate-sparse attention layer mapped from the 8D \(E_8\) Gosset lattice (240 addresses) or the 24D Leech lattice \(\Lambda_{24}\) (196,560 addresses), achieving \(\ge 85\%\) memory reduction and \(97.29\%\) compute sparsity at long context.
+*   **Scale-Invariant Concentric Shells**: Projects standard 240 roots of E8 into 5 3D concentric shells of counts `[2, 30, 64, 64, 80]` or 196,560 vectors of Leech \(\Lambda_{24}\) into 8 3D concentric shells while preserving rotational and inversion symmetries.
+*   **Cross-Model KV Cache Sharing**: Allows multiple heterogeneous models (e.g., Gemma 2B and Gemma 9B) to share the same GPU coordinate space. Computes a closed-form orthogonal Procrustes alignment (\(M_{align} = UV^T\)) on centered hidden states via SVD, guaranteeing cosine similarity rank correlation \(\ge 0.85\) on validation sets.
 *   **Cross-Model Wormhole Bridge**: Connects local models to cloud models (e.g., Gemini API) via a geometry-preserving private bridge. Uncertain generation trajectories (evaluated via the Cohomology Fracture Index) trigger the bridge, scrambling local activations with a private, session-unique low-rank Woodbury-Cayley transform:
     $$\mathbf{W}_L = \mathbf{I} - 2\mathbf{U}(\mathbf{I}_{2r} + \mathbf{V}^T \mathbf{U})^{-1} \mathbf{V}^T$$
     to prevent inversion by the cloud provider, before projecting the returned cloud embeddings back to local coordinates via Procrustes SVD alignment.
-*   **Cross-Layer Memory Sharing & Orthogonal Adapters**: Binds layers to a single memory swap database instance. Integrates a rank-16 residual orthogonal adapter ($W_L = I + AB^T$) parameterized via Woodbury-optimized Cayley mappings:
+*   **Cross-Layer Memory Sharing & Orthogonal Adapters**: Binds layers to a single memory swap database instance. Integrates a rank-16 residual orthogonal adapter (\(W_L = I + AB^T\)) parameterized via Woodbury-optimized Cayley mappings:
     $$W_L = I - 2 U (I_{2r} + V^T U)^{-1} V^T$$
     to avoid cubic parameter inversion overhead while preserving geodesic pairwise distances.
 *   **Multi-Agent Concurrent Workspaces**: Guarantees thread safety and transactional isolation when multiple agents update the same grid. Utilizes a lockfile mutex context manager (`fcntl.flock`) and Copy-on-Write branching (`CoWMemorySwapGridDB`). Coordinate collisions are dynamically relocated to adjacent open points.
 *   **Universal Lattice RAG CLI**: Built-in document projection indexing text files and embedding chunks onto discrete coordinate lattices, enabling prompt prefill injections via nearest-neighbor search.
-*   **Rolling Perplexity Canary**: Monitors sequence degradation over a 512-token rolling window, falling back gracefully to dense attention if perplexity exceeds $2\times$ the calibration baseline.
-*   **Spectral bisection Cohomology Firewall**: Evaluates attention graph Laplacians ($L = D - W$) during the forward pass. When algebraic connectivity $\lambda_2 < \tau$, it uses the Fiedler vector's signs to bisect the context and trigger targeted rollbacks at the exact split boundary.
+*   **Rolling Perplexity Canary**: Monitors sequence degradation over a 512-token rolling window, falling back gracefully to dense attention if perplexity exceeds \(2\times\) the calibration baseline.
+*   **Spectral bisection Cohomology Firewall**: Evaluates attention graph Laplacians (\(L = D - W\)) during the forward pass. When algebraic connectivity \(\lambda_2 < \tau\), it uses the Fiedler vector's signs to bisect the context and trigger targeted rollbacks at the exact split boundary.
 *   **Apple Silicon (Metal/MPS) Autograd Operators**: Highly responsive custom gather-scatter PyTorch autograd operators tailored for local MPS execution.
 *   **Stable Differentiable LoRA Pipeline**: Features a custom LoRA training pipeline with a **Backtracking Line Search** optimizer to guarantee monotonic causal cross-entropy loss convergence and zero NaN gradients.
 
@@ -173,12 +173,12 @@ qan-cli chat --folder /path/to/my_codebase/
 qan-cli chat --folder /path/to/my_codebase/ --rag
 
 # Run MLX-native whole-codebase chat with E4B model (Apple Silicon optimized)
-python3 scripts/run_codebase_chat_mlx.py --folder /path/to/my_codebase/ --model google/gemma-4-e4b-it
+python3 scripts/run_codebase_chat_mlx.py --folder /path/to/my_codebase/ --model google/gemma-4-e4b
 
 # Run MLX-native whole-codebase chat with speculative decoding (target + assistant)
 python3 scripts/run_codebase_chat_mlx.py --folder /path/to/my_codebase/ \
-  --model google/gemma-4-e4b-it \
-  --draft google/gemma-4-E4B-it-assistant
+  --model google/gemma-4-e4b \
+  --draft google/gemma-4-e4b
 ```
 
 #### Auditing Code for Logic Fractures
@@ -266,7 +266,7 @@ grafted_model = graft_mlx_model(base_model, sparse_ratio=0.15, lattice="leech")
 # 2. Or load ELQ quantized weights and graft attention
 grafted_model = load_and_graft_elq_model(
     model=base_model,
-    elq_path="scratch/gemma-4-e4b-it.elq",
+    elq_path="scratch/gemma-4-e4b.elq",
     sparse_ratio=0.15,
     lattice="leech"
 )
@@ -293,7 +293,7 @@ for step, loss in enumerate(losses):
 ## 📂 Project Directory Structure
 
 ```text
-project_atlas_unified/
+project_atlas_moonshot/
 ├── qan_transformers/     # Core library package
 │   ├── math/             # High-dimensional lattice generation & coordinate projection
 │   │   ├── e8_projection.py
@@ -322,9 +322,10 @@ project_atlas_unified/
 │       ├── dashboard.py  # FastAPI Server-Sent Events (SSE) server backend
 │       └── chat.py       # Codebase-wide context-locked terminal chat execution
 ├── tests/                # Testing suite
-│   ├── unit/             # Unit tests checking E8 math, entropy, and adapters
-│   ├── moonshot/         # Tests for geometric attention, Leech Λ₂₄, and wormholes
-│   └── e2e/              # Integration and firewall validation tests
+│   ├── qan/
+│   │   ├── unit/             # Unit tests checking E8 math, entropy, and adapters
+│   │   └── e2e/              # Integration and firewall validation tests
+│   └── moonshot/         # Tests for geometric attention, Leech Λ₂₄, and wormholes
 ├── data/                 # Dataset directory
 │   └── gemma4_corpus.json # Tokenized calibration dataset for training/NAS loops
 ├── scripts/              # Utility and execution helper scripts
@@ -346,7 +347,7 @@ Tested natively on local **Apple Silicon (M4 Pro GPU)** devices under a hard **1
 
 ### 1. Speculative Decoding Throughput
 
-Comparing standard decoding against speculative decoding using E8 and Leech $\Lambda_{24}$ lattices on different model scales (M4 Pro GPU, strict 17.0 GB VRAM limit):
+Comparing standard decoding against speculative decoding using E8 and Leech \(\Lambda_{24}\) lattices on different model scales (M4 Pro GPU, strict 17.0 GB VRAM limit):
 
 #### Gemma-4 E4B (4B target + assistant)
 
@@ -354,7 +355,7 @@ Comparing standard decoding against speculative decoding using E8 and Leech $\La
 | :--- | :--- | :--- | :--- |
 | **Standard Decoding (Target Only)** | 20.63 tok/s | 14.54s | Baseline |
 | **Speculative Decoding (E8 Lattice - 240 pts)** | 34.92 tok/s | 8.59s | **+69.27%** 🚀 |
-| **Speculative Decoding (Leech $\Lambda_{24}$ Lattice - 196,560 pts)** | **37.87 tok/s** | **7.92s** | **+77.54%** 🔥 |
+| **Speculative Decoding (Leech \(\Lambda_{24}\) Lattice - 196,560 pts)** | **37.87 tok/s** | **7.92s** | **+77.54%** 🔥 |
 
 #### Gemma-4 12B (12B target + assistant)
 
@@ -362,20 +363,20 @@ Comparing standard decoding against speculative decoding using E8 and Leech $\La
 | :--- | :--- | :--- | :--- |
 | **Standard Decoding (Target Only)** | 5.46 tok/s | 7.33s | Baseline |
 | **Speculative Decoding (E8 Lattice - 240 pts)** | 9.43 tok/s | 4.24s | **+72.71%** 🚀 |
-| **Speculative Decoding (Leech $\Lambda_{24}$ Lattice - 196,560 pts)** | **9.46 tok/s** | **4.23s** | **+73.26%** 🔥 |
+| **Speculative Decoding (Leech \(\Lambda_{24}\) Lattice - 196,560 pts)** | **9.46 tok/s** | **4.23s** | **+73.26%** 🔥 |
 
 > [!NOTE]
-> The Leech lattice $\Lambda_{24}$ outperforms the E8 lattice in speculative decoding because of its vastly higher address capacity (196,560 vectors vs E8's 240 vectors). This higher resolution allows the `GeometricDraftFilter` to perform much tighter candidate filtering, accepting correct sequences earlier and reducing speculative rollbacks by keeping the generation trajectory tightly focused in quasicrystalline projection space.
+> The Leech lattice \(\Lambda_{24}\) outperforms the E8 lattice in speculative decoding because of its vastly higher address capacity (196,560 vectors vs E8's 240 vectors). This higher resolution allows the `GeometricDraftFilter` to perform much tighter candidate filtering, accepting correct sequences earlier and reducing speculative rollbacks by keeping the generation trajectory tightly focused in quasicrystalline projection space.
 
 ### 2. Core Latency & Sparsity Stats
 
 *   **Compute Sparsity**: At a sequence length of 1,024, QAN sparse attention computes only **28,448 active coordinate pairs** (out of 1,048,576 dense attention weights), achieving a **97.29% compute bypass**.
 *   **Prefill Throughput & Fusion**: The coordinate-sparse MPS attention operator processed a 1,024-token forward pass in **5.439 ms**, delivering a raw prefill processing throughput of **188,259 tokens/second** on the M4 Pro GPU. The fused gather-scatter MPS kernel cuts coordinate-routing latency by **49.63%** (reducing mean latency from **883.34 ms to 444.97 ms**).
-*   **VRAM KV-Cache Footprint**: Dynamic coordinate-sparse key-value caching yields a **$\ge 85\%$ memory utilization reduction** compared to standard dense transformers. For a 500k context sequence:
+*   **VRAM KV-Cache Footprint**: Dynamic coordinate-sparse key-value caching yields a **\(\ge 85\%\) memory utilization reduction** compared to standard dense transformers. For a 500k context sequence:
     *   **Standard Dense Cache:** 68.66 GB VRAM
     *   **QAN-ATLAS Cache:** **10.30 GB** (well within standard developer hardware boundaries)
 *   **Active Parameter Sparsity (UCE)**: Active-path tree-routing achieves **71.9% active parameter sparsity**, paging inactive blocks out of memory to run under strict VRAM thresholds.
-*   **Monotonic Loss Convergence**: The backtracking line search dynamically updates the active LoRA weights step-by-step, ensuring stable, monotonic loss reduction (e.g. $1.009 \to 0.963 \to \dots$) without NaNs or gradient explosion.
+*   **Monotonic Loss Convergence**: The backtracking line search dynamically updates the active LoRA weights step-by-step, ensuring stable, monotonic loss reduction (e.g. \(1.009 \to 0.963 \to \dots\)) without NaNs or gradient explosion.
 
 ---
 

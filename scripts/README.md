@@ -6,16 +6,16 @@ These scripts implement the full reproducible pipeline for the Ultrametric Cogni
 
 ```bash
 source .venv/bin/activate
-PYTHONPATH=src python scripts/<name>.py [args...]
+PYTHONPATH=. python scripts/<name>.py [args...]
 ```
 
 After `pip install -e .[dev]`, the console entry points (from `[project.scripts]` in `pyproject.toml`) are registered in the venv. Invoke them with `PYTHONPATH=.` so the `scripts.*` namespace is importable (the wrappers are located in the venv bin, so implicit cwd is not the project root):
 
-- `PYTHONPATH=. uce-build-tree ...`
+- `PYTHONPATH=. uce-compile ...`
 - `PYTHONPATH=. uce-distill-phase0 ...`
 - etc.
 
-See root `README.md` for details. The explicit `PYTHONPATH=src python scripts/*.py` form (shown in all examples below) is the primary/reliable documented way and is what the tests use via subprocess.
+See root `README.md` for details. The explicit `PYTHONPATH=. python scripts/*.py` form (shown in all examples below) is the primary/reliable documented way and is what the tests use via subprocess.
 
 Each script has a rich module docstring with exact examples (synthetic + real). Run `python scripts/foo.py --help` for CLI.
 
@@ -28,7 +28,7 @@ Build `FiniteTree` by hierarchical clustering on embeddings (synthetic structure
 **Synthetic (TDD/smoke, no weights):**
 
 ```bash
-PYTHONPATH=src python scripts/build_tree_from_gemma.py \
+PYTHONPATH=. python scripts/build_tree_from_gemma.py \
     --synthetic --p 2 --depth 2 --num-tokens 4 --out /tmp/synth_tree.json
 ```
 
@@ -36,13 +36,13 @@ PYTHONPATH=src python scripts/build_tree_from_gemma.py \
 
 ```bash
 # gemma-2 / mlx 4bit (mlx backend)
-PYTHONPATH=src python scripts/build_tree_from_gemma.py \
+PYTHONPATH=. python scripts/build_tree_from_gemma.py \
     --gemma-model mlx-community/gemma-2-2b-4bit \
     --p 3 --depth 6 --out /tmp/gemma_induced_tree.json
 
 # gemma-4 (storage cache + transformers backend for E2B/12B; or direct snapshot for embed)
 export HF_HOME=/Volumes/Storage/huggingface_cache
-PYTHONPATH=src python scripts/build_tree_from_gemma.py \
+PYTHONPATH=. python scripts/build_tree_from_gemma.py \
     --gemma-model google/gemma-4-E2B-it \
     --p 8 --depth 2 --max-tokens 64 --out /tmp/real_gemma4_tree.json
 # or pass local mlx snapshot dir for embed-only tree from cache 4bit without full teacher load
@@ -50,7 +50,7 @@ PYTHONPATH=src python scripts/build_tree_from_gemma.py \
 
 Output: JSON with `p`, `depth`, `address_map`, `source`, `num_tokens`. Reconstruct with `FiniteTree(p, depth, address_map=...)` (see script header for exact snippet).
 
-See: `src/ultrametric_ce/tree.py` (cluster_and_assign_addresses), `gemma_interface.py` (lazy), `tests/test_tree.py` (roundtrip smoke via subprocess).
+See: `ultrametric_ce/tree.py` (cluster_and_assign_addresses), `gemma_interface.py` (lazy), `tests/ultrametric/test_tree.py` (roundtrip smoke via subprocess).
 
 ### distill_phase0_heads.py (Task 5)
 
@@ -59,14 +59,14 @@ Warm-start `DigitHeads` via factorization/distillation from teacher sub-distribu
 **Synthetic:**
 
 ```bash
-PYTHONPATH=src python scripts/distill_phase0_heads.py \
+PYTHONPATH=. python scripts/distill_phase0_heads.py \
     --synthetic --out /tmp/phase0_heads.safetensors --steps 25
 ```
 
 **With prebuilt tree or real Gemma (ids must align):**
 
 ```bash
-PYTHONPATH=src python scripts/distill_phase0_heads.py \
+PYTHONPATH=. python scripts/distill_phase0_heads.py \
     --tree-config /tmp/synth_tree.json --out /tmp/phase0_heads.safetensors
 
 # real
@@ -75,7 +75,7 @@ PYTHONPATH=src python scripts/distill_phase0_heads.py \
 
 Produces `.safetensors` (+ optional meta). Verification in script: warmed heads alone already beat random on structural prefixes (for toy).
 
-See: `src/ultrametric_ce/distillation.py` (warm_start_phase0_heads, predict_with_warmed_heads, save/load), `routing.py`.
+See: `ultrametric_ce/distillation.py` (warm_start_phase0_heads, predict_with_warmed_heads, save/load), `routing.py`.
 
 ### run_distillation.py (Task 6)
 
@@ -84,25 +84,25 @@ Full Phase 1 (diffusion focus, heads frozen) + Phase 2 (light joint) training vi
 **Synthetic smoke (fast, produces ready-to-use ckpt):**
 
 ```bash
-PYTHONPATH=src python scripts/run_distillation.py \
+PYTHONPATH=. python scripts/run_distillation.py \
     --synthetic --phase 1 --steps 30 --out /tmp/uce_phase1.safetensors
 
 # with Phase 0 heads + smoke mode
-PYTHONPATH=src python scripts/run_distillation.py \
+PYTHONPATH=. python scripts/run_distillation.py \
     --synthetic --phase 1 --heads-ckpt /tmp/phase0_heads.safetensors --smoke --out /tmp/uce_smoke.safetensors
 ```
 
 **Real:**
 
 ```bash
-PYTHONPATH=src python scripts/run_distillation.py \
+PYTHONPATH=. python scripts/run_distillation.py \
     --tree-config /tmp/gemma_tree.json --gemma-model mlx-community/gemma-2-2b-4bit \
     --phase 1 --steps 200 --out /tmp/uce_gemma_distilled.safetensors
 ```
 
 Saves UCE weights + sibling `.meta.json` (p/depth/dim/alpha/address_map + provenance). Roundtrip load verified inside. For synthetic also prints post-train prefix/validity.
 
-See: `src/ultrametric_ce/distillation.py` (run_distillation_phase + the 4 losses + batcher + ToyStructuralTeacher), `model.py`, `scripts/run_distillation.py` (save_full_checkpoint / load_full_checkpoint helpers, also mirrored in public `inference.load_model_and_tree`).
+See: `ultrametric_ce/distillation.py` (run_distillation_phase + the 4 losses + batcher + ToyStructuralTeacher), `model.py`, `ultrametric_ce/cli/distill.py` (save_full_checkpoint / load_full_checkpoint helpers, also mirrored in public `inference.load_model_and_tree`).
 
 ### generate_with_mvp.py (Task 7)
 
@@ -111,7 +111,7 @@ Load full distilled checkpoint (via public `inference.load_model_and_tree`), run
 **Example (after a ckpt from run_distillation):**
 
 ```bash
-PYTHONPATH=src python scripts/generate_with_mvp.py \
+PYTHONPATH=. python scripts/generate_with_mvp.py \
     --checkpoint /tmp/uce_distilled.safetensors --prompt "((1+2)*" --max-new 12
 ```
 
@@ -119,7 +119,7 @@ PYTHONPATH=src python scripts/generate_with_mvp.py \
 - Always emits only registered leaves (enforced by tree live navigation).
 - `--no-verbose` suppresses the per-step active prints (summary note remains).
 
-See: `src/ultrametric_ce/inference.py` (`load_model_and_tree`, `generate` — the core sparse impl using `embed_and_diffuse(active_balls=...)` + per-digit heads + categorical over live children).
+See: `ultrametric_ce/inference.py` (`load_model_and_tree`, `generate` — the core sparse impl using `embed_and_diffuse(active_balls=...)` + per-digit heads + categorical over live children).
 
 ### eval_structural.py (Task 8)
 
@@ -128,8 +128,8 @@ Full evaluation harness on a UCE checkpoint. Runs validity checker (`is_structur
 **Example:**
 
 ```bash
-PYTHONPATH=src python scripts/run_distillation.py --synthetic --steps 30 --out /tmp/uce_mvp.safetensors
-PYTHONPATH=src python scripts/eval_structural.py \
+PYTHONPATH=. python scripts/run_distillation.py --synthetic --steps 30 --out /tmp/uce_mvp.safetensors
+PYTHONPATH=. python scripts/eval_structural.py \
     --checkpoint /tmp/uce_mvp.safetensors --num-samples 10 --seed 42
 ```
 
@@ -137,7 +137,7 @@ Reports numbers proving structural coherence (high good/bad separation on checke
 
 Uses only public `ultrametric_ce.{inference,distillation,evaluation,...}`.
 
-See: `src/ultrametric_ce/evaluation.py` (all the metrics + toy checker/parser), `test_distillation_synthetic.py` (asserts improvement).
+See: `ultrametric_ce/evaluation.py` (all the metrics + toy checker/parser), `tests/ultrametric/test_distillation_synthetic.py` (asserts improvement).
 
 ## Prerequisites & Notes
 
@@ -145,7 +145,7 @@ See: `src/ultrametric_ce/evaluation.py` (all the metrics + toy checker/parser), 
 - **Real path**: use storage HF cache gemma-4 (12B 4bit flat etc via short name or resolved path). Contract (real_gemma_contract) enforces high original tids + prompt overlap. Use `load_gemma_tokenizer` (only, no model weights) for encode/decode in gen. Canonical evidence: `python scripts/run_gemma4_verif.py` (tok-only, calls assert_tree_talkable, one log).
 - Small trees / `--smoke` / few `--steps` / `--num-samples` for speed in tests.
 - Checkpoints: always `.safetensors` (MLX) + `.meta.json` sidecar for tree reconstruction. Use `load_model_and_tree` (public).
-- All scripts set up their own `sys.path` hack for `PYTHONPATH=src` runs (consistent).
+- All scripts set up their own `sys.path` hack to reflect that scripts should be run with `PYTHONPATH=.`.
 - Help + examples: each script's top docstring is authoritative and copy-paste runnable.
 
 ## Reproducibility
@@ -154,4 +154,4 @@ The end-to-end synthetic smoke test (`pytest ...::test_mvp_end_to_end_synthetic_
 
 See root `README.md` for high-level pipeline, expected numbers, and links to the design spec.
 
-Run `python -m pytest tests/test_tree.py -q -k build_tree` to exercise the build script smoke too.
+Run `python -m pytest tests/ultrametric/test_tree.py -q -k build_tree` to exercise the build script smoke too.

@@ -10,7 +10,7 @@ Think of it as a mathematical X-ray for your `package-lock.json` and Python envi
 > ### How It Works (30-Second Version)
 > Every dependency graph has a natural "shape." Your project sits at the center, its direct dependencies fan out, and their transitive dependencies form a connected web. A supply chain attack injects a package that **doesn't structurally belong** — it's either completely disconnected from your real dependency tree, or it forms an isolated cluster with a suspicious bridge to system-level packages.
 >
-> The τ-Spectral Pruner computes the **Fiedler Vector** (the second-smallest eigenvalue $\lambda_2$ of the graph Laplacian $L = D - A$) to mathematically partition your dependency graph into a **Mainland** (legitimate packages) and **Islands** (structural anomalies). A directed BFS from the project root then classifies each island node:
+> The τ-Spectral Pruner computes the **Fiedler Vector** (the second-smallest eigenvalue \(\lambda_2\) of the graph Laplacian \(L = D - A\)) to mathematically partition your dependency graph into a **Mainland** (legitimate packages) and **Islands** (structural anomalies). A directed BFS from the project root then classifies each island node:
 > * **Unreachable island** → `FATAL_BLOCK` (hard CI failure)
 > * **Reachable but structurally anomalous** → `WARNING` (logged for manual review)
 
@@ -137,7 +137,7 @@ These defaults are tuned for general-purpose dependency auditing. For high-secur
 We believe in honest documentation. Here is what this tool **does not do**:
 
 *   **It does not scan for known CVEs.** Use `npm audit`, `pip-audit`, or Snyk for that. This tool detects *structural* anomalies, not *known* vulnerabilities.
-*   **Small graphs produce noisy results.** The Fiedler bisection mathematically partitions any connected graph with $\ge 3$ non-sink nodes into two halves. For lockfiles with fewer than ~5 packages, this partition is a mathematical artifact, not a security signal. The tool emits a `WARNING` for these cases rather than blocking.
+*   **Small graphs produce noisy results.** The Fiedler bisection mathematically partitions any connected graph with \(\ge 3\) non-sink nodes into two halves. For lockfiles with fewer than ~5 packages, this partition is a mathematical artifact, not a security signal. The tool emits a `WARNING` for these cases rather than blocking.
 *   **It cannot detect malicious code inside a legitimate package.** If an attacker compromises a package you already depend on and pushes a malicious update *under the same name*, the graph topology doesn't change. Use lockfile integrity checks (hash verification) for that.
 *   **Transitive injections produce warnings, not blocks.** An attacker who injects a malicious sub-dependency into a package you legitimately depend on will be flagged as `WARNING` (structurally anomalous but reachable). This is by design — hard-blocking would produce false positives on legitimate refactors.
 
