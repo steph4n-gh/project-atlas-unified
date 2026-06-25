@@ -1,6 +1,6 @@
 import mlx.core as mx
 import mlx.nn as nn
-from typing import Any
+from typing import Any, Tuple, List, Dict, Optional
 import numpy as np
 from qan_transformers.mlx.attention import QuasicrystallineAttention
 from qan_transformers.kernels.elq_metal import elq_fused_matmul

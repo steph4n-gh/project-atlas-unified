@@ -1,6 +1,7 @@
 import os
 import sys
 from unittest.mock import MagicMock
+import importlib.machinery
 
 # Redirect Hugging Face cache directories to the external storage volume for all tests
 os.environ["HF_HOME"] = os.environ.get("HF_HOME", "/Volumes/Storage/huggingface")
@@ -10,12 +11,22 @@ os.environ["HF_HUB_CACHE"] = os.environ.get("HF_HUB_CACHE", "/Volumes/Storage/hu
 try:
     import mlx.core as mx
 except ImportError:
-    class MLXMock(MagicMock):
-        @property
-        def __name__(self):
-            return "mlx"
+    mlx_mock = MagicMock()
+    mlx_mock.__spec__ = importlib.machinery.ModuleSpec("mlx", None)
+    mlx_mock.__name__ = "mlx"
+    sys.modules["mlx"] = mlx_mock
 
-    sys.modules["mlx"] = MLXMock()
-    sys.modules["mlx.core"] = MagicMock()
-    sys.modules["mlx.nn"] = MagicMock()
-    sys.modules["mlx.optimizers"] = MagicMock()
+    mlx_core_mock = MagicMock()
+    mlx_core_mock.__spec__ = importlib.machinery.ModuleSpec("mlx.core", None)
+    mlx_core_mock.__name__ = "mlx.core"
+    sys.modules["mlx.core"] = mlx_core_mock
+
+    mlx_nn_mock = MagicMock()
+    mlx_nn_mock.__spec__ = importlib.machinery.ModuleSpec("mlx.nn", None)
+    mlx_nn_mock.__name__ = "mlx.nn"
+    sys.modules["mlx.nn"] = mlx_nn_mock
+
+    mlx_optimizers_mock = MagicMock()
+    mlx_optimizers_mock.__spec__ = importlib.machinery.ModuleSpec("mlx.optimizers", None)
+    mlx_optimizers_mock.__name__ = "mlx.optimizers"
+    sys.modules["mlx.optimizers"] = mlx_optimizers_mock
