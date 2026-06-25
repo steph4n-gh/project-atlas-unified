@@ -16,9 +16,14 @@ A Python library and CLI toolchain implementing **Quasicrystalline Attention Net
 > ### 📚 Quick-Start Documentation Index
 > **New to the project? Spend 2 seconds to look here first!**
 > Explore the design and mechanics of Quasicrystalline Attention Networks at your preferred level of depth:
-> *   📖 **[Conceptual Guide](docs/accessible_overview.md)** — A friendly, conceptual introduction using real-world analogies (subway zones, postal codes) to explain the system for general developers.
-> *   📐 **[Mathematical Specifications](docs/mathematical_specifications.md)** — Rigorous formulas, derivations, and proofs for Coxeter E8 projections, Woodbury Cayley adapters, and graph Laplacian firewalls.
-> *   💻 **[Systems Reference Guide](docs/systems_reference.md)** — In-depth systems engineering breakdown of Apple Silicon MPS/MLX hardware trade-offs, memory paging, and concurrency/locking mechanics.
+> *   📖 **[Conceptual Guide](docs/accessible_overview.md)** — A friendly, conceptual introduction using real-world analogies (subway zones, postal codes) to explain the system.
+> *   📐 **[Mathematical Specifications](docs/mathematical_specifications.md)** — Rigorous formulas and derivations for lattice projections, Cayley adapters, and firewalls.
+> *   💻 **[Systems Reference Guide](docs/systems_reference.md)** — In-depth systems engineering breakdown of hardware trade-offs and concurrency mechanics.
+> *   🔬 **Feature-Specific Deep Dives**:
+>     *   🌐 **[Geometric Memory Overview](docs/e8_lattice_memory_overview.md)** — High-dimensional concentric sphere mapping.
+>     *   🛡️ **[Attention Firewall Overview](docs/attention_firewall_overview.md)** — Proactive topological cycle checks.
+>     *   🕸️ **[Discrete Morse Cache Contraction](docs/morse_cache_overview.md)** — Topological memory pruning.
+>     *   🔄 **[Woodbury-Cayley Orthogonal Rotation](docs/woodbury_cayley_overview.md)** — Distance-preserving weight updates.
 
 ---
 
