@@ -9,7 +9,8 @@ from threading import Thread
 
 # Pinned memory CPU tensors are coerced onto the GPU device (mps:0) by PyTorch on Apple Silicon.
 # To keep CPU buffers strictly offloaded from the M4 Pro VRAM ceiling, we disable pin_memory on macOS.
-use_pin_memory = not torch.backends.mps.is_available()
+# We also only use pin_memory if CUDA is available, to avoid NVIDIA driver errors on CPU-only environments.
+use_pin_memory = torch.cuda.is_available() and not torch.backends.mps.is_available()
 
 class ThreadWithReturnValue(Thread):
     def __init__(self, target, args=(), kwargs=None):

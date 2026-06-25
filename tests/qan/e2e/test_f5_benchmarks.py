@@ -91,11 +91,12 @@ def test_t1_benchmarks_plot_generation():
     """
     Verify the execution of benchmarks/run_validation_suite.py script.
     """
+    import sys
     # Run script
     env = os.environ.copy()
     env["PYTHONPATH"] = "."
     res = subprocess.run(
-        ["/opt/homebrew/opt/python@3.14/bin/python3.14", "benchmarks/run_validation_suite.py"],
+        [sys.executable, "benchmarks/run_validation_suite.py"],
         capture_output=True,
         text=True,
         env=env
