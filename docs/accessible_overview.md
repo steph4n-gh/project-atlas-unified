@@ -16,14 +16,14 @@ Project Atlas solves this by replacing continuous memory with **discrete topolog
 ---
 
 ## 2. Analogy 1: Concentric Shell Mapping (The Subway System)
-*   **The Math Jargon**: Concentric Icosian Shell Mapping (\(E_8\) Attention)
+*   **The Math Jargon**: Concentric Icosian Shell Mapping ($E_8$ Attention)
 *   **The Analogy**: A city's subway system with express and local lanes.
 
 ![E8 Gosset Polytope Concentric Shell Mapping (3D Projection)](assets/e8_lattice_shells.png)
 
 Imagine you are planning a trip across a massive metropolis. You don't walk down every single street block-by-block. Instead, you walk to the nearest local subway station, catch an express train to a major hub, and then take a local line to your final destination.
 
-In standard attention, every word has to talk to every other word (like walking block-by-block). In Project Atlas, we map all possible words to a predefined set of **240 coordinates** in a discrete geometry (the \(E_8\) lattice). These 240 coordinates are organized into **5 concentric shells** (like zones on a subway map). 
+In standard attention, every word has to talk to every other word (like walking block-by-block). In Project Atlas, we map all possible words to a predefined set of **240 coordinates** in a discrete geometry (the $E_8$ lattice). These 240 coordinates are organized into **5 concentric shells** (like zones on a subway map). 
 *   **Shell 0 (Hubs)**: The central downtown stations.
 *   **Shells 1-4 (Local zones)**: Outlying neighborhoods.
 
@@ -32,17 +32,17 @@ Tokens (words) query this coordinate system. Instead of talking to all 200,000 p
 ---
 
 ## 3. Analogy 2: p-Adic Coordinate Routing (The Hierarchical ZIP Code)
-*   **The Math Jargon**: \(p\)-adic Tree Coordinate Routing (Ultrametric Cognitive Engine - UCE)
+*   **The Math Jargon**: $p$-adic Tree Coordinate Routing (Ultrametric Cognitive Engine - UCE)
 *   **The Analogy**: A postal sorting center using hierarchical zip codes.
 
-While QAN maps memory coordinates to the 8D \(E_8\) lattice, searching through thousands of coordinate points in real-time can still be slow. The **Ultrametric Cognitive Engine (UCE)** solves this by overlaying a hierarchical, tree-like structure (a \(p\)-adic tree) over the \(E_8\) coordinate space.
+While QAN maps memory coordinates to the 8D $E_8$ lattice, searching through thousands of coordinate points in real-time can still be slow. The **Ultrametric Cognitive Engine (UCE)** solves this by overlaying a hierarchical, tree-like structure (a $p$-adic tree) over the $E_8$ coordinate space.
 
 Imagine you want to send a letter to a house in a city. You don't read every house number in the city directory. You read the ZIP code: first the state, then the city, then the neighborhood, then the street. 
 
 UCE acts as the routing system:
 1.  **Continuous to Tree Coordinates**: It projects words into continuous 3D coordinates and extracts digits using three number bases (2, 3, and 5—which represent the prime factors of 30, matching icosahedral projection symmetry).
 2.  **Morton Coding**: It interleaves these base-2, base-3, and base-5 digits to build a unique "semantic ZIP code" (a Morton code) representing the word's position in a tree hierarchy.
-3.  **Fast Tree Search & Assembly**: In long contexts, instead of scanning all database memories, UCE routes searches down this tree. It prunes out entire branches (using 2-adic coset matching in the `AdelicMemorySwapGridDB` database) to locate the exact \(E_8\) coordinate neighbor in logarithmic time. In addition, when computing attention over sequence lengths greater than 2048, it sorts and aggregates tokens within this tree using a tree-structured Fast Multipole Method (FMM), preventing quadratic memory bottlenecks.
+3.  **Fast Tree Search & Assembly**: In long contexts, instead of scanning all database memories, UCE routes searches down this tree. It prunes out entire branches (using 2-adic coset matching in the `AdelicMemorySwapGridDB` database) to locate the exact $E_8$ coordinate neighbor in logarithmic time. In addition, when computing attention over sequence lengths greater than 2048, it sorts and aggregates tokens within this tree using a tree-structured Fast Multipole Method (FMM), preventing quadratic memory bottlenecks.
 
 ---
 

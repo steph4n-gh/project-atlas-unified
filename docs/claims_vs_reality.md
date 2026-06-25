@@ -17,12 +17,12 @@ On a MacBook Pro with 24 GB of unified RAM, the macOS GPU memory allocator impos
 We don't allocate a dense 200k x 200k attention matrix. We bypass the memory cliff using three techniques:
 
 1. **Discrete Morse Contraction**: Instead of saving a KV vector for every single token, we treat the sequence history as a topological manifold and collapse redundant attention paths down to their critical cells. This shrinks the active cache footprint by **over 85%**. At 128k context, the QAN cache occupies just **2.32 GB** (compared to 25.39 GB for standard attention).
-2. **Ultrametric Cognitive Engine (UCE)**: We index the remaining keys in a hierarchical \(p\)-adic tree (using prime bases 2, 3, and 5). Instead of scanning all 200k tokens sequentially (which scales quadratically: \(O(N^2)\)), we search the tree in logarithmic time: \(O(\log N)\).
+2. **Ultrametric Cognitive Engine (UCE)**: We index the remaining keys in a hierarchical $p$-adic tree (using prime bases 2, 3, and 5). Instead of scanning all 200k tokens sequentially (which scales quadratically: $O(N^2)$), we search the tree in logarithmic time: $O(\log N)$.
 3. **Fast Multipole Method (FMM)**: For tokens beyond a context of 2048, UCE aggregates remote attention values at the tree nodes rather than computing pairwise token-to-token scores, keeping the memory footprint flat.
 
 ### The Catch
 * **Lossy Recall**: Morse contraction is lossy. For standard prose, code, and conversations, it retains perfect coherence. However, for high-entropy inputs (like long strings of random characters or dense phone numbers), it may experience minor recall loss.
-* **Prefill Latency**: Constructing the \(p\)-adic tree and routing keys to \(E_8\) coordinates introduces a fixed startup compute overhead. For short sequences (e.g., 512 tokens), prefill is slower than standard dense prefill (**193 ms vs 45 ms**). As the sequence grows, the overhead is amortized: the prefill latency curve flattens because we bypass the quadratic scaling bottleneck. To alleviate this startup cost, we implemented a fused coordinate gather-scatter MPS kernel that cuts routing latency by **~50%** (reducing mean routing latency from **883.3 ms to 445.0 ms**), preventing prefill from bottlenecking context initialization.
+* **Prefill Latency**: Constructing the $p$-adic tree and routing keys to $E_8$ coordinates introduces a fixed startup compute overhead. For short sequences (e.g., 512 tokens), prefill is slower than standard dense prefill (**193 ms vs 45 ms**). As the sequence grows, the overhead is amortized: the prefill latency curve flattens because we bypass the quadratic scaling bottleneck. To alleviate this startup cost, we implemented a fused coordinate gather-scatter MPS kernel that cuts routing latency by **~50%** (reducing mean routing latency from **883.3 ms to 445.0 ms**), preventing prefill from bottlenecking context initialization.
 
 ---
 
@@ -35,8 +35,8 @@ Standard 4-bit quantization (like RTN or basic GPTQ) rounds weights to the neare
 We use **Embedding Lattice Quantization (ELQ)**, which separates the weight matrix into two distinct components:
 $$W = \text{Dequant}(W_{\text{quant}}) + \Delta W_{\text{outliers}}$$
 
-1. **Outlier Isolation**: We use a Walsh-Hadamard Transform to disperse activation energy, then isolate the remaining high-energy outlier channels into a separate, unquantized sparse matrix (\(\Delta W_{\text{outliers}}\)). These outliers represent less than 5% of the weights but hold 95% of the reasoning precision.
-2. **\(E_8\) Lattice Rounding**: Instead of rounding the remaining 95% of weights to a flat, square grid (hypercube), we project them onto coordinates in the **\(E_8\) lattice**—the densest sphere-packing structure in 8 dimensions. Because \(E_8\) is highly symmetric, it minimizes the geometric rounding error far better than uniform 4-bit grids.
+1. **Outlier Isolation**: We use a Walsh-Hadamard Transform to disperse activation energy, then isolate the remaining high-energy outlier channels into a separate, unquantized sparse matrix ($\Delta W_{\text{outliers}}$). These outliers represent less than 5% of the weights but hold 95% of the reasoning precision.
+2. **$E_8$ Lattice Rounding**: Instead of rounding the remaining 95% of weights to a flat, square grid (hypercube), we project them onto coordinates in the **$E_8$ lattice**—the densest sphere-packing structure in 8 dimensions. Because $E_8$ is highly symmetric, it minimizes the geometric rounding error far better than uniform 4-bit grids.
 
 ### The Catch
 * **Memory Overhead**: The size of the sparse outlier matrix is dynamic. If a model layer has extremely chaotic activations, the outlier count will rise, slightly increasing the memory footprint.
@@ -69,7 +69,7 @@ If multiple agents concurrently write updates to a shared database, they will ei
 We use a **Copy-on-Write (CoW)** branching coordinate database (`CoWMemorySwapGridDB`).
 
 1. **Speculative Branches**: Each agent gets its own virtual branch of the coordinate memory grid to write updates.
-2. **Topological Relocation**: When merging, if Agent A and Agent B wrote different ideas to the exact same coordinate \(X\), we do not average them. Since the \(E_8\) lattice has **240 immediate neighbor spots**, we relocate Agent B's write to the nearest vacant neighbor coordinate. Both memories remain distinct, clean, and queryable.
+2. **Topological Relocation**: When merging, if Agent A and Agent B wrote different ideas to the exact same coordinate $X$, we do not average them. Since the $E_8$ lattice has **240 immediate neighbor spots**, we relocate Agent B's write to the nearest vacant neighbor coordinate. Both memories remain distinct, clean, and queryable.
 
 ### The Catch
 * **Neighborhood Crowding**: If more than 240 agents write to the exact same conceptual bin, the immediate coordinate neighborhood fills up. The relocation algorithm is forced to push writes to outer shells, which increases the query path length and slightly weakens their association strength.

@@ -11,7 +11,7 @@ Standard AI models cannot do this. They hit a "memory cliff" and crash. **Projec
 
 When you chat with a standard AI model, it has to remember every single word of the conversation so far. This memory is stored in the GPU's memory as a **Key-Value (KV) Cache**. 
 *   **The standard way**: As the conversation gets longer, this cache grows linearly or quadratically. The model quickly runs out of memory (VRAM) and crashes.
-*   **The Project Atlas way**: Instead of saving every single word sequentially, we project the model's thoughts onto a predefined set of **240 geometric coordinates** in 3D space (derived from the golden ratio and the 8-dimensional \(E_8\) Gosset root lattice). We then prune away duplicate thoughts and compress the remaining ones. 
+*   **The Project Atlas way**: Instead of saving every single word sequentially, we project the model's thoughts onto a predefined set of **240 geometric coordinates** in 3D space (derived from the golden ratio and the 8-dimensional $E_8$ Gosset root lattice). We then prune away duplicate thoughts and compress the remaining ones. 
 
 The result? The memory footprint stays flat, saving up to **18x VRAM at long contexts**.
 
@@ -21,7 +21,7 @@ The result? The memory footprint stays flat, saving up to **18x VRAM at long con
 
 We took advanced concepts from pure mathematics and physics and turned them into practical engineering:
 
-*   🌐 **The Golden Ratio Subway Grid (\(E_8\) Attention)**: Rather than comparing every word to every other word, tokens navigate a structured 3D map of 5 concentric shells. Distance across these shells acts as logarithmic jumping highways, allowing the model to leap across huge chunks of text and retrieve remote ideas in sub-milliseconds.
+*   🌐 **The Golden Ratio Subway Grid ($E_8$ Attention)**: Rather than comparing every word to every other word, tokens navigate a structured 3D map of 5 concentric shells. Distance across these shells acts as logarithmic jumping highways, allowing the model to leap across huge chunks of text and retrieve remote ideas in sub-milliseconds.
 *   🕸️ **Topological Memory Pruning (Morse Cache)**: Think of it like a spiderweb. You don't need to look at all ten thousand intersections to understand the shape—just the primary support threads. Project Atlas prunes away redundant attention paths, shrinking memory by **85% or more** without losing the core semantic meaning.
 *   🛡️ **The Hallucination Sensor (Čech Cohomology Firewall)**: Our custom firewall acts like a structural health sensor on a suspension bridge. If the attention pattern fractures (indicating a hallucination or an adversarial prompt attack), the firewall automatically rolls back the generation and reroutes the thoughts along a safer path.
 *   🏔️ **p-Adic Escape Hatches (Adelic Langevin Optimization)**: During fine-tuning, the model uses mathematical "tunneling" leaps to jump out of narrow local minima, preventing loss spikes and keeping training incredibly stable.

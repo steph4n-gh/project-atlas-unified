@@ -1,8 +1,8 @@
-I created a method to store and retrieve AI memory by mapping high-dimensional words onto a 3D coordinate grid of 240 neighborhood points, reducing active RAM requirements by 85% for long-running local tasks. By projecting the root vectors of the eight-dimensional \(E_8\) Gosset lattice down into 3D concentric shells, I can index thoughts like zones on a subway map, enabling the model to hop across thousands of words instantly via logarithmic jumping highways instead of search-crawling block-by-block.
+I created a method to store and retrieve AI memory by mapping high-dimensional words onto a 3D coordinate grid of 240 neighborhood points, reducing active RAM requirements by 85% for long-running local tasks. By projecting the root vectors of the eight-dimensional $E_8$ Gosset lattice down into 3D concentric shells, I can index thoughts like zones on a subway map, enabling the model to hop across thousands of words instantly via logarithmic jumping highways instead of search-crawling block-by-block.
 
 When you chat with a modern AI, it stores its thoughts in a continuous, high-dimensional space. Think of it like mapping every single word of a conversation to a unique coordinate in a massive, infinitely detailed city map. As the conversation grows longer, this city map becomes crowded, requiring huge amounts of computer memory (RAM) to track every street, building, and lane in order. This massive memory footprint is what makes running long conversations locally on your laptop almost impossible. The computer simply runs out of room.
 
-I wanted to find a way to organize this memory so it is clean, structured, and incredibly compact. To do this, I looked to geometry—specifically, a mathematical structure called the \(E_8\) Gosset root lattice. In pure mathematics, this is a highly symmetric structure that exists in eight dimensions. 
+I wanted to find a way to organize this memory so it is clean, structured, and incredibly compact. To do this, I looked to geometry—specifically, a mathematical structure called the $E_8$ Gosset root lattice. In pure mathematics, this is a highly symmetric structure that exists in eight dimensions. 
 
 Here is the pipeline representing how 8D lattice coordinates are mapped and queried:
 
@@ -19,7 +19,7 @@ Here is the pipeline representing how 8D lattice coordinates are mapped and quer
 [Logarithmic Jumping Highways (Sub-millisecond retrieval)]
 ```
 
-Here is a simplified Python code snippet showing how to construct the projection matrices using the golden ratio \(\phi\) to project the 8D roots to 3D concentric shells:
+Here is a simplified Python code snippet showing how to construct the projection matrices using the golden ratio $\phi$ to project the 8D roots to 3D concentric shells:
 
 ```python
 # Projecting 8D Lattice Roots to 5 Concentric 3D Shells (PyTorch version)

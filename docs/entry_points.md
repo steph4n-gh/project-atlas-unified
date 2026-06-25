@@ -40,7 +40,7 @@ print("Projected leaf coordinates active:", probs)
 ## 🎛️ Entry Point 2: The Mixture of Experts (MoE Routing Gateway)
 
 ### What it is
-The **`UCEMoeRouter` Gateway** orchestrating 8 developer experts under a unified subspace router. It uses memory-mapped file paging (`WeightManager`) and transactional file locks (`fcntl.flock`) to swap expert parameters on-demand under a **\(15\text{ms}\) VRAM-swapping ceiling**.
+The **`UCEMoeRouter` Gateway** orchestrating 8 developer experts under a unified subspace router. It uses memory-mapped file paging (`WeightManager`) and transactional file locks (`fcntl.flock`) to swap expert parameters on-demand under a **$15\text{ms}$ VRAM-swapping ceiling**.
 
 ### When to use
 When building multi-domain developer portals, local web engines, or IDE autocomplete plugins that need to seamlessly route and resolve complex programming prompts across different contexts (Python, Rust, SQL, DevOps, and Regex) in parallel.
@@ -69,10 +69,10 @@ print(response)
 ## 🌀 Entry Point 3: The Full Foundation Model (QAN Transformer)
 
 ### What it is
-The full foundation model (such as Gemma 12B or E2B) executing concentric **\(E_8\) sparse attention**, **Discrete Morse KV Cache Retraction**, and **Čech Cohomology Firewall** checks. 
+The full foundation model (such as Gemma 12B or E2B) executing concentric **$E_8$ sparse attention**, **Discrete Morse KV Cache Retraction**, and **Čech Cohomology Firewall** checks. 
 
 ### When to use
-When you need full, high-fidelity reasoning over massive context windows (**\(200\text{k}+\) tokens**). The QAN attention layers collapse the KV cache memory footprint by \(\ge 85\%\) and achieve \(97.29\%\) compute sparsity, allowing you to load large contexts on standard Apple Silicon GPU setups.
+When you need full, high-fidelity reasoning over massive context windows (**$200\text{k}+$ tokens**). The QAN attention layers collapse the KV cache memory footprint by $\ge 85\%$ and achieve $97.29\%$ compute sparsity, allowing you to load large contexts on standard Apple Silicon GPU setups.
 
 ### Python Example
 ```python
@@ -121,20 +121,20 @@ if kv_cache.get("is_fractured", False):
 
 Project Atlas provides flexible adoption entry points for optimizing model weights and KV caches:
 
-### A. Adopting the Quasicrystalline Attention Layer (E8 vs. Leech \(\Lambda_{24}\))
+### A. Adopting the Quasicrystalline Attention Layer (E8 vs. Leech $\Lambda_{24}$)
 *   Replace standard self-attention with `QuasicrystallineAttention(lattice='e8')` or `QuasicrystallineAttention(lattice='leech')`.
     *(Note: The `lattice` parameter is supported by the MLX-native implementation in `qan_transformers.mlx.attention`, while the PyTorch implementation in `qan_transformers.modeling.attention` defaults to E8.)*
 *   **E8 Lattice (Default):**
     *   **Addresses:** 240 coordinates in Shell 1.
-    *   **Startup:** \(< 1\text{ ms}\) (instantaneous generation).
+    *   **Startup:** $< 1\text{ ms}$ (instantaneous generation).
     *   **Fit:** Ideal for low-power edge/mobile devices where local swapping latency must be minimized.
     *   **Performance:** Yields a **+69.27%** speculative decoding speedup (`34.92 tok/s`) on the 4B (E4B) model scale, and **+72.71%** speculative speedup (`9.43 tok/s`) on the 12B model scale.
-*   **Leech Lattice (\(\Lambda_{24}\)):**
+*   **Leech Lattice ($\Lambda_{24}$):**
     *   **Addresses:** 196,560 coordinates in Shell 1 (819× address capacity).
     *   **Startup:** ~890 ms coordinate-mapping compilation overhead at session boot.
     *   **Fit:** Ideal for long-context foundation model inference on developer hardware.
     *   **Performance:** Tighter geometric filtering cuts speculative rollbacks, boosting generation throughput to **37.87 tok/s** (**+77.54%** speculative speedup) on the 4B (E4B) model scale, and **9.46 tok/s** (**+73.26%** speculative speedup) on the 12B model scale.
-*   **Result:** Compresses the KV cache footprint by **\(\ge 85\%\)** at long sequences (\(200\text{k}+\) context) without altering model weights. Runs in standard fp16/bf16 formats.
+*   **Result:** Compresses the KV cache footprint by **$\ge 85\%$** at long sequences ($200\text{k}+$ context) without altering model weights. Runs in standard fp16/bf16 formats.
 
 ### B. Standard 4-bit Quantization (Without ELQ)
 *   Load public 4-bit model weights (such as `mlx-community/gemma-4-e4b-it-4bit`) directly onto local devices.
