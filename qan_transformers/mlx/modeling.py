@@ -28,7 +28,7 @@ try:
         Gemma4TextModelArgs.from_dict = patched_from_dict
 
     # Patch Gemma4TextModel.sanitize to handle prefix mismatch for unified models
-    if not getattr(Gemma4TextModel.sanitize, "__patched__", False):
+    if hasattr(Gemma4TextModel, "sanitize") and not getattr(Gemma4TextModel.sanitize, "__patched__", False):
         orig_sanitize = Gemma4TextModel.sanitize
         def patched_sanitize(self, weights):
             sanitized = {}
