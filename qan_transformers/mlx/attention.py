@@ -160,7 +160,8 @@ class QuasicrystallineAttention(nn.Module):
         head_dim: Optional[int] = None,
         rg_enabled: bool = False,
         uv_window: int = 64,
-        rg_chunk_size: int = 32
+        rg_chunk_size: int = 32,
+        lattice: str = 'e8'
     ):
         """
         MLX-native Quasicrystalline Attention Layer.
@@ -237,6 +238,47 @@ class QuasicrystallineAttention(nn.Module):
         self.roots_3d = self.cached_roots[1]
         self.roots_3d_norm = getattr(self, "roots_3d_norm_lvl_1")
         
+        # Moonshot: Leech lattice mode (196,560 addresses vs E8's 240)
+        self._lattice_mode = lattice
+        if lattice == 'leech':
+            leech_cache_key = (device_type, 'leech')
+            if leech_cache_key not in _PROJECTED_ROOTS_CACHE:
+                try:
+                    from qan_transformers.math.leech_lattice import generate_leech_coordinates, project_leech_to_3d, LeechShellRouter
+                    leech_coords = generate_leech_coordinates(shell=1)
+                    leech_3d, leech_info = project_leech_to_3d(leech_coords, method='direct')
+                    leech_3d_mx = mx.array(leech_3d, dtype=mx.float32)
+                    leech_3d_norm = leech_3d_mx / (mx.linalg.norm(leech_3d_mx, axis=-1, keepdims=True) + 1e-6)
+                    mx.eval(leech_3d_mx, leech_3d_norm)
+                    _PROJECTED_ROOTS_CACHE[leech_cache_key] = (leech_3d_mx, leech_3d_norm, leech_info, leech_coords)
+                    print(f"[QCA] Leech lattice initialized: {len(leech_coords)} addresses, {leech_info['n_shells']} shells, quality={leech_info['quality']:.2f}", flush=True)
+                except Exception as e:
+                    print(f"[QCA] Leech lattice init failed, falling back to E8: {e}", flush=True)
+                    self._lattice_mode = 'e8'
+
+            if leech_cache_key in _PROJECTED_ROOTS_CACHE:
+                cached = _PROJECTED_ROOTS_CACHE[leech_cache_key]
+                self._leech_roots_3d = cached[0]
+                self._leech_roots_3d_norm = cached[1]
+                self._leech_info = cached[2]
+                leech_coords_np = cached[3]
+                # Build 24D projection matrix for the lattice bias
+                # Use SVD to find the optimal 24D -> 3D projection
+                centered = leech_coords_np - np.mean(leech_coords_np, axis=0)
+                _, _, Vt = np.linalg.svd(centered[:10000], full_matrices=False)
+                self.P_24_3 = mx.array(Vt[:3].T, dtype=mx.float32)  # (24, 3)
+                # Also need a 24D mapping layer instead of 8D
+                self.e8_proj_leech = nn.Linear(embed_dim, 24)
+            else:
+                self._lattice_mode = 'e8'
+        else:
+            self._lattice_mode = 'e8'
+
+        # Expose for moonshot geometric filter
+        QuasicrystallineAttention._projection_matrix_3d = self.P_8_3
+        if hasattr(self, 'P_24_3'):
+            QuasicrystallineAttention._projection_matrix_3d = self.P_24_3
+
         self.firewall = firewall if firewall is not None else CohomologyFirewall()
         self.prev_entropy = None
         self._token_count = 0          # Token counter for gating expensive ops
@@ -247,7 +289,29 @@ class QuasicrystallineAttention(nn.Module):
     def _apply_e8_lattice_bias(self, attn_scores, S, S_total, rope_offset, dtype, is_prefill=False):
         if getattr(self.__class__, "in_jit", False):
             return attn_scores
-            
+
+        # Moonshot: Use Leech lattice coordinates when available
+        if getattr(self, '_lattice_mode', 'e8') == 'leech' and hasattr(self, 'P_24_3'):
+            precomputed_coords = getattr(self.__class__, "precomputed_e8_coords", None)
+            if precomputed_coords is not None and precomputed_coords.shape[0] >= S_total:
+                try:
+                    off_val = int(rope_offset.item()) if hasattr(rope_offset, "item") else int(rope_offset)
+                    Q_coords_8d = precomputed_coords[off_val : off_val + S]
+                    K_coords_8d = precomputed_coords[:S_total]
+
+                    # Use 24D projection if we have a leech embedding layer
+                    # For now, use the 8D coords projected through our 8->3 matrix
+                    # (the full 24D mapping requires a forward pass through e8_proj_leech)
+                    Q_3d = mx.matmul(Q_coords_8d, self.P_8_3)
+                    K_3d = mx.matmul(K_coords_8d, self.P_8_3)
+
+                    dists = mx.sum(mx.square(Q_3d[:, None, :] - K_3d[None, :, :]), axis=-1)
+                    dists_bias = mx.array(-0.01, dtype=dtype) * dists.astype(dtype)
+                    dists_bias = mx.expand_dims(mx.expand_dims(dists_bias, 0), 0)
+                    return attn_scores + dists_bias
+                except Exception:
+                    pass
+
         # Win 313: GPU E8 Coordinate Pre-fetching
         precomputed_coords = getattr(self.__class__, "precomputed_e8_coords", None)
         if precomputed_coords is not None and precomputed_coords.shape[0] >= S_total:
