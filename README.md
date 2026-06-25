@@ -8,7 +8,7 @@
   <img src="docs/assets/github_social_preview.png" width="100%" alt="Project Atlas Banner">
 </p>
 
-A Python library and CLI toolchain implementing **Quasicrystalline Attention Networks (QAN)**. QAN replaces standard dense self-attention with a coordinate-sparse attention layer based on the $E_8$ Gosset root lattice, enabling sequence lengths of **$200\text{k}+$ tokens** on standard local hardware (Apple Silicon MPS).
+**Quasicrystalline Attention Networks (QAN)** is a Python library and CLI toolchain enabling local **$200\text{k}+$ sequence lengths** on consumer hardware (Apple Silicon MPS/MLX). QAN replaces standard dense self-attention with a coordinate-sparse attention layer based on the $E_8$ Gosset root lattice, optimized via Discrete Morse cache collapse and non-Archimedean (p-adic) Adelic Langevin updates.
 
 ---
 
