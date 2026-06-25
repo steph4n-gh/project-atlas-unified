@@ -30,3 +30,8 @@ except ImportError:
     mlx_optimizers_mock.__spec__ = importlib.machinery.ModuleSpec("mlx.optimizers", None)
     mlx_optimizers_mock.__name__ = "mlx.optimizers"
     sys.modules["mlx.optimizers"] = mlx_optimizers_mock
+
+    mlx_utils_mock = MagicMock()
+    mlx_utils_mock.__spec__ = importlib.machinery.ModuleSpec("mlx.utils", None)
+    mlx_utils_mock.__name__ = "mlx.utils"
+    sys.modules["mlx.utils"] = mlx_utils_mock
