@@ -285,6 +285,14 @@ def inject_and_save(html_content, filename):
         # Fallback if no head tag found
         modified = html_content
         
+    # Fix internal links for static GitHub Pages hosting
+    modified = modified.replace('href="index.html"', 'href="regex_wizard.html"')
+    modified = modified.replace("href='index.html'", "href='regex_wizard.html'")
+    modified = modified.replace('href="moe.html"', 'href="moe_portal.html"')
+    modified = modified.replace("href='moe.html'", "href='moe_portal.html'")
+    modified = modified.replace('href="chat.html"', 'href="aim_chat.html"')
+    modified = modified.replace("href='chat.html'", "href='aim_chat.html'")
+        
     out_path = os.path.join("docs", filename)
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(modified)
