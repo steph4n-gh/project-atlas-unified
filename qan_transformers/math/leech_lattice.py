@@ -234,84 +234,29 @@ def generate_leech_coordinates(shell: int = 1) -> np.ndarray:
                     v[j] = sj
                     vectors.append(v)
     
-    # --- Type 3: half-integer vectors (½)²⁴ with Golay code constraint ---
-    # All 24 coordinates are ±½, total sum ≡ 0 (mod 4)
-    # The sign pattern for the NEGATIVE entries forms a Golay codeword.
-    # Sum²  = 24 × (1/4) = 6, and in Leech scaling norm² = 6/2 ≠ 4
-    # Hmm, that's still wrong.
-    #
-    # Final answer from SPLAG:
-    # Leech lattice vectors x with (x,x) = 4:
-    #   In STANDARD coordinates where Λ₂₄ ⊂ (1/√8)·Z²⁴:
-    #   The 196,560 vectors come from 3 classes:
-    #     a) (±1)⁸0¹⁶ on octad supports, even # minus: 97,152
-    #     b) (±2)²0²²: 1,104  
-    #     c) (±½)²⁴ with Golay sign pattern: 98,304
-    #   In class (c), ALL have sum² = 24×(1/4) = 6.
-    #   But we normalize by 1/√(3/2) to get norm²=4. 
-    #
-    # For PRACTICAL purposes, we generate all three types with their
-    # NATURAL norm², then rescale each type to have norm²=4.
+    # --- Type 3: half-integer vectors ---
+    # Shape: exactly one coord is ±3/2, remaining 23 are ±1/2
+    # norm² = 9/4 + 23*(1/4) = 32/4 = 8 in natural coords → rescaled to 4
+    # Constraint: the binary pattern of negative coords must be a Golay codeword
+    type3_count = 0
+    # Build a set of Golay codewords as frozensets or tuples for O(1) lookup
+    golay_set = set(map(tuple, codewords.tolist()))
     
-    # Type 3: (±1)²⁴ all-coordinate vectors with Golay sign pattern
-    # The set of NEGATIVE positions forms a codeword of the Golay code.
-    # Weight-0 and weight-24 give constant vectors.
-    # Weight-8 (octads): 759 patterns, sign pattern has 8 negatives.
-    #   Each gives 1 vector (signs determined by codeword).
-    # Weight-12 (dodecads): 2576 patterns.
-    # Weight-16: 759 patterns.
-    # Total non-trivial: 2×(759 + 2576 + 759) = 2×4094 = 8188
-    # But we want 98,304. So the constraint is different.
-    
-    # The CORRECT Type 3: for each Golay codeword c of weight w,
-    # generate vectors with ±1 in ALL 24 positions where the negative
-    # positions' indicator matches c. But then sum ≡ 24-2w (mod 4).
-    # For sum ≡ 0 (mod 4): w ≡ 0 (mod 2), which is all codewords
-    # since the Golay code only has even-weight codewords.
-    # So: for each of the 4096 codewords, we get exactly one sign
-    # pattern of (±1)²⁴ (up to overall sign). That's only 4096 vectors.
-    
-    # I think the resolution is that Type 3 uses a DIFFERENT glue vector
-    # construction. Let me just compute them directly.
-    #
-    # For Λ₂₄ in the "Construction A" form:
-    # Λ₂₄ = { x ∈ Z²⁴ ∪ (Z+½)²⁴ : x (mod 1) ∈ C₂₄/2, Σxᵢ ∈ 4Z }
-    #
-    # Integer vectors with norm²=8 (rescale to 4):
-    #   Already handled: Types 1 (97,152) and 2 (1,104)
-    #
-    # Half-integer vectors with norm²=8:
-    #   All coords are half-integers (±1/2 or ±3/2 or ±5/2...)
-    #   For norm²=8: most efficient packing is 
-    #     (±3/2)¹(±1/2)²³: 9/4 + 23/4 = 32/4 = 8 ✓
-    #   Need: negative-half positions form a Golay codeword
-    #   AND sum is divisible by 4.
-    #
-    #   For each of 24 positions k for the ±3/2:
-    #     For each of 2 signs of the 3/2:
-    #       For each Golay codeword (4096):
-    #         Signs of the remaining 23 positions are ±1/2 per codeword
-    #         Check sum ≡ 0 (mod 4)
-    #   Estimated: 24 × 2 × 4096 / 4 ≈ 49,152
-    #   But we need 98,304 more. So maybe both ±3/2 AND ±5/2?
-    #   (±5/2)¹(±1/2)²³: 25/4 + 23/4 = 48/4 = 12. norm²=12. No.
-    #   Or: (±3/2)²(±1/2)²²: 9/4×2 + 22/4 = 40/4 = 10. No.
-    
-    # For half-integer with norm²=8 and shape (3/2, 1/2²³):
     for k in range(24):
-        for cw in codewords:
-            for s3 in [-1.5, 1.5]:
-                # Build the vector: all coords ±1/2 based on codeword
-                # cw[i]=1 means -1/2, cw[i]=0 means +1/2
-                v = np.where(cw, -0.5, 0.5)
+        for s3 in [-1.5, 1.5]:
+            # For the remaining 23 positions, try all Golay codewords
+            # as the sign pattern. The codeword determines which
+            # coordinates are negative (cw[i]=1 → -0.5, cw[i]=0 → +0.5).
+            for cw in codewords:
+                v = np.where(cw, -0.5, 0.5).astype(np.float64)
                 v[k] = s3
-                # Check norm² = 8 (for Leech rescaling to norm²=4)
-                norm_sq = np.sum(v ** 2)
-                if abs(norm_sq - 8.0) < 0.01:
-                    # Check sum divisible by 4
-                    total = np.sum(v)
-                    if abs(total - round(total / 4.0) * 4.0) < 0.01:
-                        vectors.append(v)
+                # The pattern of negative coords must itself be a Golay codeword
+                neg_pattern = (v < 0).astype(np.int32)
+                if tuple(neg_pattern.tolist()) in golay_set:
+                    vectors.append(v)
+                    type3_count += 1
+    
+    print(f"[Leech] Type 3: {type3_count} vectors", flush=True)
     
     coords = np.array(vectors, dtype=np.float64)
     
