@@ -90,3 +90,9 @@ qan_transformers/tokenizer/rust/target/
 # Local Temp Folders
 tmp/
 
+# Environment secrets
+.env
+.env.*
+*.env
+*.key
+
