@@ -85,7 +85,7 @@ P = s \begin{bmatrix}
 \end{bmatrix}
 $$
 
-When the 240 root coordinates $X_{E_8} \in \mathbb{R}^{240 \times 8}$ are projected via $Y = X_{E_8} P$, their Euclidean norms $\|y_i\|_2$ cluster into exactly 5 concentric 3D shells:
+When the 240 root coordinates $X_{E_8} \in \mathbb{R}^{240 \times 8}$ are projected via $Y = X_{E_8} P$, their Euclidean norms $\Vert y_i\Vert _2$ cluster into exactly 5 concentric 3D shells:
 1. **Shell 0**: $r = 0.0$ (2 points)
 2. **Shell 1**: $r = \frac{1}{2}\sqrt{10 - 2\sqrt{5}} \approx 0.5878$ (30 points)
 3. **Shell 2**: $r = \frac{\sqrt{3}}{2} \approx 0.8660$ (64 points)
@@ -145,7 +145,7 @@ $$
 where $W_{uv}$ represents the attention transition weight between tokens $u$ and $v$. The Cohomology Fracture Index (CFI) is defined as:
 
 $$
-\text{CFI} = \frac{\|d^0 s\|^2}{\|s\|^2}
+\text{CFI} = \frac{\Vert d^0 s\Vert ^2}{\Vert s\Vert ^2}
 $$
 
 When the attention graph fractures, we analyze the **Symmetric Normalized Laplacian** of the top $K$ critical attention summits:
@@ -206,7 +206,7 @@ QAN replaces standard Euclidean weight updates (which cause loss instability on 
 The optimization updates parameters across the adele ring $\mathbb{A}_{\mathbb{Q}} = \mathbb{R} \times \prod_{p} \mathbb{Q}_p$. The discrete hopping step utilizes the Vladimirov fractional derivative of a function $f$ over the $p$-adic field $\mathbb{Q}_p$:
 
 $$
-\left(D^\alpha f\right)(x) = \frac{p^\alpha - 1}{1 - p^{-\alpha-1}} \int_{\mathbb{Q}_p} \frac{f(x) - f(y)}{\|x - y\|_p^{\alpha + 1}} dy
+\left(D^\alpha f\right)(x) = \frac{p^\alpha - 1}{1 - p^{-\alpha-1}} \int_{\mathbb{Q}_p} \frac{f(x) - f(y)}{\Vert x - y\Vert _p^{\alpha + 1}} dy
 $$
 
 For dyadic multiscale history compression, we set $p=2, \alpha=1$. The update step fuses Euclidean Stochastic Gradient Langevin Dynamics (SGLD) with a Metropolis-Hastings acceptance filter biased by the Vladimirov gradient:
@@ -306,7 +306,7 @@ This reduces the computational complexity from $O(D^3)$ to $O(D \cdot r^2 + r^3)
 During cross-model grafting, representation alignment is solved via the closed-form **Orthogonal Procrustes** solution. Given source hidden states $A \in \mathbb{R}^{N \times D_1}$ and target states $B \in \mathbb{R}^{N \times D_2}$, we solve:
 
 $$
-\min_{M^T M = I} \| A M - B \|_F^2 \quad \implies \quad M_{\text{align}} = U V^T
+\min_{M^T M = I} \Vert  A M - B \Vert _F^2 \quad \implies \quad M_{\text{align}} = U V^T
 $$
 
 where $C = A^T B = U \Sigma V^T$ is the SVD of the cross-covariance matrix.

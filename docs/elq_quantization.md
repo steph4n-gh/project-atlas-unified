@@ -27,7 +27,7 @@ graph TD
 
 ### How ELQ Splits the Weights
 Quantizing an LLM without breaking its brain is a delicate art. ELQ does this in a few systematic steps:
-1. **Outlier Identification**: First, we use `MorseAWQCalibrator` to evaluate the weight matrix and activation distributions. It calculates a sensitivity score for each channel (using the AWQ metric: $s_c = \text{mean}(|X_c|) \times \|W_c\|_2$). The top outlier channels (e.g., 10%) are flagged.
+1. **Outlier Identification**: First, we use `MorseAWQCalibrator` to evaluate the weight matrix and activation distributions. It calculates a sensitivity score for each channel (using the AWQ metric: $s_c = \text{mean}(|X_c|) \times \Vert W_c\Vert _2$). The top outlier channels (e.g., 10%) are flagged.
 2. **Outlier Isolation**: The high-magnitude weights in these outlier channels are extracted into a coordinate-sparse matrix $\Delta W_{\text{outliers}}$. These precious outliers are stored in their native precision (float16/bfloat16) to avoid any clipping or rounding degradation.
 3. **Lattice Projection**: The remaining non-outlier weights (with outlier channels zeroed out) are rotated block-by-block (using blocks of size 32) via a deterministic sign-flip and a Walsh-Hadamard Transform (WHT). This mathematical "spin cycle" distributes coordinate energy evenly, preventing any single dimension from hogging the dynamic range.
 4. **E8 Encoding**: The rotated 32D blocks are sliced into 8-dimensional sub-vectors and projected onto the closest point in the 8D $E_8$ lattice using the Conway-Sloane closest-point algorithm. The resulting coordinates are packed into a tidy 32-bit index.

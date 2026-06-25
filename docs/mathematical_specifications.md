@@ -44,7 +44,7 @@ P_{4 \to 3} = \begin{bmatrix}
 $$
 
 ### 1.2 Concentration of Shells
-When the 240 root coordinates $X_{E8} \in \mathbb{R}^{240 \times 8}$ are projected via $Y = X_{E8} \cdot P$, their Euclidean norms $\|y_i\|_2$ cluster into exactly 5 discrete shells:
+When the 240 root coordinates $X_{E8} \in \mathbb{R}^{240 \times 8}$ are projected via $Y = X_{E8} \cdot P$, their Euclidean norms $\Vert y_i\Vert _2$ cluster into exactly 5 discrete shells:
 *   **Shell 0**: $r = 0.0$ (2 points)
 *   **Shell 1**: $r = \frac{1}{2}\sqrt{10 - 2\sqrt{5}} \approx 0.5878$ (30 points)
 *   **Shell 2**: $r = \frac{\sqrt{3}}{2} \approx 0.8660$ (64 points)
@@ -69,7 +69,7 @@ $$
     
 
 $$
-\text{quality} = \frac{1}{N}\sum_{i=1}^N \frac{\|\mathbf{y}_i\|_2}{\|\mathbf{x}_i\|_2}
+\text{quality} = \frac{1}{N}\sum_{i=1}^N \frac{\Vert \mathbf{y}_i\Vert _2}{\Vert \mathbf{x}_i\Vert _2}
 $$
 
     where $\mathbf{y}_i = \mathbf{x}_i \cdot P_{24 \to 3}$. This direct method concentrates the 196,560 projected vectors into **8 discrete concentric shells** with an alignment quality score of $\approx 0.73$.
@@ -163,7 +163,7 @@ But wait, how do we find which of these $E_8$ coordinates is closest to a given 
 Mathematically, for any point $x \in \mathbb{R}^8$:
 
 $$
-\text{Closest}_{E_8}(x) = \mathop{\text{argmin}}_{z \in D_8 \cup (D_8 + \frac{1}{2}\mathbf{1})} \|x - z\|^2
+\text{Closest}_{E_8}(x) = \mathop{\text{argmin}}_{z \in D_8 \cup (D_8 + \frac{1}{2}\mathbf{1})} \Vert x - z\Vert ^2
 $$
 
 where $D_8$ is the checkerboard lattice consisting of all integer vectors with an even coordinate sum:
@@ -197,13 +197,13 @@ $$
 We seek an orthogonal alignment matrix $M_{\text{align}} \in \mathbb{R}^{D_1 \times D_2}$ that minimizes the Frobenius norm of the mapping error:
 
 $$
-\min_{M^T M = I} \| A M - B \|_F^2
+\min_{M^T M = I} \Vert  A M - B \Vert _F^2
 $$
 
 Expanding the Frobenius norm:
 
 $$
-\| A M - B \|_F^2 = \text{Tr}((AM - B)^T(AM - B)) = \text{Tr}(M^T A^T A M) - 2\text{Tr}(M^T A^T B) + \text{Tr}(B^T B)
+\Vert  A M - B \Vert _F^2 = \text{Tr}((AM - B)^T(AM - B)) = \text{Tr}(M^T A^T A M) - 2\text{Tr}(M^T A^T B) + \text{Tr}(B^T B)
 $$
 
 Since $M$ is orthogonal, $\text{Tr}(M^T A^T A M) = \text{Tr}(A^T A)$, which is constant. Minimizing the error is equivalent to maximizing:
@@ -383,7 +383,7 @@ along edges where the attention weight $W_{ij} > 0.1$ and $i \neq j$.
 We define a symmetric adjacency mask matrix $M \in \{0, 1\}^{K \times K}$ where $M_{ij} = 1$ if $W_{ij} > 0.1$ and $i \neq j$, and $0$ otherwise. The Cohomology Fracture Index (CFI) is the ratio of the squared norm of the coboundary to the squared norm of the state:
 
 $$
-\text{CFI} = \frac{\sum_{i \sim j} M_{ij} \|s_i - W_{ij} s_j\|^2}{\sum_{i} \|s_i\|^2}
+\text{CFI} = \frac{\sum_{i \sim j} M_{ij} \Vert s_i - W_{ij} s_j\Vert ^2}{\sum_{i} \Vert s_i\Vert ^2}
 $$
 
 If the CFI exceeds the threshold, the firewall triggers a rollback, rewrites the fractured token, and routes the conversation down a more stable path.
@@ -400,7 +400,7 @@ To guarantee training stability on coordinate-sparse grids, weight parameters ar
 The Adelic Langevin update integrates non-Archimedean optimization. The Vladimirov fractional derivative of a function $f$ over the $p$-adic field $\mathbb{Q}_p$ is:
 
 $$
-\left(D^\alpha f\right)(x) = \frac{p^\alpha - 1}{1 - p^{-\alpha-1}} \int_{\mathbb{Q}_p} \frac{f(x) - f(y)}{\|x - y\|_p^{\alpha + 1}} dy
+\left(D^\alpha f\right)(x) = \frac{p^\alpha - 1}{1 - p^{-\alpha-1}} \int_{\mathbb{Q}_p} \frac{f(x) - f(y)}{\Vert x - y\Vert _p^{\alpha + 1}} dy
 $$
 
 For dyadic multiscale history compression ($\alpha = 1$, $p = 2$), the gradient updates perform discrete tunneling steps, enabling parameters to leap out of narrow local minima without loss divergence.
@@ -422,7 +422,7 @@ $$
    
 
 $$
-s_c = \text{mean}(|X_c|) \times \|W_c\|_2
+s_c = \text{mean}(|X_c|) \times \Vert W_c\Vert _2
 $$
 
    The top outlier channels (e.g., 10%) are flagged.
@@ -474,7 +474,7 @@ Where $\text{scale} = \frac{1}{\sqrt{d}}$ and $d$ is the head dimension. These v
 We compute the pairwise cosine similarity matrix $S$ between keys:
 
 $$
-S_{ij} = \frac{K_i \cdot K_j}{\| K_i \|_2 \| K_j \|_2}
+S_{ij} = \frac{K_i \cdot K_j}{\Vert  K_i \Vert _2 \Vert  K_j \Vert _2}
 $$
 
 To find the most similar neighbor (excluding self-similarity):
@@ -486,7 +486,7 @@ $$
 A token $i$ is redundant (collapses along the discrete gradient vector field to its neighbor) if its similarity to its neighbor exceeds a threshold $\theta$ (default $0.85$), and its neighbor has higher energy than itself:
 
 $$
-\text{is\_redundant} = (S_{i, \mathop{\text{neighbor}}(i)} > \theta) \land (E_{\mathop{\text{neighbor}}(i)} > E_i) \land \neg \operatorname{is\_sink}(i)
+\text{is\_redundant} = (S_{i, \mathop{\text{neighbor}}(i)} > \theta) \land (E_{\mathop{\text{neighbor}}(i)} > E_i) \land \neg \text{is\_sink}(i)
 $$
 
 where `is_sink` protects critical attention sinks and recent context tokens. Tokens that are not redundant are **critical summits**.
