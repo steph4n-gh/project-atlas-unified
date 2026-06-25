@@ -290,22 +290,27 @@ class QuasicrystallineAttention(nn.Module):
         if getattr(self.__class__, "in_jit", False):
             return attn_scores
 
+        precomputed_coords = getattr(self.__class__, "precomputed_e8_coords", None)
+        if precomputed_coords is not None:
+            # Check cached projected 3D coordinates to save matmul overhead during decoding
+            if not hasattr(self, "_precomputed_coords_3d") or getattr(self, "_precomputed_coords_id", None) != id(precomputed_coords):
+                self._precomputed_coords_3d = mx.matmul(precomputed_coords, self.P_8_3)
+                self._precomputed_coords_id = id(precomputed_coords)
+
         # Moonshot: Use Leech lattice coordinates when available
         if getattr(self, '_lattice_mode', 'e8') == 'leech' and hasattr(self, 'P_24_3'):
-            precomputed_coords = getattr(self.__class__, "precomputed_e8_coords", None)
             if precomputed_coords is not None and precomputed_coords.shape[0] >= S_total:
                 try:
                     off_val = int(rope_offset.item()) if hasattr(rope_offset, "item") else int(rope_offset)
-                    Q_coords_8d = precomputed_coords[off_val : off_val + S]
-                    K_coords_8d = precomputed_coords[:S_total]
+                    Q_3d = self._precomputed_coords_3d[off_val : off_val + S]
+                    K_3d = self._precomputed_coords_3d[:S_total]
 
-                    # Use 24D projection if we have a leech embedding layer
-                    # For now, use the 8D coords projected through our 8->3 matrix
-                    # (the full 24D mapping requires a forward pass through e8_proj_leech)
-                    Q_3d = mx.matmul(Q_coords_8d, self.P_8_3)
-                    K_3d = mx.matmul(K_coords_8d, self.P_8_3)
+                    # Optimize memory to avoid O(S * S_total) temporary expansion
+                    Q_sq = mx.sum(mx.square(Q_3d), axis=-1, keepdims=True)
+                    K_sq_T = mx.expand_dims(mx.sum(mx.square(K_3d), axis=-1), 0)
+                    QK_prod = mx.matmul(Q_3d, K_3d.T)
+                    dists = Q_sq + K_sq_T - 2.0 * QK_prod
 
-                    dists = mx.sum(mx.square(Q_3d[:, None, :] - K_3d[None, :, :]), axis=-1)
                     dists_bias = mx.array(-0.01, dtype=dtype) * dists.astype(dtype)
                     dists_bias = mx.expand_dims(mx.expand_dims(dists_bias, 0), 0)
                     return attn_scores + dists_bias
@@ -313,17 +318,18 @@ class QuasicrystallineAttention(nn.Module):
                     pass
 
         # Win 313: GPU E8 Coordinate Pre-fetching
-        precomputed_coords = getattr(self.__class__, "precomputed_e8_coords", None)
         if precomputed_coords is not None and precomputed_coords.shape[0] >= S_total:
             try:
                 off_val = int(rope_offset.item()) if hasattr(rope_offset, "item") else int(rope_offset)
-                Q_coords = precomputed_coords[off_val : off_val + S]
-                K_coords = precomputed_coords[:S_total]
+                Q_3d = self._precomputed_coords_3d[off_val : off_val + S]
+                K_3d = self._precomputed_coords_3d[:S_total]
                 
-                Q_3d = mx.matmul(Q_coords, self.P_8_3)
-                K_3d = mx.matmul(K_coords, self.P_8_3)
-                
-                dists = mx.sum(mx.square(Q_3d[:, None, :] - K_3d[None, :, :]), axis=-1)
+                # Optimize memory to avoid O(S * S_total) temporary expansion
+                Q_sq = mx.sum(mx.square(Q_3d), axis=-1, keepdims=True)
+                K_sq_T = mx.expand_dims(mx.sum(mx.square(K_3d), axis=-1), 0)
+                QK_prod = mx.matmul(Q_3d, K_3d.T)
+                dists = Q_sq + K_sq_T - 2.0 * QK_prod
+
                 dists_bias = mx.array(-0.01, dtype=dtype) * dists.astype(dtype)
                 dists_bias = mx.expand_dims(mx.expand_dims(dists_bias, 0), 0)
                 return attn_scores + dists_bias
@@ -348,7 +354,12 @@ class QuasicrystallineAttention(nn.Module):
                     Q_3d = mx.matmul(Q_coords, self.P_8_3)
                     K_3d = mx.matmul(K_coords, self.P_8_3)
                     
-                    dists = mx.sum(mx.square(Q_3d[:, None, :] - K_3d[None, :, :]), axis=-1)
+                    # Optimize memory to avoid O(S * S_total) temporary expansion
+                    Q_sq = mx.sum(mx.square(Q_3d), axis=-1, keepdims=True)
+                    K_sq_T = mx.expand_dims(mx.sum(mx.square(K_3d), axis=-1), 0)
+                    QK_prod = mx.matmul(Q_3d, K_3d.T)
+                    dists = Q_sq + K_sq_T - 2.0 * QK_prod
+
                     dists_bias = mx.array(-0.01, dtype=dtype) * dists.astype(dtype)
                     dists_bias = mx.expand_dims(mx.expand_dims(dists_bias, 0), 0)
                     

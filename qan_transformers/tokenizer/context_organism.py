@@ -76,35 +76,49 @@ class DeterministicContextOrganism:
     def _hash_text(self, text: str) -> str:
         return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
-    def get_token_lattice_metadata(self, token_id: int) -> Tuple[List[float], float]:
+    def get_token_lattice_metadata(self, token_id: int, lattice: str = 'e8') -> Tuple[List[float], float]:
         """
         0019 Periodic Vocab Lattice Alignment:
-        Maps token_id deterministically to an 8D E8 root lattice point and returns its coordinates and energy.
+        Maps token_id deterministically to an E8 (8D) or Leech (24D) root lattice point and returns its coordinates and energy.
         """
-        if token_id in self.lattice_cache:
-            return self.lattice_cache[token_id]
+        cache_key = (token_id, lattice)
+        if cache_key in self.lattice_cache:
+            return self.lattice_cache[cache_key]
         
         try:
-            from qan_transformers.math.e8_projection import generate_dynamic_e8_coordinates
-            roots = generate_dynamic_e8_coordinates(1) # shape (240, 8)
-            base_coords = roots[token_id % len(roots)]
-            scale = 1.0 + (token_id // len(roots)) * 0.05
-            coords = (base_coords * scale).tolist()
-            energy = float(np.sum(np.square(coords)))
+            if lattice == 'leech':
+                from qan_transformers.math.leech_lattice import generate_leech_coordinates
+                roots = generate_leech_coordinates(shell=1) # shape (196560, 24)
+                base_coords = roots[token_id % len(roots)]
+                scale = 1.0 + (token_id // len(roots)) * 0.05
+                coords = (base_coords * scale).tolist()
+                energy = float(np.sum(np.square(coords)))
+            else:
+                from qan_transformers.math.e8_projection import generate_dynamic_e8_coordinates
+                roots = generate_dynamic_e8_coordinates(1) # shape (240, 8)
+                base_coords = roots[token_id % len(roots)]
+                scale = 1.0 + (token_id // len(roots)) * 0.05
+                coords = (base_coords * scale).tolist()
+                energy = float(np.sum(np.square(coords)))
         except Exception:
-            # Fallback mock coordinates if E8 projection fails or is uninitialized
-            coords = [0.0] * 8
-            coords[token_id % 8] = 1.0 + (token_id // 8) * 0.05
-            energy = float(sum(c*c for c in coords))
+            # Fallback mock coordinates if projection fails or is uninitialized
+            if lattice == 'leech':
+                coords = [0.0] * 24
+                coords[token_id % 24] = 1.0 + (token_id // 24) * 0.05
+                energy = float(sum(c*c for c in coords))
+            else:
+                coords = [0.0] * 8
+                coords[token_id % 8] = 1.0 + (token_id // 8) * 0.05
+                energy = float(sum(c*c for c in coords))
             
-        self.lattice_cache[token_id] = (coords, energy)
+        self.lattice_cache[cache_key] = (coords, energy)
         return coords, energy
 
-    def get_sequence_lattice_metadata(self, token_ids: List[int]) -> Tuple[List[List[float]], List[float]]:
+    def get_sequence_lattice_metadata(self, token_ids: List[int], lattice: str = 'e8') -> Tuple[List[List[float]], List[float]]:
         coords_list = []
         energies_list = []
         for tid in token_ids:
-            c, e = self.get_token_lattice_metadata(tid)
+            c, e = self.get_token_lattice_metadata(tid, lattice=lattice)
             coords_list.append(c)
             energies_list.append(e)
         return coords_list, energies_list

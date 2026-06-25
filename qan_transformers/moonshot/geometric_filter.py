@@ -96,9 +96,10 @@ class GeometricDraftFilter:
         
         # Project to 3D coordinate space if projection matrix available
         if self.projection_matrix is not None:
-            # Take first 8 dimensions of hidden state for E8 projection
-            h8 = hidden_state[:8] if hidden_state.shape[0] >= 8 else mx.pad(hidden_state, [(0, 8 - hidden_state.shape[0])])
-            coord_3d = mx.matmul(h8, self.projection_matrix)
+            # Determine projection dimension (8 for E8, 24 for Leech)
+            proj_dim = self.projection_matrix.shape[0]
+            h_proj = hidden_state[:proj_dim] if hidden_state.shape[0] >= proj_dim else mx.pad(hidden_state, [(0, proj_dim - hidden_state.shape[0])])
+            coord_3d = mx.matmul(h_proj, self.projection_matrix)
         else:
             coord_3d = hidden_state[:3]
         
@@ -134,14 +135,15 @@ class GeometricDraftFilter:
         threshold = self.get_shell_radius(self._trajectory_shell)
         
         # Project each draft candidate to 3D
-        # Take first 8 dims for E8 projection
+        # Determine projection dimension (8 for E8, 24 for Leech)
+        proj_dim = self.projection_matrix.shape[0]
         D = draft_hidden_states.shape[-1]
-        if D >= 8:
-            h8 = draft_hidden_states[:, :8]
+        if D >= proj_dim:
+            h_proj = draft_hidden_states[:, :proj_dim]
         else:
-            h8 = mx.pad(draft_hidden_states, [(0, 0), (0, 8 - D)])
+            h_proj = mx.pad(draft_hidden_states, [(0, 0), (0, proj_dim - D)])
         
-        coords_3d = mx.matmul(h8, self.projection_matrix)  # (N, 3)
+        coords_3d = mx.matmul(h_proj, self.projection_matrix)  # (N, 3)
         
         # Compute distances from trajectory
         diffs = coords_3d - self._trajectory_coord[None, :]  # (N, 3)

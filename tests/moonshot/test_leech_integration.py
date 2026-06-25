@@ -119,3 +119,49 @@ class TestLeechShellRouter:
         router.initialize()
         # Must be at least 100x E8's 240 addresses
         assert router.get_address_capacity() > 240 * 100
+
+
+class TestLeechDecoder:
+    """Verify Leech closest-point decoders and tokenizer integration."""
+    def test_pytorch_decoder(self):
+        import torch
+        from qan_transformers.math.leech_decoder import ConwaySloaneLeechDecoder
+        decoder = ConwaySloaneLeechDecoder()
+        
+        # Test basic shape decoding
+        x = torch.randn(5, 24)
+        decoded = decoder.decode(x)
+        assert decoded.shape == (5, 24)
+        
+        # Test component E8 properties (nearest E8 points sum to even if decoded correctly)
+        # Check first 8D component
+        comp1 = decoded[:, 0:8]
+        rounded_sum = torch.sum(torch.round(comp1), dim=-1).to(torch.int32)
+        assert torch.all(rounded_sum % 2 == 0)
+
+    def test_mlx_decoder(self):
+        import mlx.core as mx
+        from qan_transformers.mlx.leech_decoder_mlx import ConwaySloaneLeechDecoderMLX
+        decoder = ConwaySloaneLeechDecoderMLX()
+        
+        x = mx.random.normal((5, 24))
+        decoded = decoder.decode(x)
+        assert decoded.shape == (5, 24)
+        
+        comp1 = decoded[:, 0:8]
+        rounded_sum = mx.sum(mx.round(comp1), axis=-1).astype(mx.int32)
+        assert mx.all(rounded_sum % 2 == 0)
+
+    def test_context_organism_leech(self):
+        from qan_transformers.tokenizer.context_organism import DeterministicContextOrganism
+        organism = DeterministicContextOrganism()
+        
+        # Verify default E8 (8D) mapping
+        coords_e8, energy_e8 = organism.get_token_lattice_metadata(42, lattice='e8')
+        assert len(coords_e8) == 8
+        
+        # Verify Leech (24D) mapping
+        coords_leech, energy_leech = organism.get_token_lattice_metadata(42, lattice='leech')
+        assert len(coords_leech) == 24
+        assert energy_leech > 0
+

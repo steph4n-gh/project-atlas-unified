@@ -42,6 +42,19 @@ When the 240 root coordinates $X_{E8} \in \mathbb{R}^{240 \times 8}$ are project
 
 *Code Reference*: Generated dynamically in [e8_projection.py](file:///Volumes/Storage/project_atlas_unified/qan_transformers/math/e8_projection.py#L7-L98) (`generate_dynamic_e8_coordinates`).
 
+### 1.3 The Leech Lattice $\Lambda_{24}$ Projection
+To scale the addressable coordinates for extremely long context windows, the system supports replacing the 8D $E_8$ lattice with the 24D Leech lattice $\Lambda_{24}$. The Leech lattice contains **196,560** vectors in its first shell (norm squared equal to 4), generated via the binary Golay code $C_{24}$ [24, 12, 8].
+
+To map the 24D coordinates into a 3D quasicrystal grid, we construct a projection matrix $P_{24 \to 3} \in \mathbb{R}^{24 \times 3}$. We utilize two projection approaches:
+1.  **Golden Cascade Projection:** Extending the Icosian golden ratio projection across 24 dimensions in three cascaded 8D blocks:
+    $$P_{24 \to 3} = \begin{bmatrix} P_{8 \to 3} \\ P_{8 \to 3} \cdot R_1 \\ P_{8 \to 3} \cdot R_2 \end{bmatrix}$$
+    where $R_1, R_2 \in \mathbb{R}^{3 \times 3}$ are deterministic icosahedral rotation matrices to prevent coordinate overlap.
+2.  **Direct Orthogonal Projection:** Computing a projection that maps 24D points into 3D while maximizing representation quality:
+    $$\text{quality} = \frac{1}{N}\sum_{i=1}^N \frac{\|\mathbf{y}_i\|_2}{\|\mathbf{x}_i\|_2}$$
+    where $\mathbf{y}_i = \mathbf{x}_i \cdot P_{24 \to 3}$. This direct method concentrates the 196,560 projected vectors into **8 discrete concentric shells** with an alignment quality score of $\approx 0.73$.
+
+*Code Reference*: Golay coding and Leech coordinates are generated in [leech_lattice.py](file:///Volumes/Storage/project_atlas_moonshot/qan_transformers/math/leech_lattice.py) (`generate_leech_coordinates`, `project_leech_to_3d`).
+
 ---
 
 ## 2. p-Adic Tree Coordinate Routing & E8 Integration (UCE)

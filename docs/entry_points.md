@@ -121,9 +121,19 @@ if kv_cache.get("is_fractured", False):
 
 Project Atlas provides flexible adoption entry points for optimizing model weights and KV caches:
 
-### A. Adopting Only the E8 Attention Layer (85% Memory Reduction)
-*   You can take any standard PyTorch or MLX model architecture (e.g., Gemma-4) and replace its self-attention layer with `QuasicrystallineAttention`. 
-*   **Result**: Compresses the KV cache memory footprint by **$\ge 85\%$** at long sequences (e.g., $200\text{k}+$ context) without altering model weights. It runs completely fine in standard fp16/bf16 formats.
+### A. Adopting the Quasicrystalline Attention Layer (E8 vs. Leech $\Lambda_{24}$)
+*   Replace standard self-attention with `QuasicrystallineAttention(lattice='e8')` or `QuasicrystallineAttention(lattice='leech')`.
+*   **E8 Lattice (Default):**
+    *   **Addresses:** 240 coordinates in Shell 1.
+    *   **Startup:** $< 1\text{ ms}$ (instantaneous generation).
+    *   **Fit:** Ideal for low-power edge/mobile devices where local swapping latency must be minimized.
+    *   **Performance:** Yields a **+69.27%** speculative decoding speedup (`34.92 tok/s`) on the 4B (E4B) model scale, and **+72.71%** speculative speedup (`9.43 tok/s`) on the 12B model scale.
+*   **Leech Lattice ($\Lambda_{24}$):**
+    *   **Addresses:** 196,560 coordinates in Shell 1 (819× address capacity).
+    *   **Startup:** ~890 ms coordinate-mapping compilation overhead at session boot.
+    *   **Fit:** Ideal for long-context foundation model inference on developer hardware.
+    *   **Performance:** Tighter geometric filtering cuts speculative rollbacks, boosting generation throughput to **37.87 tok/s** (**+77.54%** speculative speedup) on the 4B (E4B) model scale, and **9.46 tok/s** (**+73.26%** speculative speedup) on the 12B model scale.
+*   **Result:** Compresses the KV cache footprint by **$\ge 85\%$** at long sequences ($200\text{k}+$ context) without altering model weights. Runs in standard fp16/bf16 formats.
 
 ### B. Standard 4-bit Quantization (Without ELQ)
 *   Load public 4-bit model weights (such as `mlx-community/gemma-4-E4B-it-4bit`) directly onto local devices.

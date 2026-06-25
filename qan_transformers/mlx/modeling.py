@@ -793,15 +793,17 @@ def make_fused_decoder_layer_call(self, orig_call):
     return fused_decoder_layer_call
 
 
-def graft_mlx_model(model: nn.Module, sparse_ratio: float = 0.15, min_keep: int = 256, is_draft: bool = False) -> nn.Module:
+def graft_mlx_model(model: nn.Module, sparse_ratio: float = 0.15, min_keep: int = 256, is_draft: bool = False, lattice: str = "e8") -> nn.Module:
     """
-    Recursively traverses an MLX model and grafts E8 QuasicrystallineAttention
+    Recursively traverses an MLX model and grafts E8/Leech QuasicrystallineAttention
     onto all attention modules.
     
     Args:
         model: mlx.nn.Module to be grafted.
         sparse_ratio: Float attention sparsity ratio.
         min_keep: Minimum number of keys to keep in sparse cache.
+        is_draft: True if draft model.
+        lattice: Lattice mode ('e8' or 'leech').
     Returns:
         grafted_model: mlx.nn.Module with replaced attention layers.
     """
@@ -845,7 +847,8 @@ def graft_mlx_model(model: nn.Module, sparse_ratio: float = 0.15, min_keep: int 
             num_heads=n_heads,
             sparse_ratio=sparse_ratio,
             num_key_value_heads=n_kv_heads,
-            head_dim=head_dim
+            head_dim=head_dim,
+            lattice=lattice
         )
         sparse_attn.has_kv = has_kv
         
@@ -1137,7 +1140,7 @@ def move_model_to_device(model: nn.Module, device_type: mx.DeviceType):
     gc.collect()
     mx.clear_cache()
 
-def load_and_graft_elq_model(model: nn.Module, elq_path: str, sparse_ratio: float = 0.15, min_keep: int = 256, is_draft: bool = False, cache_capacity: int = None) -> nn.Module:
+def load_and_graft_elq_model(model: nn.Module, elq_path: str, sparse_ratio: float = 0.15, min_keep: int = 256, is_draft: bool = False, cache_capacity: int = None, lattice: str = "e8") -> nn.Module:
     """
     Loads ELQ quantized weights from `elq_path` and grafts them into the MLX `model`.
     Also grafts QuasicrystallineAttention.
@@ -1293,7 +1296,7 @@ def load_and_graft_elq_model(model: nn.Module, elq_path: str, sparse_ratio: floa
     mx.clear_cache()
     
     # Next, graft attention layers
-    grafted = graft_mlx_model(model, sparse_ratio, min_keep, is_draft=is_draft)
+    grafted = graft_mlx_model(model, sparse_ratio, min_keep, is_draft=is_draft, lattice=lattice)
     
     # Find the model's native parameter precision (preferring float16/bfloat16 over default float32)
     def find_dtype(p):
@@ -2411,8 +2414,10 @@ def patch_speculative_decoding(gen_mod):
             y_next, _ = _process_and_sample(None, logits)
             return y_next
 
-        if not hasattr(patched_speculative_generate_step, "compiled_remaining_loops"):
+        if (not hasattr(patched_speculative_generate_step, "compiled_remaining_loops") or
+            getattr(patched_speculative_generate_step, "last_draft_model", None) is not draft_model):
             patched_speculative_generate_step.compiled_remaining_loops = {}
+            patched_speculative_generate_step.last_draft_model = draft_model
             
         def get_compiled_remaining_loop(num_steps):
             if num_steps in patched_speculative_generate_step.compiled_remaining_loops:
@@ -2464,7 +2469,11 @@ def patch_speculative_decoding(gen_mod):
                     
                 updated_keys = [c.keys for c in cache_wrappers]
                 updated_values = [c.values for c in cache_wrappers]
-                return mx.concatenate(ys, axis=1), updated_keys, updated_values
+                
+                if is_assistant:
+                    return mx.concatenate(ys, axis=1), updated_keys, updated_values, draft_model.last_projected_state
+                else:
+                    return mx.concatenate(ys, axis=1), updated_keys, updated_values, mx.array(0.0)
             
             patched_speculative_generate_step.compiled_remaining_loops[num_steps] = mx.compile(loop_fn)
             return patched_speculative_generate_step.compiled_remaining_loops[num_steps]
@@ -2672,35 +2681,37 @@ def patch_speculative_decoding(gen_mod):
                             draft_model.last_projected_state, 2, axis=0
                         )
                         
-                    # 2. Generate remaining tokens for both paths in parallel eagerly
+                    # 2. Generate remaining tokens for both paths in parallel
                     if num_draft > 1:
-                        ys = []
-                        y_curr = curr_y
-                        for _ in range(num_draft - 1):
-                            if is_assistant:
-                                target_hidden = draft_model.last_projected_state
-                                if target_hidden.shape[1] > 1:
-                                    target_hidden = target_hidden[:, -1:, :]
-                                
-                                target_embed = _fast_target_embed(y_curr)
-                                if target_embed.ndim == 2:
-                                    target_embed = target_embed[:, None, :]
-                                
-                                concat_input = mx.concatenate([target_embed, target_hidden], axis=-1)
-                                inputs_embeds = draft_model.pre_projection(concat_input)
-                                scaled_inputs_embeds = inputs_embeds / draft_model.model.embed_scale
-                                logits = draft_model(y_curr[:, None], cache=draft_cache, input_embeddings=scaled_inputs_embeds)
-                            else:
-                                logits = draft_model(y_curr[:, None], cache=draft_cache)
-                                
-                            logits = logits[:, -1, :]
-                            quantize_cache_fn(draft_cache)
-                            
-                            logprobs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
-                            y_curr = nonlocal_sampler(logprobs)
-                            ys.append(y_curr[:, None])
+                        loop_compiled = get_compiled_remaining_loop(num_draft - 1)
+                        keys_list = [c.keys for c in draft_cache]
+                        values_list = [c.values for c in draft_cache]
+                        rope_offset = draft_cache[0].offset
                         
-                        remaining_tokens = mx.concatenate(ys, axis=1)
+                        if is_assistant:
+                            remaining_tokens, updated_keys, updated_values, last_proj_state = loop_compiled(
+                                curr_y,
+                                draft_model.last_projected_state,
+                                keys_list,
+                                values_list,
+                                rope_offset
+                            )
+                            draft_model.last_projected_state = last_proj_state
+                        else:
+                            remaining_tokens, updated_keys, updated_values, _ = loop_compiled(
+                                curr_y,
+                                mx.array(0.0),
+                                keys_list,
+                                values_list,
+                                rope_offset
+                            )
+                        
+                        # Update the draft_cache keys and values in-place
+                        for idx_c, c in enumerate(draft_cache):
+                            c.keys = updated_keys[idx_c]
+                            c.values = updated_values[idx_c]
+                            c.offset = rope_offset + (num_draft - 1)
+                            
                         draft_tokens = mx.concatenate([curr_y[:, None], remaining_tokens], axis=1)
                     else:
                         draft_tokens = curr_y[:, None]
