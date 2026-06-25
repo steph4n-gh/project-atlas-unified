@@ -98,8 +98,8 @@ Instead of computing all $N \times N$ token interactions, QAN computes attention
 *   **Coordinate-Sparse $E_8$ Attention**: Restricts self-attention computing to coordinate-sparse keys/values mapped from the 8D $E_8$ Gosset lattice, achieving $\ge 85\%$ memory reduction and $97.29\%$ compute sparsity at long context.
 *   **Scale-Invariant Concentric Shells**: Maps standard 240 roots of E8 into exactly 5 3D concentric shells of counts `[2, 30, 64, 64, 80]` while preserving full rotation and inversion symmetries.
 *   **Cross-Model KV Cache Sharing**: Allows multiple heterogeneous models (e.g., Gemma 2B and Gemma 9B) to share the same GPU coordinate space. Computes a closed-form orthogonal Procrustes alignment ($M_{align} = UV^T$) on centered hidden states via SVD, guaranteeing cosine similarity rank correlation $\ge 0.85$ on validation sets.
-*   **Cross-Layer Memory Sharing & Orthogonal Adapters**: Binds layers to a single memory swap database instance. Integrates a rank-16 residual orthogonal adapter ($W_L = I + AB^T$) parameterized via Woodbury-optimized Cayley mappings:
-    $$W_L = I - 2(I_{2r} + V^T U)^{-1} V^T$$
+*   **Cross-Layer Memory Sharing & Orthogonal Adapters**: Binds layers to a single memory swap database instance. Integrates a rank-16 residual orthogonal adapter ($W_L = I_D + AB^T$) parameterized via Woodbury-optimized Cayley mappings:
+    $$W_L = I_D - 2 U (I_{2r} + V^T U)^{-1} V^T$$
     to avoid cubic parameter inversion overhead while preserving geodesic pairwise distances.
 *   **Multi-Agent Concurrent Workspaces**: Guarantees thread safety and transactional isolation when multiple agents update the same grid. Utilizes a lockfile mutex context manager (`fcntl.flock`) and Copy-on-Write branching (`CoWMemorySwapGridDB`). Coordinate collisions are dynamically relocated to adjacent open points in the $E_8$ Shell 1 neighborhood.
 *   **Universal Lattice RAG CLI**: Built-in document projection indexing text files and embedding chunks onto discrete $E_8$ coordinates, enabling prompt prefill injections via E8 nearest-neighbor search.
@@ -123,7 +123,21 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-### 2. Command Line Interface (`qan-cli`)
+### 2. Cache & Volume Storage Setup
+
+To prevent your home partition from running out of space during model downloads or database paging, set the following environment variables to redirect caches to the `/Volumes/Storage/` volume:
+
+```bash
+# Redirect Hugging Face caches
+export HF_HOME="/Volumes/Storage/huggingface_cache"
+export HF_HUB_CACHE="/Volumes/Storage/huggingface_cache/hub"
+
+# Redirect Project Atlas caches and database swaps
+export QAN_CACHE_DIR="/Volumes/Storage/qan_cache"
+export ATLAS_SWAP_DB_DIR="/Volumes/Storage/atlas_swap_db"
+```
+
+### 3. Command Line Interface (`qan-cli`)
 
 The library includes a unified CLI (`qan-cli`) to graft attention configurations, run stable LoRA fine-tuning, audit python files for logic fractures, launch the web dashboard, index codebases, and start interactive chat sessions.
 

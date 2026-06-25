@@ -24,7 +24,7 @@
     {
       "name": "5. Local Autoregressive Generation Check",
       "passed": true,
-      "desc": "Generated output text locally: \"baaa\" (length 4). Forward calls during loop: Python: 4, Web: 4, Rust: 4."
+      "desc": "Generated output text locally: \"aaab\" (length 4). Forward calls during loop: Python: 4, Web: 4, Rust: 4."
     }
   ]
 }

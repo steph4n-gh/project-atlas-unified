@@ -57,14 +57,12 @@ for (uint tile_start = 0; tile_start < N; tile_start += TILE_SIZE) {
 
     // Cooperatively load this tile of roots into threadgroup shared memory.
     // Every thread in the threadgroup participates to maximize throughput.
+    // Roots are pre-normalized on the host to avoid redundant sqrt on the GPU.
     for (uint i = tid; i < num_roots_in_tile; i += tg_size) {
         uint root_idx = tile_start + i;
-        float3 r = float3((float)roots[root_idx * 3 + 0],
-                          (float)roots[root_idx * 3 + 1],
-                          (float)roots[root_idx * 3 + 2]);
-        // L2 normalize the root vector to ensure dot product is exactly cosine similarity
-        float r_len = sqrt(r.x * r.x + r.y * r.y + r.z * r.z) + 1e-12f;
-        shared_roots[i] = r / r_len;
+        shared_roots[i] = float3((float)roots[root_idx * 3 + 0],
+                                 (float)roots[root_idx * 3 + 1],
+                                 (float)roots[root_idx * 3 + 2]);
     }
 
     // Synchronize to guarantee that the whole tile is loaded into shared memory

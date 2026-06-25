@@ -7,10 +7,10 @@ Project Atlas is not a monolithic black box. The unified codebase is designed as
 ## 🧬 Entry Point 1: The Standalone Micro-Expert (UCE Student)
 
 ### What it is
-A single, ultra-lightweight **UCE Student Model** checkpoint (`.safetensors` + `.meta.json`), typically clocking in at just **~139 KiB** of weights.
+A single, ultra-lightweight **UCE Student Model** checkpoint (`.safetensors` + `.meta.json`), typically clocking in at just **~139 KiB** of weights. That's right—it's small enough to fit on a floppy disk, if you can find one.
 
 ### When to use
-When you need to run high-speed, local, zero-dependency semantic routing on low-power devices (such as edge processors or old laptops). Each expert is specialized in a specific domain tree (e.g., Python code parsing, SQL queries, or regex dialect mapping).
+When you need to run high-speed, local, zero-dependency semantic routing on low-power devices (such as edge processors or old laptops that sound like jet engines). Each expert is specialized in a specific domain tree (e.g., Python code parsing, SQL queries, or regex dialect mapping).
 
 ### Python Example
 ```python
@@ -40,7 +40,27 @@ print("Projected leaf coordinates active:", probs)
 ## 🎛️ Entry Point 2: The Mixture of Experts (MoE Routing Gateway)
 
 ### What it is
-The **`UCEMoeRouter` Gateway** orchestrating 8 developer experts under a unified subspace router. It uses memory-mapped file paging (`WeightManager`) and transactional file locks (`fcntl.flock`) to swap expert parameters on-demand under a **$15\text{ms}$ VRAM-swapping ceiling**.
+The **`UCEMoeRouter` Gateway** orchestrating 8 developer experts under a unified subspace router. It uses memory-mapped file paging (`WeightManager`) and transactional file locks (`fcntl.flock`) to swap expert parameters on-demand under a **$15\text{ ms}$ VRAM-swapping ceiling**.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    User->>Router: Send prompt "docker compose up -d"
+    Router->>Router: Project prompt to UCE tree coordinates
+    Router->>Router: Route to expert subspace "devops_infra"
+    Router->>WeightManager: Request devops_infra weights
+    WeightManager->>WeightManager: Check VRAM cache
+    alt Weights in VRAM
+        WeightManager-->>Router: Return pointer (0ms)
+    else Weights on Disk
+        WeightManager->>LockFile: Acquire fcntl.flock exclusive lock
+        LockFile-->>WeightManager: Lock granted
+        WeightManager->>MemoryMap: Page expert weights from disk to GPU memory (<15ms)
+        WeightManager->>LockFile: Release lock
+    end
+    Router->>GPU: Execute active-path token generation
+    GPU-->>User: Return response
+```
 
 ### When to use
 When building multi-domain developer portals, local web engines, or IDE autocomplete plugins that need to seamlessly route and resolve complex programming prompts across different contexts (Python, Rust, SQL, DevOps, and Regex) in parallel.
@@ -72,7 +92,7 @@ print(response)
 The full foundation model (such as Gemma 12B or E2B) executing concentric **$E_8$ sparse attention**, **Discrete Morse KV Cache Retraction**, and **Čech Cohomology Firewall** checks. 
 
 ### When to use
-When you need full, high-fidelity reasoning over massive context windows (**$200\text{k}+$ tokens**). The QAN attention layers collapse the KV cache memory footprint by $\ge 85\%$ and achieve $97.29\%$ compute sparsity, allowing you to load large contexts on standard Apple Silicon GPU setups.
+When you need full, high-fidelity reasoning over massive context windows (**$200\text{ k}+$ tokens**). The QAN attention layers collapse the KV cache memory footprint by $\ge 85\%$ and achieve $97.29\%$ compute sparsity, allowing you to load large contexts on standard Apple Silicon GPU setups without having to sell a kidney to buy more VRAM.
 
 ### Python Example
 ```python
@@ -123,7 +143,7 @@ Project Atlas provides flexible adoption entry points for optimizing model weigh
 
 ### A. Adopting Only the E8 Attention Layer (85% Memory Reduction)
 *   You can take any standard PyTorch or MLX model architecture (e.g., Gemma-4) and replace its self-attention layer with `QuasicrystallineAttention`. 
-*   **Result**: Compresses the KV cache memory footprint by **$\ge 85\%$** at long sequences (e.g., $200\text{k}+$ context) without altering model weights. It runs completely fine in standard fp16/bf16 formats.
+*   **Result**: Compresses the KV cache memory footprint by **$\ge 85\%$** at long sequences (e.g., $200\text{ k}+$ context) without altering model weights. It runs completely fine in standard fp16/bf16 formats.
 
 ### B. Standard 4-bit Quantization (Without ELQ)
 *   Load public 4-bit model weights (such as `mlx-community/gemma-4-E4B-it-4bit`) directly onto local devices.
@@ -131,10 +151,13 @@ Project Atlas provides flexible adoption entry points for optimizing model weigh
 
 ### C. Embedding Lattice Quantization (With ELQ)
 *   Convert the entire model structure into our custom `.elq` quantized binary format (e.g., `gemma-4-e4b-it.elq`).
-*   **Result**: Converts standard dense linear layers into hardware-optimized sliding ELQ linear gates. The system dynamically pages and evaluates only the active weights in the Metal/ANE pipeline, maintaining maximum fidelity while keeping local memory footprint at a absolute minimum.
+*   **Result**: Converts standard dense linear layers into hardware-optimized sliding ELQ linear gates. The system dynamically pages and evaluates only the active weights in the Metal/ANE pipeline, maintaining maximum fidelity while keeping local memory footprint at an absolute minimum.
 
 ### D. Fused Prefill Acceleration (With Fused MPS Gather-Scatter)
 *   Deploy with our specialized coordinate-sparse fused MPS kernel (`mps_coordinate_gather_scatter`) loaded on the PyTorch runtime.
 *   **Result**: Accelerates coordinate gather/scatter during the prefill phase on Apple Silicon, slashing routing mean latency by **~50%** (reducing mean latency from **883.3 ms to 445.0 ms**).
 
-
+### E. Cache & Hugging Face Temp Volume Configuration
+*   Configure Hugging Face and Project Atlas to use local volume storage `/Volumes/Storage/` instead of default home or root directories.
+*   **Result**: Prevents home directory space exhaustion during massive checkpoint downloads and heavy database swaps.
+*   **Setup**: Run `export HF_HOME="/Volumes/Storage/huggingface_cache" && export QAN_CACHE_DIR="/Volumes/Storage/qan_cache"` before running any model operations.

@@ -2,7 +2,7 @@
 
 Welcome to the accessible overview of **Project Atlas (QAN-ATLAS)**. If you want to understand the core concepts behind this framework without drowning in matrix calculus, coordinate systems, or multi-dimensional geometry, you are in the right place. 
 
-We write this with absolute honesty: we will explain what this system does, how it works using simple analogies, and—critically—what its trade-offs and limitations are. No hype, no buzzwords.
+We write this with absolute honesty: we will explain what this system does, how it works using simple analogies, and—critically—what its trade-offs and limitations are. No hype, no buzzwords. Just math and some dry humor.
 
 ---
 
@@ -50,9 +50,24 @@ UCE acts as the routing system:
 *   **The Math Jargon**: Discrete Morse Theory Retraction
 *   **The Analogy**: Pruning a spiderweb to its main structural hubs.
 
+![Discrete Morse cache contraction skeleton](assets/morse_skeleton_web.png)
+
 Imagine a spiderweb wet with dew. There are thousands of tiny, intersecting silk threads. If you want to know the shape of the web, you don't need to trace all ten thousand intersections. You only need to look at the primary radial lines that anchor the web to the branches. If you throw away the minor threads, the web still holds its shape.
 
 In Project Atlas, the KV cache (the model's memory of past text) is treated like a complex geometric shape. **Discrete Morse Contraction** works by mathematically collapsing redundant attention paths down to a critical "skeleton." It prunes away the duplicate or semantically empty threads, compressing the memory footprint by **85% or more** at long contexts, without losing the core structure of the conversation.
+
+### Morse KV Cache Contraction Flow
+```mermaid
+graph LR
+    Seq[Token Sequence] --> Ent[Compute Attention Entropy]
+    Ent --> Shell{Scale Shell Level}
+    Shell -- Low Entropy --> S3[Use Shell 3: 6720 roots]
+    Shell -- High Entropy --> S1[Use Shell 1: 240 roots]
+    S3 & S1 --> Sim[Compute Pairwise Cosine Similarity matrix S]
+    Sim --> Morse[Retract redundant paths along gradient vector field if neighbor has higher energy]
+    Morse --> Prune[Prune & backfill active slots to maintain K_total size]
+    Prune --> KV[Update compact KV Cache]
+```
 
 ---
 
@@ -93,4 +108,3 @@ We do not believe in magic. Project Atlas achieves its massive memory savings by
 ## 8. Performance & Comparison Whitepaper
 
 For a detailed comparative breakdown utilizing real logged data from our Apple Silicon M4 Pro benchmarking runs (including memory footprint comparisons up to 500k context lengths and speculative decoding speeds), please see [Project Atlas Performance Whitepaper](file:///Volumes/Storage/project_atlas_unified/docs/project_atlas_whitepaper.md).
-

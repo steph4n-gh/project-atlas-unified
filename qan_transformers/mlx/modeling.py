@@ -2511,6 +2511,10 @@ def patch_speculative_decoding(gen_mod):
 
         num_draft = 0
         n = 0
+        target_start_offset = 0
+        draft_start_offset = 0
+        num_existing_target = 0
+        num_existing_draft = 0
         try:
             while True:
                 num_draft = min(max_tokens - ntoks, dyn_num_draft)

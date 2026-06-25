@@ -121,7 +121,7 @@ The custom autograd operator is defined in [mps_scatter.py](file:///Volumes/Stor
 ### 5.2 Fused Prefill Optimization
 To optimize prefill latency, the custom MPS kernel merges index casting, contiguity checks, and coordinate-sparse selection into a single launch boundary.
 *   **Performance Impact**: Reduces coordinate-routing mean latency on Apple Silicon by **49.63%** (mean latency drops from **883.34 ms to 444.97 ms**).
-*   **Numerical Parity**: This optimization maintains strict numerical parity with the standard PyTorch reference (`torch.gather` / `torch.index_select`) within $<1\text{e-}4$ for both forward activations and backward gradients, verified via `torch.autograd.gradcheck`.
+*   **Numerical Parity**: This optimization maintains strict numerical parity with the standard PyTorch reference (`torch.gather` / `torch.index_select`) within $< 1\text{e-}4$ for both forward activations and backward gradients, verified via `torch.autograd.gradcheck`.
 
 ---
 
@@ -137,3 +137,24 @@ To prevent GPU kernel panics or compilation failures during SVD-based projection
 
 ### 6.2 Performance Impact
 While CPU transfers introduce a brief initialization overhead (~2-5ms), they are performed only during model loading/grafting or periodic parameter re-orthogonalization steps, resulting in **zero latency impact during standard token generation steps**.
+
+---
+
+## 7. Storage & Cache Volume Configuration
+
+To prevent clogging up the user's home directory (which on macOS often sits on a tiny, expensive partition with a "no space left on device" panic waiting to happen), all Hugging Face caches, local model caches, temporary download paths, and swap database directories must be explicitly configured to use the large volume storage under `/Volumes/Storage/`.
+
+### 7.1 Environment Variable Configuration
+Before executing any training, grafting, or chat scripts, set the following environment variables in your shell session or add them to your shell profile (e.g., `~/.zshrc`):
+
+```bash
+# Redirect Hugging Face caches to volume storage
+export HF_HOME="/Volumes/Storage/huggingface_cache"
+export HF_HUB_CACHE="/Volumes/Storage/huggingface_cache/hub"
+
+# Redirect Project Atlas cache and database paths
+export QAN_CACHE_DIR="/Volumes/Storage/qan_cache"
+export ATLAS_SWAP_DB_DIR="/Volumes/Storage/atlas_swap_db"
+```
+
+During runtime, check that the paths point correctly to `/Volumes/Storage/`. This ensures fast, local read/write cycles and leaves the system drive free to breathe.

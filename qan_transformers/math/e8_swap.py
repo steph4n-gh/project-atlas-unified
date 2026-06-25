@@ -61,9 +61,11 @@ class FileMutex:
         if self.disable_flock:
             self.thread_lock.release()
             return
-        if self.fd is not None:
-            fcntl.flock(self.fd, fcntl.LOCK_UN)
-        self.thread_lock.release()
+        try:
+            if self.fd is not None:
+                fcntl.flock(self.fd, fcntl.LOCK_UN)
+        finally:
+            self.thread_lock.release()
 
     def close(self):
         if self.disable_flock:
@@ -440,9 +442,7 @@ class AdelicMemorySwapGridDB:
                 ratio = target_len // current_len if current_len > 0 else 2
                 
             num_vectors_target = num_tokens_to_keep * ratio
-            
             self.target_len = min(self.target_len, num_vectors_target)
-            self.grid_coords_len = min(self.grid_coords_len, num_vectors_target)
             
             draft_len = getattr(self, "draft_len", 0)
             if current_len is None or current_len == 0:
@@ -451,6 +451,10 @@ class AdelicMemorySwapGridDB:
                 ratio_d = draft_len // current_len if current_len > 0 else 2
             num_vectors_draft = num_tokens_to_keep * ratio_d
             self.draft_len = min(self.draft_len, num_vectors_draft)
+            
+            # Grid coordinates are shared, truncate to the maximum required length
+            max_len = max(self.target_len, self.draft_len)
+            self.grid_coords_len = min(self.grid_coords_len, max_len)
             
             self._coords_cache.clear()
             

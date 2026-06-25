@@ -1,37 +1,36 @@
-# Project: QAN-ATLAS Performance Optimization
+# Project: QAN-ATLAS Documentation Audit, Verification, and Enrichment
 
 ## Architecture
-- Module/package boundaries, data flow, shared interfaces:
-  - `qan_transformers/modeling/attention.py`: Core PyTorch attention implementation, including Cayley adapter and Morse cache collapse.
-  - `qan_transformers/mlx/attention.py`: MLX attention implementation, including Morse cache collapse.
-  - `qan_transformers/math/e8_swap.py`: Memory Swap DB using Conway-Sloane E8 sphere-packing decoder.
-  - `qan_transformers/optim/adelic.py`: Adelic Langevin Optimizer.
-  - `qan_transformers/firewall/cohomology.py`: Cohomology Firewall checking for topological fracture.
-  - `qan_transformers/kernels/mps_scatter.py`: Custom MPS gather-scatter PyTorch autograd operators.
-  - `scratch/run_codebase_chat_mlx.py`: MLX-native whole-codebase QA chat CLI (speculative decoding / unified assistant caching).
-  - `scratch/run_codebase_chat.py`: PyTorch whole-codebase QA chat CLI (MPS/CPU).
+- Documentation files under `docs/` and root `README.md`
+- Core subsystems to document and align:
+  - **ELQ Quantization**: splits weights into E8 coordinate lattices and sparse outlier matrices ($W = \text{Dequant}(W_{\text{quant}}) + \Delta W_{\text{outliers}}$). Interacts with `gate_proj` and `ELQLinear` projections.
+  - **Morse KV Caching Mechanics**: Linear-complexity cache collapse.
+  - **Čech Cohomology & Ultrametric Spaces**: Topological fracture firewall.
+  - **E8 Root Projections / Sphere Packing**: Memory swap.
+- Codebase implementations to verify against:
+  - `qan_transformers/math/e8_swap.py`
+  - `qan_transformers/modeling/attention.py`
+  - `qan_transformers/mlx/attention.py`
+  - `qan_transformers/firewall/cohomology.py`
+  - `qan_transformers/optim/adelic.py`
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|---|---|---|---|
-| 1 | Baseline Verification | Run baseline tests and benchmarks | None | DONE |
-| 2 | Cayley Orthogonal Adapter Caching | R1 optimization in `qan_transformers/modeling/attention.py` | None | DONE |
-| 3 | Linear-Complexity Morse Cache Collapse | R2 optimization in `qan_transformers/modeling/attention.py` and `qan_transformers/mlx/attention.py` | None | DONE |
-| 4 | Vectorized Swap & Adelic Proposals | R3 optimization in `qan_transformers/math/e8_swap.py` and `qan_transformers/optim/adelic.py` | None | DONE |
-| 5 | Contiguous MPS Kernels & Cohomology Firewall | R4 optimization in `qan_transformers/kernels/mps_scatter.py` and `qan_transformers/firewall/cohomology.py` | None | DONE |
-| 6 | E2E Testing & Benchmark Validation | Verify all tests pass, run benchmarks and generate plots | M2, M3, M4, M5 | DONE |
-| 7 | Whole-Codebase Ingestion & Locking | MLX-native whole-codebase QA CLI (chunked prefilling, cache locking, and restore) | M3, M4, M6 | DONE |
+| 1 | Baseline & Exploration | Explore documentation, analyze code implementation of key concepts, draft Mermaid structures and flavor image prompts. | None | DONE |
+| 2 | Math & Technical Alignment | Audit and rewrite equations to use valid LaTeX blocks. Ensure mathematical accuracy of Čech Cohomology, Morse KV caching, ELQ, and E8 lattices. Explain ELQ sliding cache, Metal fused matmul execution, and gate_proj interaction with ELQLinear. | M1 | DONE |
+| 3 | Visual Enrichment | Generate and insert Mermaid diagrams (flows, architectures) and creative flavor/concept images (using image generation tools) for major subsystems. | M2 | DONE |
+| 4 | Reference & Link Validation | Statically and programmatically verify and fix all relative links, file paths, and codebase symbol references. Ensure zero broken references. | M3 | DONE |
+| 5 | Validation & Final Verification | Run `pytest` test suite to verify no errors. Run reviewer, challenger, and forensic auditor loops to ensure final clean verdict. | M4 | DONE |
 
 ## Interface Contracts
-- **Cayley Adapter**: `eval` mode caching must not alter public interface or class signature of the attention layer.
-- **Morse Cache Collapse**: Must yield mathematically equivalent results (within 1e-5 tolerance) compared to original collapse.
-- **CoW Memory Swap**: Must replace nested loops in `CoWMemorySwapGridDB._swap_in_batch` without breaking existing API.
-- **Adelic Langevin**: Must vectorize proposals in `AdelicLangevinOptimizer` without altering step/optimizer behavior.
-- **Cohomology Firewall**: Must vectorize edge coboundary calculations in `CohomologyFirewall` and retain same detection threshold.
-- **MPS Scatter/Gather**: Index tensors cast to `int32` and made contiguous.
+- **Documentation style**: Tone must be accessible to readers of all levels, jargon-free, with a dry, witty humor.
+- **LaTeX Math Equations**: Must use valid LaTeX formatting (e.g. `$$` or `$`).
+- **Mermaid Diagrams**: Must render correctly with valid Mermaid syntax.
+- **Links**: Must use relative paths or file:/// schema, and must exist.
+- **Code Snippets**: Code blocks in docs must represent valid python/bash syntax and match codebase API names.
 
 ## Code Layout
 - Core library: `qan_transformers/`
+- Documentation: `docs/` and root `README.md`
 - Test suite: `tests/`
-- Benchmarks: `benchmarks/run_validation_suite.py`
-- Codebase QA CLIs: `scratch/run_codebase_chat.py` (PyTorch) and `scratch/run_codebase_chat_mlx.py` (MLX)
