@@ -135,7 +135,21 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-### 2. Command Line Interface (`qan-cli`)
+### 2. Cache & Volume Storage Setup
+
+To prevent your home partition from running out of space during model downloads or database paging, set the following environment variables to redirect caches to the `/Volumes/Storage/` volume:
+
+```bash
+# Redirect Hugging Face caches
+export HF_HOME="/Volumes/Storage/huggingface_cache"
+export HF_HUB_CACHE="/Volumes/Storage/huggingface_cache/hub"
+
+# Redirect Project Atlas caches and database swaps
+export QAN_CACHE_DIR="/Volumes/Storage/qan_cache"
+export ATLAS_SWAP_DB_DIR="/Volumes/Storage/atlas_swap_db"
+```
+
+### 3. Command Line Interface (`qan-cli`)
 
 The library includes a unified CLI (`qan-cli`) to graft attention configurations, run stable LoRA fine-tuning, audit python files for logic fractures, launch the web dashboard, index codebases, and start interactive chat sessions.
 

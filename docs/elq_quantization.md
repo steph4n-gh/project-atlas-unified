@@ -1,8 +1,8 @@
 # Deep Dive: Embedding Lattice Quantization (ELQ)
 
 ## 1. The Core Problem: Why Standard 4-bit Quantization Degrades LLMs
-Standard 4-bit quantization methods (like uniform integer quantization in GGUF or weight-only AWQ) scale and quantize all weights uniformly. However, LLMs (especially models like Gemma-4) contain **outlier activations**—sparse, high-magnitude channels that carry critical reasoning and syntactic information. 
-When these outliers are quantized into a tight 4-bit range, their values are clipped or heavily rounded, causing severe accuracy collapse (word salad, syntax breakdown in regex, etc.).
+Standard 4-bit quantization methods (like uniform integer quantization in GGUF or weight-only AWQ) scale and quantize all weights uniformly. However, LLMs contain **outlier activations**—sparse, high-magnitude channels that carry critical reasoning and syntactic information. 
+When these outliers are quantized into a tight 4-bit range, their values are clipped or heavily rounded, causing severe accuracy collapse (word salad, syntax breakdown in regex, etc.). Basically, the model's brain gets bruised by rounding errors.
 
 ---
 
@@ -10,6 +10,18 @@ When these outliers are quantized into a tight 4-bit range, their values are cli
 Embedding Lattice Quantization (ELQ) solves this by splitting the weight matrix \(W\) into a dense quantized matrix and a sparse outlier correction matrix:
 
 $$W = \text{Dequant}(W_{\text{quant}}) + \Delta W_{\text{outliers}}$$
+
+### ELQ Quantization Pipeline
+```mermaid
+graph TD
+    W[Weight Matrix W] --> Cal[MorseAWQCalibrator Sensitivity Score]
+    Cal --> Split{Is outlier channel?}
+    Split -- Yes (Top 10%) --> Out[Isolate to FP16/BF16 Sparse Outlier Matrix delta_W]
+    Split -- No --> Rot[Rotate block-wise via Sign-Flip + 32D Walsh-Hadamard Transform]
+    Rot --> CS[Slice to 8D & project via Conway-Sloane closest-point decoder]
+    CS --> Pack[Pack E8 coordinates into 32-bit indices]
+    Pack --> Save[Save to .elq binary payload]
+```
 
 ### How ELQ Splits the Weights
 Quantizing an LLM without breaking its brain is a delicate art. ELQ does this in a few systematic steps:
@@ -85,13 +97,12 @@ However, attempting this weight-level fusion with ELQ-quantized layers is a reci
 
 ### The ELQ Solution
 To avoid these issues, `FusedGeGLUFFN` (found in `qan_transformers/mlx/moonshots.py`) handles `ELQLinear` projections by keeping `gate_proj` and `up_proj` as **separate module calls**. 
+
+$$\text{Gate}(x) = \operatorname{ELQLinear}_{\text{gate}}(x)$$
+$$\text{Up}(x) = \operatorname{ELQLinear}_{\text{up}}(x)$$
+
 While standard linear layers get compiled into a single fused weight matrix multiplication, ELQ layers run their independent forward passes and are combined in the compiled execution graph:
-```python
-@mx.compile
-def _module_forward(x):
-    gate = self.gate_proj(x)
-    up = self.up_proj(x)
-    activated = self.gelu(gate) * up
-    return self.down_proj(activated)
-```
+
+$$\text{Output}(x) = \operatorname{ELQLinear}_{\text{down}}(\operatorname{GELU}(\text{Gate}(x)) \odot \operatorname{Up}(x))$$
+
 This preserves the exact E8 lattice mappings and isolated outlier matrices for both projections, ensuring zero accuracy degradation while still benefiting from MLX's graph compilation.

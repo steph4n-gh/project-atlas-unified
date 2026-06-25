@@ -70,11 +70,11 @@ class AdelicLangevinOptimizer(Optimizer):
         else:
             self.lca_table = None
             
-        # Cycle 2: Pre-allocated NumPy 2D Proposal Cache
-        self.candidates = np.arange(num_states)
         if num_states <= 64:
+            self.candidates = np.arange(num_states)
             self._proposals_cache = np.array([self.candidates[self.candidates != i] for i in range(num_states)])
         else:
+            self.candidates = None
             self._proposals_cache = None
 
         # Precompute and cache alpha-dependent constants (c_alpha, depth_indices, and weights) during optimizer initialization
@@ -390,10 +390,11 @@ class QuantumWalkAdelicOptimizer(Optimizer):
         else:
             self.lca_table = None
             
-        self.candidates = np.arange(num_states)
         if num_states <= 64:
+            self.candidates = np.arange(num_states)
             self._proposals_cache = np.array([self.candidates[self.candidates != i] for i in range(num_states)])
         else:
+            self.candidates = None
             self._proposals_cache = None
 
         self._alpha_cache = {}

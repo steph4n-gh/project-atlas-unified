@@ -7,10 +7,10 @@ Project Atlas is not a monolithic black box. The unified codebase is designed as
 ## 🧬 Entry Point 1: The Standalone Micro-Expert (UCE Student)
 
 ### What it is
-A single, ultra-lightweight **UCE Student Model** checkpoint (`.safetensors` + `.meta.json`), typically clocking in at just **~139 KiB** of weights.
+A single, ultra-lightweight **UCE Student Model** checkpoint (`.safetensors` + `.meta.json`), typically clocking in at just **~139 KiB** of weights. That's right—it's small enough to fit on a floppy disk, if you can find one.
 
 ### When to use
-When you need to run high-speed, local, zero-dependency semantic routing on low-power devices (such as edge processors or old laptops). Each expert is specialized in a specific domain tree (e.g., Python code parsing, SQL queries, or regex dialect mapping).
+When you need to run high-speed, local, zero-dependency semantic routing on low-power devices (such as edge processors or old laptops that sound like jet engines). Each expert is specialized in a specific domain tree (e.g., Python code parsing, SQL queries, or regex dialect mapping).
 
 ### Python Example
 ```python
@@ -148,4 +148,7 @@ Project Atlas provides flexible adoption entry points for optimizing model weigh
 *   Deploy with our specialized coordinate-sparse fused MPS kernel (`mps_coordinate_gather_scatter`) loaded on the PyTorch runtime.
 *   **Result**: Accelerates coordinate gather/scatter during the prefill phase on Apple Silicon, slashing routing mean latency by **~50%** (reducing mean latency from **883.3 ms to 445.0 ms**).
 
-
+### E. Cache & Hugging Face Temp Volume Configuration
+*   Configure Hugging Face and Project Atlas to use local volume storage `/Volumes/Storage/` instead of default home or root directories.
+*   **Result**: Prevents home directory space exhaustion during massive checkpoint downloads and heavy database swaps.
+*   **Setup**: Run `export HF_HOME="/Volumes/Storage/huggingface_cache" && export QAN_CACHE_DIR="/Volumes/Storage/qan_cache"` before running any model operations.

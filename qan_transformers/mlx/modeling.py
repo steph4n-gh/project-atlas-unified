@@ -1,6 +1,6 @@
 import mlx.core as mx
 import mlx.nn as nn
-from typing import Any
+from typing import Any, Tuple, List, Dict, Optional
 import numpy as np
 from qan_transformers.mlx.attention import QuasicrystallineAttention
 from qan_transformers.kernels.elq_metal import elq_fused_matmul
@@ -28,7 +28,7 @@ try:
         Gemma4TextModelArgs.from_dict = patched_from_dict
 
     # Patch Gemma4TextModel.sanitize to handle prefix mismatch for unified models
-    if not getattr(Gemma4TextModel.sanitize, "__patched__", False):
+    if hasattr(Gemma4TextModel, "sanitize") and not getattr(Gemma4TextModel.sanitize, "__patched__", False):
         orig_sanitize = Gemma4TextModel.sanitize
         def patched_sanitize(self, weights):
             sanitized = {}
@@ -2557,6 +2557,10 @@ def patch_speculative_decoding(gen_mod):
 
         num_draft = 0
         n = 0
+        target_start_offset = 0
+        draft_start_offset = 0
+        num_existing_target = 0
+        num_existing_draft = 0
         try:
             while True:
                 num_draft = min(max_tokens - ntoks, dyn_num_draft)

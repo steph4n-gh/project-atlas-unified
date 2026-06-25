@@ -9,7 +9,8 @@ from threading import Thread
 
 # Pinned memory CPU tensors are coerced onto the GPU device (mps:0) by PyTorch on Apple Silicon.
 # To keep CPU buffers strictly offloaded from the M4 Pro VRAM ceiling, we disable pin_memory on macOS.
-use_pin_memory = not torch.backends.mps.is_available()
+# We also only use pin_memory if CUDA is available, to avoid NVIDIA driver errors on CPU-only environments.
+use_pin_memory = torch.cuda.is_available() and not torch.backends.mps.is_available()
 
 class ThreadWithReturnValue(Thread):
     def __init__(self, target, args=(), kwargs=None):
@@ -61,9 +62,11 @@ class FileMutex:
         if self.disable_flock:
             self.thread_lock.release()
             return
-        if self.fd is not None:
-            fcntl.flock(self.fd, fcntl.LOCK_UN)
-        self.thread_lock.release()
+        try:
+            if self.fd is not None:
+                fcntl.flock(self.fd, fcntl.LOCK_UN)
+        finally:
+            self.thread_lock.release()
 
     def close(self):
         if self.disable_flock:
@@ -440,9 +443,7 @@ class AdelicMemorySwapGridDB:
                 ratio = target_len // current_len if current_len > 0 else 2
                 
             num_vectors_target = num_tokens_to_keep * ratio
-            
             self.target_len = min(self.target_len, num_vectors_target)
-            self.grid_coords_len = min(self.grid_coords_len, num_vectors_target)
             
             draft_len = getattr(self, "draft_len", 0)
             if current_len is None or current_len == 0:
@@ -451,6 +452,10 @@ class AdelicMemorySwapGridDB:
                 ratio_d = draft_len // current_len if current_len > 0 else 2
             num_vectors_draft = num_tokens_to_keep * ratio_d
             self.draft_len = min(self.draft_len, num_vectors_draft)
+            
+            # Grid coordinates are shared, truncate to the maximum required length
+            max_len = max(self.target_len, self.draft_len)
+            self.grid_coords_len = min(self.grid_coords_len, max_len)
             
             self._coords_cache.clear()
             

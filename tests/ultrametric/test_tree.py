@@ -454,6 +454,14 @@ def test_build_tree_from_gemma_script_synthetic_roundtrip(tmp_path):
     import subprocess
     import sys
 
+    # Skip this test if MLX is not installed or is mocked
+    try:
+        import mlx.core as mx
+        if "mlx" in sys.modules and sys.modules["mlx"].__class__.__name__ == "MLXMock":
+            pytest.skip("MLX is mocked; skipping subprocess test requiring real MLX")
+    except ImportError:
+        pytest.skip("MLX is not installed; skipping subprocess test requiring real MLX")
+
     script_path = "scripts/build_tree_from_gemma.py"
     out_json = tmp_path / "synth_tree.json"
 
