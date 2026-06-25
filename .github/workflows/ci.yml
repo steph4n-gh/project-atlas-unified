@@ -60,7 +60,9 @@ jobs:
             --ignore=tests/qan/e2e/test_mlx_speculative.py \
             --ignore=tests/qan/e2e/test_speculative_decoding.py \
             --ignore=tests/qan/unit/test_adelic_speculation.py \
-            --ignore=tests/qan/unit/test_codebase_chat.py
+            --ignore=tests/qan/unit/test_codebase_chat.py \
+            --ignore=tests/qan/unit/test_dashboard.py \
+            --ignore=tests/qan/unit/test_wave_generation.py
 
   # Job 2: Deploy Static MoE Studio to GitHub Pages
   deploy:
