@@ -9,29 +9,29 @@ os.environ["HF_HUB_CACHE"] = os.environ.get("HF_HUB_CACHE", "/Volumes/Storage/hu
 
 # Mock mlx modules if they cannot be imported (e.g. on Linux CPU environments)
 try:
+    if os.environ.get("FORCE_MLX_MOCK") == "1":
+        raise ImportError("Forcing MLX Mock for testing")
     import mlx.core as mx
 except ImportError:
-    mlx_mock = MagicMock()
-    mlx_mock.__spec__ = importlib.machinery.ModuleSpec("mlx", None)
-    mlx_mock.__name__ = "mlx"
-    sys.modules["mlx"] = mlx_mock
+    import pytest
 
-    mlx_core_mock = MagicMock()
-    mlx_core_mock.__spec__ = importlib.machinery.ModuleSpec("mlx.core", None)
-    mlx_core_mock.__name__ = "mlx.core"
-    sys.modules["mlx.core"] = mlx_core_mock
+    class MLXMock(MagicMock):
+        def __getattr__(self, name):
+            # Allow internal mock, dunder, and private attributes to avoid recursion
+            if name.startswith("_") or name.startswith("mock_"):
+                return super().__getattr__(name)
+            # If the attribute is a registered submodule, return it
+            full_name = f"{self.__name__}.{name}"
+            if full_name in sys.modules:
+                return sys.modules[full_name]
+            # Otherwise, skip the current test because MLX is not installed
+            pytest.skip(f"MLX is not installed; skipped test due to access of '{self.__name__}.{name}'", allow_module_level=True)
 
-    mlx_nn_mock = MagicMock()
-    mlx_nn_mock.__spec__ = importlib.machinery.ModuleSpec("mlx.nn", None)
-    mlx_nn_mock.__name__ = "mlx.nn"
-    sys.modules["mlx.nn"] = mlx_nn_mock
+    # Set up mock modules
+    mock_names = ["mlx", "mlx.core", "mlx.nn", "mlx.optimizers", "mlx.utils"]
+    for name in mock_names:
+        mock_obj = MLXMock()
+        mock_obj.__spec__ = importlib.machinery.ModuleSpec(name, None)
+        mock_obj.__name__ = name
+        sys.modules[name] = mock_obj
 
-    mlx_optimizers_mock = MagicMock()
-    mlx_optimizers_mock.__spec__ = importlib.machinery.ModuleSpec("mlx.optimizers", None)
-    mlx_optimizers_mock.__name__ = "mlx.optimizers"
-    sys.modules["mlx.optimizers"] = mlx_optimizers_mock
-
-    mlx_utils_mock = MagicMock()
-    mlx_utils_mock.__spec__ = importlib.machinery.ModuleSpec("mlx.utils", None)
-    mlx_utils_mock.__name__ = "mlx.utils"
-    sys.modules["mlx.utils"] = mlx_utils_mock
