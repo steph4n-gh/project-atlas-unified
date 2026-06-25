@@ -108,10 +108,20 @@ Instead of computing all $N \times N$ token interactions, QAN computes attention
 *   **Scale-Invariant Concentric Shells**: Projects standard 240 roots of E8 into 5 3D concentric shells of counts `[2, 30, 64, 64, 80]` or 196,560 vectors of Leech $\Lambda_{24}$ into 8 3D concentric shells while preserving rotational and inversion symmetries.
 *   **Cross-Model KV Cache Sharing**: Allows multiple heterogeneous models (e.g., Gemma 2B and Gemma 9B) to share the same GPU coordinate space. Computes a closed-form orthogonal Procrustes alignment ($M_{align} = UV^T$) on centered hidden states via SVD, guaranteeing cosine similarity rank correlation $\ge 0.85$ on validation sets.
 *   **Cross-Model Wormhole Bridge**: Connects local models to cloud models (e.g., Gemini API) via a geometry-preserving private bridge. Uncertain generation trajectories (evaluated via the Cohomology Fracture Index) trigger the bridge, scrambling local activations with a private, session-unique low-rank Woodbury-Cayley transform:
-    $$\mathbf{W}_L = \mathbf{I} - 2\mathbf{U}(\mathbf{I}_{2r} + \mathbf{V}^T \mathbf{U})^{-1} \mathbf{V}^T$$
+    
+
+$$
+\mathbf{W}_L = \mathbf{I} - 2\mathbf{U}(\mathbf{I}_{2r} + \mathbf{V}^T \mathbf{U})^{-1} \mathbf{V}^T
+$$
+
     to prevent inversion by the cloud provider, before projecting the returned cloud embeddings back to local coordinates via Procrustes SVD alignment.
 *   **Cross-Layer Memory Sharing & Orthogonal Adapters**: Binds layers to a single memory swap database instance. Integrates a rank-16 residual orthogonal adapter ($W_L = I + AB^T$) parameterized via Woodbury-optimized Cayley mappings:
-    $$W_L = I - 2 U (I_{2r} + V^T U)^{-1} V^T$$
+    
+
+$$
+W_L = I - 2 U (I_{2r} + V^T U)^{-1} V^T
+$$
+
     to avoid cubic parameter inversion overhead while preserving geodesic pairwise distances.
 *   **Multi-Agent Concurrent Workspaces**: Guarantees thread safety and transactional isolation when multiple agents update the same grid. Utilizes a lockfile mutex context manager (`fcntl.flock`) and Copy-on-Write branching (`CoWMemorySwapGridDB`). Coordinate collisions are dynamically relocated to adjacent open points.
 *   **Universal Lattice RAG CLI**: Built-in document projection indexing text files and embedding chunks onto discrete coordinate lattices, enabling prompt prefill injections via nearest-neighbor search.
@@ -245,7 +255,6 @@ QAN-ATLAS features a closed-loop **Recursive Self-Improvement (RSI)** pipeline t
 *   `e8_decoder`: Conway-Sloane E8 lattice decoder algorithms.
 *   `e8_swap`: Adelic Memory Swap Grid DB offload page cache and paging queues.
 *   `adelic`: Adelic Langevin SGLD optimization updates and Floquet guards.
-
 
 ---
 

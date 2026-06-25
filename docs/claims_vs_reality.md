@@ -33,7 +33,10 @@ Standard 4-bit quantization (like RTN or basic GPTQ) rounds weights to the neare
 
 ### Why It Actually Works (The Reality)
 We use **Embedding Lattice Quantization (ELQ)**, which separates the weight matrix into two distinct components:
-$$W = \text{Dequant}(W_{\text{quant}}) + \Delta W_{\text{outliers}}$$
+
+$$
+W = \text{Dequant}(W_{\text{quant}}) + \Delta W_{\text{outliers}}
+$$
 
 1. **Outlier Isolation**: We use a Walsh-Hadamard Transform to disperse activation energy, then isolate the remaining high-energy outlier channels into a separate, unquantized sparse matrix ($\Delta W_{\text{outliers}}$). These outliers represent less than 5% of the weights but hold 95% of the reasoning precision.
 2. **$E_8$ Lattice Rounding**: Instead of rounding the remaining 95% of weights to a flat, square grid (hypercube), we project them onto coordinates in the **$E_8$ lattice**—the densest sphere-packing structure in 8 dimensions. Because $E_8$ is highly symmetric, it minimizes the geometric rounding error far better than uniform 4-bit grids.

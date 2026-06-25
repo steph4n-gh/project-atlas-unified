@@ -9,7 +9,9 @@ When these outliers are quantized into a tight 4-bit range, their values are cli
 ## 2. The ELQ Solution: Split-Coordinate Quantization
 Embedding Lattice Quantization (ELQ) solves this by splitting the weight matrix $W$ into a dense quantized matrix and a sparse outlier correction matrix:
 
-$$W = \text{Dequant}(W_{\text{quant}}) + \Delta W_{\text{outliers}}$$
+$$
+W = \text{Dequant}(W_{\text{quant}}) + \Delta W_{\text{outliers}}
+$$
 
 ### ELQ Quantization Pipeline
 ```mermaid
@@ -65,7 +67,9 @@ graph TD
 ## 4. Fused Metal Matmul Fallback
 When the cache is globally bypassed (e.g., during fast draft steps where compiling/caching is not worth the latency) or when the cache is at capacity, `ELQLinear` falls back to **fused Metal execution**:
 
-$$\text{Out} = \text{elq\_fused\_matmul}(x, \text{indices}, \text{scales}) + x_{\text{outliers}} \Delta W_{\text{outliers, active}}^T$$
+$$
+\text{Out} = \text{elq\_fused\_matmul}(x, \text{indices}, \text{scales}) + x_{\text{outliers}} \Delta W_{\text{outliers, active}}^T
+$$
 
 ### The Fused Advantage
 *   `elq_fused_matmul` performs the **dequantization and matrix multiplication in a single GPU kernel dispatch pass**.
@@ -98,11 +102,18 @@ However, attempting this weight-level fusion with ELQ-quantized layers is a reci
 ### The ELQ Solution
 To avoid these issues, `FusedGeGLUFFN` (found in `qan_transformers/mlx/moonshots.py`) handles `ELQLinear` projections by keeping `gate_proj` and `up_proj` as **separate module calls**. 
 
-$$\text{Gate}(x) = \operatorname{ELQLinear}_{\text{gate}}(x)$$
-$$\text{Up}(x) = \operatorname{ELQLinear}_{\text{up}}(x)$$
+$$
+\text{Gate}(x) = \text{ELQLinear}_{\text{gate}}(x)
+$$
+
+$$
+\text{Up}(x) = \text{ELQLinear}_{\text{up}}(x)
+$$
 
 While standard linear layers get compiled into a single fused weight matrix multiplication, ELQ layers run their independent forward passes and are combined in the compiled execution graph:
 
-$$\text{Output}(x) = \operatorname{ELQLinear}_{\text{down}}(\operatorname{GELU}(\text{Gate}(x)) \odot \operatorname{Up}(x))$$
+$$
+\text{Output}(x) = \text{ELQLinear}_{\text{down}}(\text{GELU}(\text{Gate}(x)) \odot \text{Up}(x))
+$$
 
 This preserves the exact E8 lattice mappings and isolated outlier matrices for both projections, ensuring zero accuracy degradation while still benefiting from MLX's graph compilation.

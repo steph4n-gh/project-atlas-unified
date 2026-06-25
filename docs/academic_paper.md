@@ -39,9 +39,15 @@ The root system of the exceptional Lie group $E_8$ consists of 240 vectors in $\
 
 #### Mathematical Formulation
 The projection matrix $P \in \mathbb{R}^{8 \times 3}$ is constructed as a product of two linear transformations:
-$$P = P_{8 \to 4} \cdot P_{4 \to 3}$$
+
+$$
+P = P_{8 \to 4} \cdot P_{4 \to 3}
+$$
+
 where $P_{8 \to 4} \in \mathbb{R}^{8 \times 4}$ maps the 8D space into a 4D space by embedding icosahedral symmetries using the golden ratio $\phi = \frac{1+\sqrt{5}}{2}$, scaled by $s = \frac{1}{\sqrt{1 + \phi^2}}$:
-$$P_{8 \to 4} = s \begin{bmatrix} 
+
+$$
+P_{8 \to 4} = s \begin{bmatrix} 
 \phi & 0 & 0 & 0 \\
 0 & \phi & 0 & 0 \\
 0 & 0 & \phi & 0 \\
@@ -50,16 +56,24 @@ $$P_{8 \to 4} = s \begin{bmatrix}
 0 & 1 & 0 & 0 \\
 0 & 0 & 1 & 0 \\
 0 & 0 & 0 & 1 
-\end{bmatrix}$$
+\end{bmatrix}
+$$
+
 The matrix $P_{4 \to 3} \in \mathbb{R}^{4 \times 3}$ projects the 4D space into 3D by dropping the first coordinate:
-$$P_{4 \to 3} = \begin{bmatrix} 
+
+$$
+P_{4 \to 3} = \begin{bmatrix} 
 0 & 0 & 0 \\
 1 & 0 & 0 \\
 0 & 1 & 0 \\
 0 & 0 & 1 
-\end{bmatrix}$$
+\end{bmatrix}
+$$
+
 Multiplying these matrices yields the combined projection matrix $P \in \mathbb{R}^{8 \times 3}$:
-$$P = s \begin{bmatrix} 
+
+$$
+P = s \begin{bmatrix} 
 0 & 0 & 0 \\
 \phi & 0 & 0 \\
 0 & \phi & 0 \\
@@ -68,7 +82,9 @@ $$P = s \begin{bmatrix}
 1 & 0 & 0 \\
 0 & 1 & 0 \\
 0 & 0 & 1 
-\end{bmatrix}$$
+\end{bmatrix}
+$$
+
 When the 240 root coordinates $X_{E_8} \in \mathbb{R}^{240 \times 8}$ are projected via $Y = X_{E_8} P$, their Euclidean norms $\|y_i\|_2$ cluster into exactly 5 concentric 3D shells:
 1. **Shell 0**: $r = 0.0$ (2 points)
 2. **Shell 1**: $r = \frac{1}{2}\sqrt{10 - 2\sqrt{5}} \approx 0.5878$ (30 points)
@@ -88,10 +104,21 @@ To prevent memory thrashing under sequence lengths $S \ge 128\text{k}$, QAN cont
 
 #### Mathematical Formulation
 Let $K$ be a simplicial complex constructed over token attention weights. We define a discrete Morse function $f: K \to \mathbb{R}$ such that for each cell $\alpha^p$ of dimension $p$:
-$$\#\{ \beta^{p+1} > \alpha \mid f(\beta) \le f(\alpha) \} \le 1$$
-$$\#\{ \gamma^{p-1} < \alpha \mid f(\gamma) \ge f(\alpha) \} \le 1$$
+
+$$
+\#\{ \beta^{p+1} > \alpha \mid f(\beta) \le f(\alpha) \} \le 1
+$$
+
+$$
+\#\{ \gamma^{p-1} < \alpha \mid f(\gamma) \ge f(\alpha) \} \le 1
+$$
+
 Cells that do not pair under these inequalities are **critical cells** (representing topological summits of high attention density). The remaining cells are collapsed along gradient vector fields:
-$$V(\alpha) = \pm (\beta^{p+1} - \alpha^p)$$
+
+$$
+V(\alpha) = \pm (\beta^{p+1} - \alpha^p)
+$$
+
 This collapses redundant key-value coordinates into a contracted representation of size $K_{\text{Morse}} \ll S$, yielding VRAM savings $\ge 85\%$.
 
 #### Implementation Audit
@@ -104,22 +131,46 @@ To prevent adversarial steering, prompt injections, and semantic hallucinations,
 
 #### Mathematical Formulation
 Let $\mathcal{U} = \{U_i\}_{i \in I}$ be an open cover of the representation space. The Čech complex $\check{C}(\mathcal{U})$ has $k$-simplices corresponding to non-empty intersections:
-$$U_{i_0} \cap U_{i_1} \cap \dots \cap U_{i_k} \neq \emptyset$$
+
+$$
+U_{i_0} \cap U_{i_1} \cap \dots \cap U_{i_k} \neq \emptyset
+$$
+
 For a 1-cocycle attention state $s$, the Čech coboundary operator $d^0$ computes:
-$$(d^0 s)_{uv} = s_u - W_{uv} \cdot s_v$$
+
+$$
+(d^0 s)_{uv} = s_u - W_{uv} \cdot s_v
+$$
+
 where $W_{uv}$ represents the attention transition weight between tokens $u$ and $v$. The Cohomology Fracture Index (CFI) is defined as:
-$$\text{CFI} = \frac{\|d^0 s\|^2}{\|s\|^2}$$
+
+$$
+\text{CFI} = \frac{\|d^0 s\|^2}{\|s\|^2}
+$$
+
 When the attention graph fractures, we analyze the **Symmetric Normalized Laplacian** of the top $K$ critical attention summits:
-$$W = \frac{1}{2}(A_{\text{skeleton}} + A_{\text{skeleton}}^T)$$
+
+$$
+W = \frac{1}{2}(A_{\text{skeleton}} + A_{\text{skeleton}}^T)
+$$
+
 The degree matrix $D$ is diagonal with elements $d_{ii} = \sum_j W_{ij}$. The Graph Laplacian is $L = D - W$. We calculate the second smallest eigenvalue $\lambda_2$ (the algebraic connectivity). If $\lambda_2 < \tau$ (where $\tau \approx 0.05$), topological fracture is detected. 
 
 The corresponding eigenvector $v_2$ is the **Fiedler Vector**. The signs of $v_2$ partition the attention graph into two maximally disconnected subgraphs:
-$$G_{\text{pos}} = \{ i \mid v_2[i] \ge 0 \}, \quad G_{\text{neg}} = \{ i \mid v_2[i] < 0 \}$$
+
+$$
+G_{\text{pos}} = \{ i \mid v_2[i] \ge 0 \}, \quad G_{\text{neg}} = \{ i \mid v_2[i] < 0 \}
+$$
+
 The bisection boundary index is determined by:
-$$\text{boundary} = \begin{cases} 
+
+$$
+\text{boundary} = \begin{cases} 
 \min(G_{\text{neg}}) & \text{if } \min(G_{\text{pos}}) < \min(G_{\text{neg}}) \\
 \min(G_{\text{pos}}) & \text{otherwise}
-\end{cases}$$
+\end{cases}
+$$
+
 The generation loop rollbacks the tokens starting at this boundary index, rerouting inference along alternative attention paths.
 
 ```
@@ -153,13 +204,29 @@ QAN replaces standard Euclidean weight updates (which cause loss instability on 
 
 #### Mathematical Formulation
 The optimization updates parameters across the adele ring $\mathbb{A}_{\mathbb{Q}} = \mathbb{R} \times \prod_{p} \mathbb{Q}_p$. The discrete hopping step utilizes the Vladimirov fractional derivative of a function $f$ over the $p$-adic field $\mathbb{Q}_p$:
-$$\left(D^\alpha f\right)(x) = \frac{p^\alpha - 1}{1 - p^{-\alpha-1}} \int_{\mathbb{Q}_p} \frac{f(x) - f(y)}{\|x - y\|_p^{\alpha + 1}} dy$$
+
+$$
+\left(D^\alpha f\right)(x) = \frac{p^\alpha - 1}{1 - p^{-\alpha-1}} \int_{\mathbb{Q}_p} \frac{f(x) - f(y)}{\|x - y\|_p^{\alpha + 1}} dy
+$$
+
 For dyadic multiscale history compression, we set $p=2, \alpha=1$. The update step fuses Euclidean Stochastic Gradient Langevin Dynamics (SGLD) with a Metropolis-Hastings acceptance filter biased by the Vladimirov gradient:
-$$x_{t+1} = x_t - \eta \nabla f(x_t) + \sqrt{2 \eta T(t)} \cdot \xi_t + \lambda_{\text{padic}}$$
+
+$$
+x_{t+1} = x_t - \eta \nabla f(x_t) + \sqrt{2 \eta T(t)} \cdot \xi_t + \lambda_{\text{padic}}
+$$
+
 where $T(t)$ is controlled by an **Adaptive Floquet Temperature Guard**:
-$$T(t) = T_0 \left(1 + \eta \cos^2(\omega_f t)\right)$$
+
+$$
+T(t) = T_0 \left(1 + \eta \cos^2(\omega_f t)\right)
+$$
+
 To support parameter updates on LoRA and projection submanifolds, QAN implements a **Quantum Walk Adelic Optimizer** (inheriting from `AdelicLangevinOptimizer`). It applies Hadrian/Grover coin operations and Lindblad dissipative damping:
-$$\rho_{t+1} = \mathcal{C} \rho_t \mathcal{C}^\dagger + \gamma \mathcal{D}[\rho_t]$$
+
+$$
+\rho_{t+1} = \mathcal{C} \rho_t \mathcal{C}^\dagger + \gamma \mathcal{D}[\rho_t]
+$$
+
 where the coin state $\rho_t$ determines the effective learning rate and proposal selection weights.
 
 #### Implementation Audit
@@ -173,29 +240,75 @@ To map multiple transformer layers to a single swap database without VRAM blowou
 
 #### Mathematical Formulation & Woodbury Derivation
 To guarantee that the adapter is strictly orthogonal ($W_L^T W_L = I$) and does not warp representation spaces, we parameterize it using the Cayley transform of a skew-symmetric matrix $S$:
-$$W_L = (I - S)(I + S)^{-1}$$
+
+$$
+W_L = (I - S)(I + S)^{-1}
+$$
+
 To enforce low-rank structure (rank $2r$), we construct $S$ using factor matrices $A, B \in \mathbb{R}^{D \times r}$ (where $r=16$):
-$$S = AB^T - BA^T$$
+
+$$
+S = AB^T - BA^T
+$$
+
 Direct inversion of $(I + S)$ requires $O(D^3)$ floating-point operations. We optimize this by expressing $S$ as a low-rank product:
-$$U = \begin{bmatrix} A & -B \end{bmatrix}, \quad V = \begin{bmatrix} B & A \end{bmatrix} \quad \implies \quad U V^T = AB^T - BA^T = S$$
+
+$$
+U = \begin{bmatrix} A & -B \end{bmatrix}, \quad V = \begin{bmatrix} B & A \end{bmatrix} \quad \implies \quad U V^T = AB^T - BA^T = S
+$$
+
 where $U, V \in \mathbb{R}^{D \times 2r}$. Substituting into the Cayley transform:
-$$W_L = (I_D - U V^T)(I_D + U V^T)^{-1}$$
+
+$$
+W_L = (I_D - U V^T)(I_D + U V^T)^{-1}
+$$
+
 We apply the Woodbury matrix identity to the inverse term:
-$$(I_D + U V^T)^{-1} = I_D - U(I_{2r} + V^T U)^{-1} V^T$$
+
+$$
+(I_D + U V^T)^{-1} = I_D - U(I_{2r} + V^T U)^{-1} V^T
+$$
+
 Expanding the full product:
-$$W_L = (I_D - U V^T) \left[ I_D - U (I_{2r} + V^T U)^{-1} V^T \right]$$
-$$W_L = I_D - U V^T - U (I_{2r} + V^T U)^{-1} V^T + U V^T U (I_{2r} + V^T U)^{-1} V^T$$
+
+$$
+W_L = (I_D - U V^T) \left[ I_D - U (I_{2r} + V^T U)^{-1} V^T \right]
+$$
+
+$$
+W_L = I_D - U V^T - U (I_{2r} + V^T U)^{-1} V^T + U V^T U (I_{2r} + V^T U)^{-1} V^T
+$$
+
 Factoring out $U$ and $V^T$:
-$$W_L = I_D - U \left[ I_{2r} + (I_{2r} - V^T U) (I_{2r} + V^T U)^{-1} \right] V^T$$
+
+$$
+W_L = I_D - U \left[ I_{2r} + (I_{2r} - V^T U) (I_{2r} + V^T U)^{-1} \right] V^T
+$$
+
 Let $M = V^T U \in \mathbb{R}^{2r \times 2r}$. The term inside the brackets simplifies to:
-$$I_{2r} + (I_{2r} - M)(I_{2r} + M)^{-1} = (I_{2r} + M)(I_{2r} + M)^{-1} + (I_{2r} - M)(I_{2r} + M)^{-1}$$
-$$= \left[ (I_{2r} + M) + (I_{2r} - M) \right] (I_{2r} + M)^{-1} = 2 (I_{2r} + M)^{-1}$$
+
+$$
+I_{2r} + (I_{2r} - M)(I_{2r} + M)^{-1} = (I_{2r} + M)(I_{2r} + M)^{-1} + (I_{2r} - M)(I_{2r} + M)^{-1}
+$$
+
+$$
+= \left[ (I_{2r} + M) + (I_{2r} - M) \right] (I_{2r} + M)^{-1} = 2 (I_{2r} + M)^{-1}
+$$
+
 Substituting this back yields the final **Woodbury Cayley Adapter Equation**:
-$$W_L = I_D - 2 U (I_{2r} + V^T U)^{-1} V^T$$
+
+$$
+W_L = I_D - 2 U (I_{2r} + V^T U)^{-1} V^T
+$$
+
 This reduces the computational complexity from $O(D^3)$ to $O(D \cdot r^2 + r^3)$, allowing real-time inference updates.
 
 During cross-model grafting, representation alignment is solved via the closed-form **Orthogonal Procrustes** solution. Given source hidden states $A \in \mathbb{R}^{N \times D_1}$ and target states $B \in \mathbb{R}^{N \times D_2}$, we solve:
-$$\min_{M^T M = I} \| A M - B \|_F^2 \quad \implies \quad M_{\text{align}} = U V^T$$
+
+$$
+\min_{M^T M = I} \| A M - B \|_F^2 \quad \implies \quad M_{\text{align}} = U V^T
+$$
+
 where $C = A^T B = U \Sigma V^T$ is the SVD of the cross-covariance matrix.
 
 #### Implementation Audit
@@ -259,7 +372,12 @@ During the `merge_to_parent()` phase of `CoWMemorySwapGridDB`, coordinate collis
 * **Implementation Path**: [qan_transformers/math/e8_swap.py](file:///Volumes/Storage/project_atlas_moonshot/qan_transformers/math/e8_swap.py#L1320-L1339).
 * **Audit Finding**: The reference citations in the systems reference document have been aligned. The collision relocation is located at lines 1318-1339 (specifically L1320-1339).
 * **Mechanics**: If a coordinate collision occurs in the parent's occupied set, the system fetches the 240 root coordinates of the $E_8$ lattice's Shell 1 ($r^2 = 2.0$) and searches for an unoccupied candidate coordinate:
-  $$\mathbf{x}_{\text{cand}} = \operatorname{round}\left( (\mathbf{x}_{\text{collision}} + \mathbf{r}_{\text{root}}) \times 2 \right) / 2.0$$
+  
+
+$$
+\mathbf{x}_{\text{cand}} = \text{round}\left( (\mathbf{x}_{\text{collision}} + \mathbf{r}_{\text{root}}) \times 2 \right) / 2.0
+$$
+
   If all 240 neighbors are occupied, the key-value is appended to the original coordinate as a fallback.
 
 ---

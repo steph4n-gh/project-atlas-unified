@@ -29,13 +29,17 @@ Here is how the active firewall pipeline handles the text generation loop:
 ### The Math: Čech Coboundary & Cohomology Fracture Index (CFI)
 To measure the exact fracture index without looping over all edges on the CPU, the firewall evaluates the Čech coboundary $d^0 s$ of the attention skeleton representation $s$:
 
-$$d^0 s(i, j) = s_i - W_{ij} s_j$$
+$$
+d^0 s(i, j) = s_i - W_{ij} s_j
+$$
 
 along edges where the attention weight $W_{ij} > 0.1$ and $i \neq j$.
 
 We define a symmetric adjacency mask matrix $M \in \{0, 1\}^{K \times K}$ where $M_{ij} = 1$ if $W_{ij} > 0.1$ and $i \neq j$, and $0$ otherwise. The Cohomology Fracture Index (CFI) is the ratio of the squared norm of the coboundary to the squared norm of the state:
 
-$$\text{CFI} = \frac{\sum_{i \sim j} M_{ij} \|s_i - W_{ij} s_j\|^2}{\sum_{i} \|s_i\|^2}$$
+$$
+\text{CFI} = \frac{\sum_{i \sim j} M_{ij} \|s_i - W_{ij} s_j\|^2}{\sum_{i} \|s_i\|^2}
+$$
 
 If the CFI exceeds the threshold $\tau$, the firewall triggers a rollback, rewrites the fractured token, and routes the conversation down a more stable path.
 
