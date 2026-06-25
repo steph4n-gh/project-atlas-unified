@@ -12,6 +12,8 @@ import mlx.core as mx
 import mlx.nn as nn
 
 from ultrametric_ce.padic import valuation
+from ultrametric_ce.floquet import FloquetScheduler, AdaptiveFloquetScheduler
+from ultrametric_ce.wormhole_gate import LearnableWormholeGate
 
 
 __all__ = ["UltrametricDiffusion"]
@@ -50,6 +52,8 @@ class UltrametricDiffusion(nn.Module):
         self.r_s = r_s
         self.wormhole_gate = wormhole_gate
         self.epsilon = epsilon
+        self.floquet = AdaptiveFloquetScheduler(omega_init=1.0) if wormhole_gate else None
+        self.learned_gate = LearnableWormholeGate(dim=dim) if wormhole_gate else None
 
         # Per-layer linear mixer (real valued params). Use plain list (MLX tracks modules assigned to lists via __setattr__).
         self.mix_linears: list = []
@@ -138,12 +142,19 @@ class UltrametricDiffusion(nn.Module):
 
                 # 2. Einstein-Rosen Wormhole Shortcuts
                 if self.wormhole_gate:
-                    normed_vecs = vecs_matrix / (mx.linalg.norm(vecs_matrix, axis=-1, keepdims=True) + 1e-6)
-                    cos_sim = mx.matmul(normed_vecs, normed_vecs.T)  # shape (N, N)
+                    if self.learned_gate is not None:
+                        gate_matrix = self.learned_gate.compute_gate_matrix(vecs_matrix)
+                        # Only allow wormholes between tree-distant branches (W_base == 0)
+                        tree_distant_mask = (W_base == 0.0)
+                        gate_matrix = gate_matrix * tree_distant_mask
+                    else:
+                        # Fallback: hard cosine threshold
+                        normed_vecs = vecs_matrix / (mx.linalg.norm(vecs_matrix, axis=-1, keepdims=True) + 1e-6)
+                        cos_sim = mx.matmul(normed_vecs, normed_vecs.T)
+                        gate_matrix = mx.where((cos_sim > 0.85) & (W_base == 0.0), cos_sim, 0.0)
                     
-                    # Open shortcuts between highly correlated, tree-distant branches
-                    wormhole_gate = (cos_sim > 0.85) & (W_base == 0.0)
-                    W_mx = W_mx + self.epsilon * mx.where(wormhole_gate, cos_sim, 0.0)
+                    phase = self.floquet.get_phase() if self.floquet is not None else mx.array(1.0)
+                    W_mx = W_mx + (self.epsilon * phase) * gate_matrix
 
                 # Normalize rows dynamically after warping/shortcuts
                 row_sums = mx.sum(W_mx, axis=1, keepdims=True)
