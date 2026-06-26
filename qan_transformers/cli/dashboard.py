@@ -662,7 +662,7 @@ async def load_model_portal(req: ModelLoadRequest):
                             
                             # Check if the specific model ELQ path exists in alternate locations first
                             if not os.path.exists(elq_path):
-                                for base_dir in [os.getcwd(), "/Users/sarrington/.gemini/antigravity/brain/93ec8543-9d69-4850-9bdc-eec751c2ef6d"]:
+                                for base_dir in [os.getcwd(), os.path.expanduser("~/.gemini/antigravity/brain/93ec8543-9d69-4850-9bdc-eec751c2ef6d")]:
                                     cand = os.path.join(base_dir, elq_path)
                                     if os.path.exists(cand):
                                         elq_path = cand
@@ -680,7 +680,7 @@ async def load_model_portal(req: ModelLoadRequest):
                                 if os.path.exists(workspace_elq):
                                     elq_path = workspace_elq
                                 else:
-                                    artifact_elq = "/Users/sarrington/.gemini/antigravity/brain/93ec8543-9d69-4850-9bdc-eec751c2ef6d/scratch/gemma2b_e8.elq"
+                                    artifact_elq = os.path.expanduser("~/.gemini/antigravity/brain/93ec8543-9d69-4850-9bdc-eec751c2ef6d/scratch/gemma2b_e8.elq")
                                     if os.path.exists(artifact_elq):
                                         elq_path = artifact_elq
                                     else:
@@ -890,7 +890,7 @@ async def load_model_portal(req: ModelLoadRequest):
                             if is_elq_draft:
                                 draft_elq = resolved_draft_model
                                 if not os.path.exists(draft_elq):
-                                    for base_dir in [os.getcwd(), "/Users/sarrington/.gemini/antigravity/brain/64bc7f76-41f6-48fe-bac8-2489fed60298", "/Users/sarrington/.gemini/antigravity/brain/93ec8543-9d69-4850-9bdc-eec751c2ef6d"]:
+                                    for base_dir in [os.getcwd(), os.path.expanduser("~/.gemini/antigravity/brain/64bc7f76-41f6-48fe-bac8-2489fed60298"), os.path.expanduser("~/.gemini/antigravity/brain/93ec8543-9d69-4850-9bdc-eec751c2ef6d")]:
                                         cand = os.path.join(base_dir, draft_elq)
                                         if os.path.exists(cand):
                                             draft_elq = cand
@@ -904,7 +904,7 @@ async def load_model_portal(req: ModelLoadRequest):
                                 if ("2B" in resolved_draft_model or "2b" in resolved_draft_model or "E2B" in resolved_draft_model) and "12B" not in resolved_draft_model:
                                     draft_elq = "scratch/gemma2b_e8.elq"
                                     if not os.path.exists(draft_elq):
-                                        for base_dir in [os.getcwd(), "/Users/sarrington/.gemini/antigravity/brain/64bc7f76-41f6-48fe-bac8-2489fed60298", "/Users/sarrington/.gemini/antigravity/brain/93ec8543-9d69-4850-9bdc-eec751c2ef6d"]:
+                                        for base_dir in [os.getcwd(), os.path.expanduser("~/.gemini/antigravity/brain/64bc7f76-41f6-48fe-bac8-2489fed60298"), os.path.expanduser("~/.gemini/antigravity/brain/93ec8543-9d69-4850-9bdc-eec751c2ef6d")]:
                                             cand = os.path.join(base_dir, draft_elq)
                                             if os.path.exists(cand):
                                                 draft_elq = cand
