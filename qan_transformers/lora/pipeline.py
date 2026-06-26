@@ -155,13 +155,45 @@ class SpinorRotationLoRA(nn.Module):
         return out + lora_out
 
 
-def inject_lora(model, r=8, lora_alpha=16, use_spinor=False):
+class GaloisLoRA(nn.Module):
+    def __init__(self, original_linear, r=8, num_tasks=4, scale=0.01):
+        super().__init__()
+        self.in_features = original_linear.in_features
+        self.out_features = original_linear.out_features
+        self.register_buffer("weight", original_linear.weight.detach())
+        if original_linear.bias is not None:
+            self.register_buffer("bias", original_linear.bias.detach())
+        else:
+            self.bias = None
+            
+        from qan_transformers.modeling.galois_adapter import GaloisAdapterLinear
+        self.galois_adapter = GaloisAdapterLinear(
+            input_dim=self.in_features,
+            output_dim=self.out_features,
+            rank=r,
+            num_tasks=num_tasks,
+            scale=scale
+        )
+        self.current_task_idx = 0
+        
+    def forward(self, x):
+        out = F.linear(x, self.weight, self.bias)
+        lora_out = self.galois_adapter(x, task_idx=self.current_task_idx)
+        return out + lora_out
+
+
+def inject_lora(model, r=8, lora_alpha=16, use_spinor=False, adapter_type="lora", num_tasks=4, scale=0.01):
     """
-    Automatically injects LoRALinear or SpinorRotationLoRA modules into all QuasicrystallineAttention projection layers.
+    Automatically injects LoRALinear, SpinorRotationLoRA, or GaloisLoRA modules into all QuasicrystallineAttention projection layers.
     """
     for name, module in model.named_modules():
         if isinstance(module, QuasicrystallineAttention):
-            if use_spinor:
+            if adapter_type == "galois":
+                module.q_proj = GaloisLoRA(module.q_proj, r=r, num_tasks=num_tasks, scale=scale)
+                module.k_proj = GaloisLoRA(module.k_proj, r=r, num_tasks=num_tasks, scale=scale)
+                module.v_proj = GaloisLoRA(module.v_proj, r=r, num_tasks=num_tasks, scale=scale)
+                module.out_proj = GaloisLoRA(module.out_proj, r=r, num_tasks=num_tasks, scale=scale)
+            elif use_spinor or adapter_type == "spinor":
                 module.q_proj = SpinorRotationLoRA(module.q_proj, r=r)
                 module.k_proj = SpinorRotationLoRA(module.k_proj, r=r)
                 module.v_proj = SpinorRotationLoRA(module.v_proj, r=r)

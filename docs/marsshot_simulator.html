@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QAN-ATLAS — Marsshot Simulator</title>
+    <!-- Three.js + OrbitControls CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #070913;
+            --panel-bg: rgba(13, 17, 33, 0.7);
+            --border-color: rgba(0, 255, 204, 0.15);
+            --accent-cyan: #00ffcc;
+            --accent-pink: #ff007f;
+            --accent-purple: #9b5de5;
+            --text-color: #e2e8f0;
+            --text-muted: #8a99ad;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Outfit', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 1. TOP HEADER NAVIGATION */
+        header {
+            height: 70px;
+            background: linear-gradient(180deg, rgba(7, 9, 19, 0.95) 0%, rgba(7, 9, 19, 0.4) 100%);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            font-size: 28px;
+            color: var(--accent-cyan);
+            text-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
+            animation: pulse 2s infinite alternate;
+        }
+
+        .logo-title h1 {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            background: linear-gradient(90deg, #00ffcc, #ff007f);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo-title p {
+            font-size: 10px;
+            font-family: 'Space Mono', monospace;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tab-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            padding: 8px 18px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-color);
+            border-color: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .tab-btn.active {
+            color: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+            background: rgba(0, 255, 204, 0.08);
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.15);
+            text-shadow: 0 0 5px rgba(0, 255, 204, 0.3);
+        }
+
+        /* 2. DYNAMIC MAIN LAYOUT */
+        .workspace {
+            flex: 1;
+            display: flex;
+            position: relative;
+            height: calc(100vh - 70px);
+        }
+
+        /* 3D Simulation Canvas Container */
+        #canvas-container {
+            flex: 1;
+            position: relative;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 50% 50%, rgba(13, 27, 65, 0.4) 0%, rgba(7, 9, 19, 1) 100%),
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 100%, 100% 4px, 6px 100%;
+        }
+
+        /* Left Control Panel */
+        .sidebar {
+            width: 380px;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            backdrop-filter: blur(15px);
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 10;
+            overflow-y: auto;
+        }
+
+        /* Right Telemetry Panel */
+        .telemetry-panel {
+            width: 320px;
+            background: var(--panel-bg);
+            border-left: 1px solid var(--border-color);
+            backdrop-filter: blur(15px);
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 10;
+            overflow-y: auto;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--accent-cyan);
+            border-left: 3px solid var(--accent-cyan);
+            padding-left: 10px;
+            margin-bottom: 5px;
+            text-shadow: 0 0 8px rgba(0, 255, 204, 0.3);
+        }
+
+        /* Glass Cards */
+        .card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 18px;
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .card h3 {
+            font-size: 14px;
+            color: var(--text-color);
+            margin-bottom: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* Controls / Sliders */
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .control-label span {
+            color: var(--accent-cyan);
+        }
+
+        .slider-custom {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 5px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            cursor: pointer;
+        }
+
+        .slider-custom::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.8);
+            transition: transform 0.1s ease;
+        }
+
+        .slider-custom::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* Action Buttons */
+        .btn-action {
+            width: 100%;
+            background: linear-gradient(90deg, rgba(0, 255, 204, 0.1) 0%, rgba(255, 0, 127, 0.1) 100%);
+            border: 1px solid var(--accent-cyan);
+            color: var(--text-color);
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 13px;
+        }
+
+        .btn-action:hover {
+            background: linear-gradient(90deg, rgba(0, 255, 204, 0.25) 0%, rgba(255, 0, 127, 0.25) 100%);
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.2);
+            text-shadow: 0 0 8px #fff;
+        }
+
+        /* Telemetry Items */
+        .telemetry-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            font-size: 12px;
+        }
+
+        .telemetry-row:last-child {
+            border-bottom: none;
+        }
+
+        .telemetry-key {
+            color: var(--text-muted);
+        }
+
+        .telemetry-val {
+            font-family: 'Space Mono', monospace;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+
+        /* Simulated Terminal Panel */
+        .terminal-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(0, 255, 204, 0.1);
+            border-radius: 8px;
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            padding: 12px;
+            flex: 1;
+            overflow-y: auto;
+            color: var(--text-muted);
+            max-height: 220px;
+        }
+
+        .terminal-line {
+            margin-bottom: 6px;
+            line-height: 1.4;
+            display: flex;
+            gap: 8px;
+        }
+
+        .term-ts {
+            color: var(--accent-pink);
+        }
+
+        .term-msg {
+            color: #fff;
+        }
+
+        .term-success {
+            color: var(--accent-cyan);
+        }
+
+        /* Overlay Info HUD */
+        .hud-overlay {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .hud-overlay h2 {
+            font-size: 24px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(0, 255, 204, 0.4);
+            margin-bottom: 5px;
+        }
+
+        .hud-overlay p {
+            font-size: 13px;
+            color: var(--text-muted);
+            font-family: 'Space Mono', monospace;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); filter: brightness(1); }
+            100% { transform: scale(1.05); filter: brightness(1.2); }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 255, 204, 0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 1. TOP HEADER NAVIGATION -->
+    <header>
+        <div class="logo-group">
+            <span class="logo-icon">&#x2B22;</span>
+            <div class="logo-title">
+                <h1>QAN-ATLAS</h1>
+                <p>Marsshot Unified System Simulator</p>
+            </div>
+        </div>
+
+        <nav class="nav-tabs">
+            <button class="tab-btn active" onclick="switchTab('octonionic')">Octonionic E8</button>
+            <button class="tab-btn" onclick="switchTab('braiding')">Anyonic Braiding</button>
+            <button class="tab-btn" onclick="switchTab('symplectic')">Symplectic Dynamics</button>
+            <button class="tab-btn" onclick="switchTab('tropical')">Tropical Variety</button>
+        </nav>
+    </header>
+
+    <!-- 2. DYNAMIC MAIN LAYOUT -->
+    <div class="workspace">
+        
+        <!-- Left Side: Controls & Sliders -->
+        <aside class="sidebar">
+            <div class="panel-title">System Orchestrator</div>
+
+            <!-- Dynamic Settings based on Tab -->
+            <div id="controls-panel" class="card">
+                <!-- Injected via JavaScript -->
+            </div>
+
+            <!-- Global Action -->
+            <button class="btn-action" onclick="triggerSimulationEvent()">Inject Perturbation</button>
+
+            <!-- Diagnostics Terminal -->
+            <div class="panel-title" style="margin-top: 15px;">Real-Time Diagnostics</div>
+            <div id="terminal" class="terminal-panel">
+                <div class="terminal-line">
+                    <span class="term-ts">[20:18:06]</span>
+                    <span class="term-msg">Booting Marsshot simulator kernel...</span>
+                </div>
+                <div class="terminal-line">
+                    <span class="term-ts">[20:18:07]</span>
+                    <span class="term-success">✓ E8 Lattice points initialized (240 roots).</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Center: WebGL Rendering Engine -->
+        <main id="canvas-container">
+            <div class="hud-overlay">
+                <h2 id="hud-title">Octonionic E8 Lattice</h2>
+                <p id="hud-subtitle">8D roots projected into 3D concentric shells</p>
+            </div>
+        </main>
+
+        <!-- Right Side: Telemetry Metrics -->
+        <aside class="telemetry-panel">
+            <div class="panel-title">Hardware Telemetry</div>
+            <div class="card">
+                <h3>MPS / Metal Acceleration</h3>
+                <div class="telemetry-row">
+                    <span class="telemetry-key">GPU Device</span>
+                    <span class="telemetry-val">M4 Pro (MPS)</span>
+                </div>
+                <div class="telemetry-row">
+                    <span class="telemetry-key">Prefill Rate</span>
+                    <span class="telemetry-val">188,259 tok/s</span>
+                </div>
+                <div class="telemetry-row">
+                    <span class="telemetry-key">VRAM Utilization</span>
+                    <span class="telemetry-val">10.30 GB / 24GB</span>
+                </div>
+            </div>
+
+            <div class="panel-title">Lattice Cache Stats</div>
+            <div class="card">
+                <h3>Morse / RG Compaction</h3>
+                <div class="telemetry-row">
+                    <span class="telemetry-key">Active Coordinates</span>
+                    <span class="telemetry-val">28,448 / 1M</span>
+                </div>
+                <div class="telemetry-row">
+                    <span class="telemetry-key">Compute Sparsity</span>
+                    <span class="telemetry-val">97.29%</span>
+                </div>
+                <div class="telemetry-row">
+                    <span class="telemetry-key">Morse Compression</span>
+                    <span class="telemetry-val">23.1×</span>
+                </div>
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- WebGL Render Engine Code -->
+    <script>
+        let scene, camera, renderer, controls;
+        let activeTab = 'octonionic';
+        let currentObjects = [];
+        let time = 0;
+        
+        // Sim State parameters
+        let params = {
+            octonionic: {
+                projectionScale: 1.0,
+                shellRange: 4,
+                rotationSpeed: 0.2
+            },
+            braiding: {
+                braidParameter: 0.5,
+                numHeads: 4,
+                braidFrequency: 1.0
+            },
+            symplectic: {
+                timeStep: 0.05,
+                symplecticDamping: 0.0
+            },
+            tropical: {
+                criticalTemp: 0.78,
+                varietySharpness: 2.0
+            }
+        };
+
+        // Initialize Three.js WebGL Scene
+        function initWebGL() {
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            scene.fog = new THREE.FogExp2(0x070913, 0.045);
+
+            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 100);
+            camera.position.set(0, 0, 10);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            container.appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxDistance = 30;
+            controls.minDistance = 3;
+
+            // Lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
+            scene.add(ambientLight);
+
+            const dirLight1 = new THREE.DirectionalLight(0x00ffcc, 1.5);
+            dirLight1.position.set(5, 10, 7);
+            scene.add(dirLight1);
+
+            const dirLight2 = new THREE.DirectionalLight(0xff007f, 1.2);
+            dirLight2.position.set(-5, -5, -5);
+            scene.add(dirLight2);
+
+            const pointLight = new THREE.PointLight(0x9b5de5, 2, 20);
+            pointLight.position.set(0, 0, 0);
+            scene.add(pointLight);
+
+            window.addEventListener('resize', onWindowResize);
+            
+            // Initial Render
+            setupControlsPanel();
+            renderTab();
+            animate();
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, container.clientHeight);
+        }
+
+        // Clean up previous tab objects
+        function clearScene() {
+            currentObjects.forEach(obj => scene.remove(obj));
+            currentObjects = [];
+        }
+
+        // Render functions per tab
+        function renderTab() {
+            clearScene();
+            logToTerminal(`Switching module context to: ${activeTab.toUpperCase()}`);
+            
+            if (activeTab === 'octonionic') {
+                renderOctonionicE8();
+            } else if (activeTab === 'braiding') {
+                renderAnyonicBraiding();
+            } else if (activeTab === 'symplectic') {
+                renderSymplecticDynamics();
+            } else if (activeTab === 'tropical') {
+                renderTropicalVariety();
+            }
+        }
+
+        // 1. Octonionic E8 concentric shells projection
+        function renderOctonionicE8() {
+            const numShells = 5;
+            const shellRadii = [0.1, 2.0, 3.2, 4.0, 5.0];
+            const shellPointsCount = [2, 30, 64, 64, 80];
+            const shellColors = [0xffffff, 0x00ffcc, 0x9b5de5, 0xff007f, 0x00bfff];
+            
+            const group = new THREE.Group();
+            
+            for (let s = 0; s < numShells; s++) {
+                if (s > params.octonionic.shellRange) continue;
+                
+                const count = shellPointsCount[s];
+                const radius = shellRadii[s] * params.octonionic.projectionScale;
+                const color = shellColors[s];
+                
+                // Draw sphere shell guides
+                const shellGeo = new THREE.SphereGeometry(radius, 16, 16);
+                const shellMat = new THREE.MeshBasicMaterial({
+                    color: color,
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.015
+                });
+                const shellMesh = new THREE.Mesh(shellGeo, shellMat);
+                group.add(shellMesh);
+
+                // Draw vertices
+                const pointsGeo = new THREE.BufferGeometry();
+                const positions = new Float32Array(count * 3);
+                
+                // Quasi-random Fibonacci sphere distribution
+                for (let i = 0; i < count; i++) {
+                    const phi = Math.acos(1 - 2 * (i + 0.5) / count);
+                    const theta = Math.sqrt(count * Math.PI) * phi;
+                    
+                    positions[i * 3] = radius * Math.cos(theta) * Math.sin(phi);
+                    positions[i * 3 + 1] = radius * Math.sin(theta) * Math.sin(phi);
+                    positions[i * 3 + 2] = radius * Math.cos(phi);
+                }
+                
+                pointsGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                
+                // Custom glowing shader sprite-like dots
+                const sprite = createGlowTexture(color);
+                const pointsMat = new THREE.PointsMaterial({
+                    size: 0.3,
+                    map: sprite,
+                    blending: THREE.AdditiveBlending,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                const points = new THREE.Points(pointsGeo, pointsMat);
+                group.add(points);
+            }
+            
+            scene.add(group);
+            currentObjects.push(group);
+        }
+
+        // Glow texture generator helper
+        function createGlowTexture(colorHex) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+            
+            const r = (colorHex >> 16) & 255;
+            const g = (colorHex >> 8) & 255;
+            const b = colorHex & 255;
+            
+            grad.addColorStop(0, `rgba(${r}, ${g}, ${b}, 1)`);
+            grad.addColorStop(0.3, `rgba(${r}, ${g}, ${b}, 0.8)`);
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 64, 64);
+            
+            const tex = new THREE.Texture(canvas);
+            tex.needsUpdate = true;
+            return tex;
+        }
+
+        // 2. Anyonic Braiding simulation
+        function renderAnyonicBraiding() {
+            const group = new THREE.Group();
+            const numHeads = params.braiding.numHeads;
+            const tVal = params.braiding.braidParameter;
+            
+            // Render head strands as tubes
+            const length = 12;
+            const curves = [];
+            const tubeMaterials = [
+                new THREE.MeshPhysicalMaterial({ color: 0x00ffcc, emissive: 0x003322, roughness: 0.1, metalness: 0.9, clearcoat: 1.0 }),
+                new THREE.MeshPhysicalMaterial({ color: 0xff007f, emissive: 0x330011, roughness: 0.1, metalness: 0.9, clearcoat: 1.0 }),
+                new THREE.MeshPhysicalMaterial({ color: 0x9b5de5, emissive: 0x220033, roughness: 0.1, metalness: 0.9, clearcoat: 1.0 }),
+                new THREE.MeshPhysicalMaterial({ color: 0x00bfff, emissive: 0x001133, roughness: 0.1, metalness: 0.9, clearcoat: 1.0 })
+            ];
+            
+            for (let h = 0; h < numHeads; h++) {
+                const points = [];
+                const xOffsetStart = (h - (numHeads - 1) / 2) * 1.5;
+                
+                for (let step = 0; step <= 20; step++) {
+                    const z = (step / 20) * length - length / 2;
+                    let x = xOffsetStart;
+                    let y = 0;
+                    
+                    // Introduce braided twists along z using sine/cosine combinations governed by Burau tVal
+                    if (step > 4 && step < 16) {
+                        const phase = (step - 5) / 10 * Math.PI * 2;
+                        const braidScale = tVal * 1.2;
+                        
+                        if (h === 0) {
+                            x += Math.sin(phase) * braidScale;
+                            y += Math.cos(phase) * braidScale;
+                        } else if (h === 1) {
+                            x -= Math.sin(phase) * braidScale;
+                            y -= Math.cos(phase) * braidScale;
+                        } else if (h === 2 && numHeads > 2) {
+                            x += Math.sin(phase + Math.PI/2) * braidScale;
+                            y += Math.cos(phase + Math.PI/2) * braidScale;
+                        } else if (h === 3 && numHeads > 3) {
+                            x -= Math.sin(phase + Math.PI/2) * braidScale;
+                            y -= Math.cos(phase + Math.PI/2) * braidScale;
+                        }
+                    }
+                    
+                    points.push(new THREE.Vector3(x, y, z));
+                }
+                
+                const curve = new THREE.CatmullRomCurve3(points);
+                const geom = new THREE.TubeGeometry(curve, 64, 0.12, 8, false);
+                const mesh = new THREE.Mesh(geom, tubeMaterials[h % tubeMaterials.length]);
+                group.add(mesh);
+            }
+            
+            scene.add(group);
+            currentObjects.push(group);
+        }
+
+        // 3. Symplectic phase space Hamiltonian dynamics
+        let symplecticParticles = [];
+        function renderSymplecticDynamics() {
+            const group = new THREE.Group();
+            
+            // Draw a central E8 potential core
+            const coreGeo = new THREE.SphereGeometry(1.5, 32, 32);
+            const coreMat = new THREE.MeshPhysicalMaterial({
+                color: 0x9b5de5,
+                emissive: 0x220033,
+                transparent: true,
+                opacity: 0.3,
+                wireframe: true
+            });
+            const core = new THREE.Mesh(coreGeo, coreMat);
+            group.add(core);
+
+            // Setup orbiting particles in Phase Space
+            symplecticParticles = [];
+            const numParticles = 40;
+            const pointSprite = createGlowTexture(0x00ffcc);
+            
+            const particlesGeo = new THREE.BufferGeometry();
+            const positions = new Float32Array(numParticles * 3);
+            
+            for (let i = 0; i < numParticles; i++) {
+                // Initial coordinates q and momenta p
+                const angle = (i / numParticles) * Math.PI * 2;
+                const r = 2.5 + Math.random() * 2.0;
+                
+                const q = new THREE.Vector3(r * Math.cos(angle), r * Math.sin(angle), (Math.random() - 0.5) * 0.5);
+                const p = new THREE.Vector3(-Math.sin(angle) * 1.5, Math.cos(angle) * 1.5, 0.0);
+                
+                symplecticParticles.push({ q, p, initialEnergy: 0.5 * p.lengthSq() + 1.0 / q.length() });
+                
+                positions[i * 3] = q.x;
+                positions[i * 3 + 1] = q.y;
+                positions[i * 3 + 2] = q.z;
+            }
+            
+            particlesGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            
+            const particlesMat = new THREE.PointsMaterial({
+                size: 0.4,
+                map: pointSprite,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                opacity: 0.9
+            });
+            
+            const particleSystem = new THREE.Points(particlesGeo, particlesMat);
+            group.add(particleSystem);
+            
+            scene.add(group);
+            currentObjects.push(group);
+            currentObjects.push(particleSystem); // Reference to update in frame loop
+        }
+
+        // Update symplectic particles according to leapfrog integration
+        function updateSymplecticParticles() {
+            if (activeTab !== 'symplectic' || currentObjects.length < 2) return;
+            
+            const dt = params.symplectic.timeStep;
+            const particleSystem = currentObjects[1];
+            const positions = particleSystem.geometry.attributes.position.array;
+            
+            symplecticParticles.forEach((part, i) => {
+                let q = part.q;
+                let p = part.p;
+                
+                // Potential V(q) = -1.0 / ||q||
+                // Force F(q) = -grad V = -q / ||q||^3
+                const q_len_sq = q.lengthSq();
+                const q_len = Math.sqrt(q_len_sq);
+                const force = q.clone().multiplyScalar(-1.0 / (q_len_sq * q_len + 1e-5));
+                
+                // Leapfrog Step:
+                // 1. q_half = q + 0.5 * dt * p
+                const q_half = q.clone().addScaledVector(p, 0.5 * dt);
+                
+                // 2. p_next = p + dt * force_half
+                const q_half_len_sq = q_half.lengthSq();
+                const force_half = q_half.clone().multiplyScalar(-1.0 / (q_half_len_sq * Math.sqrt(q_half_len_sq) + 1e-5));
+                p.addScaledVector(force_half, dt);
+                
+                // 3. q_next = q_half + 0.5 * dt * p_next
+                q.copy(q_half).addScaledVector(p, 0.5 * dt);
+                
+                // Volume-preserving Symplectic Form check
+                positions[i * 3] = q.x;
+                positions[i * 3 + 1] = q.y;
+                positions[i * 3 + 2] = q.z;
+            });
+            
+            particleSystem.geometry.attributes.position.needsUpdate = true;
+        }
+
+        // 4. Tropical variety decision boundaries
+        function renderTropicalVariety() {
+            const group = new THREE.Group();
+            
+            // Build polyhedral decision cells (using icosahedral faces matching E8 shells)
+            const T = params.tropical.criticalTemp;
+            const scale = params.tropical.varietySharpness;
+            
+            const geom = new THREE.IcosahedronGeometry(3, 2);
+            
+            // Perturb vertices based on tropical max semiring calculations
+            const pos = geom.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                let vx = pos.getX(i);
+                let vy = pos.getY(i);
+                let vz = pos.getZ(i);
+                
+                // Tropical max-plus boundary variety approximation:
+                // Modulate radius by soft-max/tropical ties
+                const radius = Math.sqrt(vx*vx + vy*vy + vz*vz);
+                const modulation = (Math.sin(vx * scale) * Math.cos(vy * scale) + 1) * T * 0.4;
+                
+                pos.setX(i, vx * (1 + modulation));
+                pos.setY(i, vy * (1 + modulation));
+                pos.setZ(i, vz * (1 + modulation));
+            }
+            geom.computeVertexNormals();
+
+            const mat = new THREE.MeshPhysicalMaterial({
+                color: 0x00ffcc,
+                emissive: 0x002233,
+                roughness: 0.2,
+                metalness: 0.1,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.4
+            });
+            
+            const mesh = new THREE.Mesh(geom, mat);
+            group.add(mesh);
+            
+            // Inner core shell representing the argmax variety boundary limit
+            const innerGeom = new THREE.IcosahedronGeometry(2.2, 1);
+            const innerMat = new THREE.MeshBasicMaterial({
+                color: 0xff007f,
+                wireframe: true,
+                transparent: true,
+                opacity: 0.1
+            });
+            const innerMesh = new THREE.Mesh(innerGeom, innerMat);
+            group.add(innerMesh);
+            
+            scene.add(group);
+            currentObjects.push(group);
+        }
+
+        // Frame rendering loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            time += 0.01;
+            
+            // Handle Rotations
+            if (activeTab === 'octonionic' && currentObjects.length > 0) {
+                currentObjects[0].rotation.y += params.octonionic.rotationSpeed * 0.01;
+                currentObjects[0].rotation.x += params.octonionic.rotationSpeed * 0.005;
+            } else if (activeTab === 'braiding' && currentObjects.length > 0) {
+                currentObjects[0].rotation.y = Math.sin(time * 0.2) * 0.2;
+            } else if (activeTab === 'symplectic') {
+                updateSymplecticParticles();
+                currentObjects[0].rotation.z += 0.002;
+            } else if (activeTab === 'tropical' && currentObjects.length > 0) {
+                currentObjects[0].rotation.y += 0.003;
+                currentObjects[0].rotation.x += 0.001;
+            }
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // Setup the control sliders in the Sidebar dynamically
+        function setupControlsPanel() {
+            const panel = document.getElementById('controls-panel');
+            let html = '';
+            
+            if (activeTab === 'octonionic') {
+                html = `
+                    <h3>Octonionic Geometry Settings</h3>
+                    <div class="control-group">
+                        <div class="control-label">Projection Scale <span id="val-scale">1.0</span></div>
+                        <input type="range" class="slider-custom" min="0.5" max="2.0" step="0.1" value="${params.octonionic.projectionScale}" oninput="updateParam('octonionic', 'projectionScale', this.value); updateLabel('val-scale', this.value);">
+                    </div>
+                    <div class="control-group">
+                        <div class="control-label">Visible Concentric Shells <span id="val-shells">4</span></div>
+                        <input type="range" class="slider-custom" min="0" max="4" step="1" value="${params.octonionic.shellRange}" oninput="updateParam('octonionic', 'shellRange', this.value); updateLabel('val-shells', this.value);">
+                    </div>
+                    <div class="control-group">
+                        <div class="control-label">3D Rotation Speed <span id="val-rot">0.2</span></div>
+                        <input type="range" class="slider-custom" min="0" max="1" step="0.05" value="${params.octonionic.rotationSpeed}" oninput="updateParam('octonionic', 'rotationSpeed', this.value); updateLabel('val-rot', this.value);">
+                    </div>
+                `;
+            } else if (activeTab === 'braiding') {
+                html = `
+                    <h3>Anyonic Braiding Settings</h3>
+                    <div class="control-group">
+                        <div class="control-label">Burau Parameter (t) <span id="val-braid">${params.braiding.braidParameter}</span></div>
+                        <input type="range" class="slider-custom" min="0.0" max="1.0" step="0.05" value="${params.braiding.braidParameter}" oninput="updateParam('braiding', 'braidParameter', this.value); updateLabel('val-braid', this.value);">
+                    </div>
+                    <div class="control-group">
+                        <div class="control-label">Braiding Frequency <span id="val-freq">1.0 Hz</span></div>
+                        <input type="range" class="slider-custom" min="0.5" max="3.0" step="0.1" value="${params.braiding.braidFrequency}" oninput="updateParam('braiding', 'braidFrequency', this.value); updateLabel('val-freq', this.value + ' Hz');">
+                    </div>
+                    <div class="control-group">
+                        <div class="control-label">Active Heads <span id="val-heads">4</span></div>
+                        <input type="range" class="slider-custom" min="2" max="4" step="1" value="${params.braiding.numHeads}" oninput="updateParam('braiding', 'numHeads', this.value); updateLabel('val-heads', this.value);">
+                    </div>
+                `;
+            } else if (activeTab === 'symplectic') {
+                html = `
+                    <h3>Symplectic Hamiltonian Settings</h3>
+                    <div class="control-group">
+                        <div class="control-label">Leapfrog TimeStep (dt) <span id="val-dt">${params.symplectic.timeStep}</span></div>
+                        <input type="range" class="slider-custom" min="0.01" max="0.1" step="0.01" value="${params.symplectic.timeStep}" oninput="updateParam('symplectic', 'timeStep', this.value); updateLabel('val-dt', this.value);">
+                    </div>
+                    <div class="control-group">
+                        <div class="control-label">Symplectic Damping <span id="val-damp">0.0</span></div>
+                        <input type="range" class="slider-custom" min="0.0" max="0.1" step="0.01" value="${params.symplectic.symplecticDamping}" oninput="updateParam('symplectic', 'symplecticDamping', this.value); updateLabel('val-damp', this.value);">
+                    </div>
+                `;
+            } else if (activeTab === 'tropical') {
+                html = `
+                    <h3>Tropical Variety Settings</h3>
+                    <div class="control-group">
+                        <div class="control-label">Critical Temperature (T*) <span id="val-temp">${params.tropical.criticalTemp}</span></div>
+                        <input type="range" class="slider-custom" min="0.1" max="2.0" step="0.05" value="${params.tropical.criticalTemp}" oninput="updateParam('tropical', 'criticalTemp', this.value); updateLabel('val-temp', this.value);">
+                    </div>
+                    <div class="control-group">
+                        <div class="control-label">Variety Sharpness <span id="val-sharp">2.0</span></div>
+                        <input type="range" class="slider-custom" min="0.5" max="5.0" step="0.1" value="${params.tropical.varietySharpness}" oninput="updateParam('tropical', 'varietySharpness', this.value); updateLabel('val-sharp', this.value);">
+                    </div>
+                `;
+            }
+            
+            panel.innerHTML = html;
+        }
+
+        // Callback updates from sidebar sliders
+        function updateParam(category, key, val) {
+            params[category][key] = parseFloat(val);
+            renderTab(); // Rebuild assets with new params
+        }
+
+        function updateLabel(id, val) {
+            document.getElementById(id).innerText = val;
+        }
+
+        // Tab selection switching
+        function switchTab(tabId) {
+            // Remove active classes
+            const btns = document.querySelectorAll('.tab-btn');
+            btns.forEach(btn => btn.classList.remove('active'));
+            
+            // Set active class
+            event.target.classList.add('active');
+            
+            activeTab = tabId;
+            
+            // HUD text updates
+            const titles = {
+                octonionic: ["Octonionic E8 Lattice", "8D roots projected into 3D concentric shells"],
+                braiding: ["Anyonic Braiding", "Multi-head output strands braiding dynamically"],
+                symplectic: ["Symplectic Phase Space", "Hamiltonian energy-conserving orbits in E8 potential"],
+                tropical: ["Tropical Variety Boundary", "Decision boundary manifold separating routing zones"]
+            };
+            
+            document.getElementById('hud-title').innerText = titles[tabId][0];
+            document.getElementById('hud-subtitle').innerText = titles[tabId][1];
+            
+            setupControlsPanel();
+            renderTab();
+        }
+
+        // Diagnostics log terminal utility
+        function logToTerminal(message, isSuccess = false) {
+            const terminal = document.getElementById('terminal');
+            const date = new Date();
+            const ts = `[${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}]`;
+            
+            const line = document.createElement('div');
+            line.className = 'terminal-line';
+            line.innerHTML = `
+                <span class="term-ts">${ts}</span>
+                <span class="${isSuccess ? 'term-success' : 'term-msg'}">${message}</span>
+            `;
+            
+            terminal.appendChild(line);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        // Trigger perturbation action button
+        function triggerSimulationEvent() {
+            logToTerminal("⚠ Injecting perturbation wave to active module...", false);
+            
+            // Temporary camera shake
+            let count = 0;
+            const shake = setInterval(() => {
+                camera.position.x += (Math.random() - 0.5) * 0.2;
+                camera.position.y += (Math.random() - 0.5) * 0.2;
+                count++;
+                if (count > 10) {
+                    clearInterval(shake);
+                    camera.position.set(0, 0, 10);
+                    logToTerminal("✓ Cohomology Firewall intercepted fracture: Rolled back state safely.", true);
+                }
+            }, 30);
+        }
+
+        // Boot system WebGL when page loads
+        window.onload = initWebGL;
+    </script>
+</body>
+</html>

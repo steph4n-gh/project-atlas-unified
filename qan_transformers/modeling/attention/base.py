@@ -3,149 +3,14 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 from qan_transformers.math.e8_projection import generate_e8_coordinates, project_e8_to_quasicrystal
-
-_SHARED_E8_ROOTS = {}
-
-def get_shared_e8_roots(lvl):
-    if lvl not in _SHARED_E8_ROOTS:
-        from qan_transformers.math.e8_projection import generate_dynamic_e8_coordinates, project_e8_to_quasicrystal
-        roots_8d = generate_dynamic_e8_coordinates(lvl)
-        roots_3d = torch.tensor(project_e8_to_quasicrystal(roots_8d), dtype=torch.float32)
-        roots_3d_norm = F.normalize(roots_3d, p=2, dim=-1, eps=1e-6)
-        _SHARED_E8_ROOTS[lvl] = (roots_3d, roots_3d_norm)
-    return _SHARED_E8_ROOTS[lvl]
-
-
-_REPEAT_KV_CACHE = {}
-
-def repeat_kv(hidden_states: torch.Tensor, n_rep: int) -> torch.Tensor:
-    if n_rep == 1:
-        return hidden_states
-    
-    # Win 90: Cached Block-Masks/Shapes for GQA Key-Value Replication in PyTorch Attention
-    shape_key = (hidden_states.shape, n_rep)
-    if shape_key in _REPEAT_KV_CACHE:
-        expand_shape, reshape_shape = _REPEAT_KV_CACHE[shape_key]
-    else:
-        batch, num_key_value_heads, seq_len, head_dim = hidden_states.shape
-        expand_shape = (batch, num_key_value_heads, n_rep, seq_len, head_dim)
-        reshape_shape = (batch, num_key_value_heads * n_rep, seq_len, head_dim)
-        _REPEAT_KV_CACHE[shape_key] = (expand_shape, reshape_shape)
-        
-    return (
-        hidden_states.unsqueeze(2)
-        .expand(expand_shape)
-        .reshape(reshape_shape)
-    )
-def enforce_orthogonality(A: torch.Tensor, B: torch.Tensor):
-    with torch.no_grad():
-        Q, R = torch.linalg.qr(A)
-        A.copy_(Q)
-        B.copy_(torch.matmul(B, R.t()))
-
-def cayley_orthogonal_adapter(X: torch.Tensor, A: torch.Tensor, B: torch.Tensor, cache: dict = None) -> torch.Tensor:
-    d, r = A.shape
-    orig_shape = X.shape
-    X_flat = X.reshape(-1, d)
-    
-    version_A = getattr(A, "_version", 0)
-    version_B = getattr(B, "_version", 0)
-    
-    if (cache is not None and "U_inv" in cache and 
-        cache.get("device") == X.device and 
-        cache.get("dtype") == X.dtype and
-        cache.get("version_A") == version_A and
-        cache.get("version_B") == version_B):
-        U_inv = cache["U_inv"]
-        V_t = cache["V_t"]
-    else:
-        device = A.device
-        dtype = A.dtype
-        U = torch.cat([A, -B], dim=1)  # [d, 2r]
-        V = torch.cat([B, A], dim=1)  # [d, 2r]
-        
-        # Win 128: Cache pre-allocated identity matrix in Cayley Orthogonal Adapter to avoid dynamic eye allocation
-        if cache is not None and "I_2r" in cache and cache["I_2r"].device == device:
-            I_2r = cache["I_2r"]
-        else:
-            I_2r = torch.eye(2 * r, device=device, dtype=torch.float32)
-            if cache is not None:
-                cache["I_2r"] = I_2r
-        VT_U_f32 = torch.matmul(V.t(), U).to(torch.float32)
-        inv_M = torch.linalg.inv(I_2r + VT_U_f32).to(dtype)
-        
-        U_inv = torch.matmul(U, inv_M)
-        V_t = V.t()
-        
-        if cache is not None:
-            cache["U_inv"] = U_inv
-            cache["V_t"] = V_t
-            cache["device"] = X.device
-            cache["dtype"] = X.dtype
-            cache["version_A"] = version_A
-            cache["version_B"] = version_B
-            
-    X_U_inv = torch.matmul(X_flat, U_inv)
-    # Win 80: Fused matrix multiplication and subtraction using torch.addmm
-    X_adapted = torch.addmm(X_flat, X_U_inv, V_t, beta=1.0, alpha=-2.0)
-    
-    return X_adapted.reshape(orig_shape)
-
-class DenseAttention(nn.Module):
-    def __init__(self, embed_dim, num_heads, sparse_ratio=0.15):
-        """
-        Standard Dense Attention Layer.
-        """
-        super().__init__()
-        if embed_dim % num_heads != 0:
-            raise ValueError(f"embed_dim ({embed_dim}) must be perfectly divisible by num_heads ({num_heads})")
-        self.embed_dim = embed_dim
-        self.num_heads = num_heads
-        self.sparse_ratio = sparse_ratio
-        self.head_dim = embed_dim // num_heads
-        self.scaling = 1.0 / np.sqrt(self.head_dim)
-        
-        self.q_proj = nn.Linear(embed_dim, embed_dim)
-        self.k_proj = nn.Linear(embed_dim, embed_dim)
-        self.v_proj = nn.Linear(embed_dim, embed_dim)
-        self.out_proj = nn.Linear(embed_dim, embed_dim)
-        
-    def forward(self, x, kv_cache=None, attn_mask=None):
-        B, S, D = x.shape
-        Q = self.q_proj(x).view(B, S, self.num_heads, self.head_dim).transpose(1, 2)
-        K = self.k_proj(x).view(B, S, self.num_heads, self.head_dim).transpose(1, 2)
-        V = self.v_proj(x).view(B, S, self.num_heads, self.head_dim).transpose(1, 2)
-        
-        if kv_cache is not None:
-            if "K" in kv_cache and kv_cache["K"] is not None:
-                K = torch.cat([kv_cache["K"], K], dim=2)
-                V = torch.cat([kv_cache["V"], V], dim=2)
-            kv_cache["K"] = K
-            kv_cache["V"] = V
-            
-        attn_scores = torch.matmul(Q, K.transpose(-2, -1)) * self.scaling
-        if attn_mask is not None:
-            if attn_mask.dim() == 2:
-                if attn_mask.shape[0] == S and attn_mask.shape[1] == S:
-                    attn_mask = attn_mask.unsqueeze(0).unsqueeze(1)
-                else:
-                    attn_mask = attn_mask.unsqueeze(1).unsqueeze(2)
-            attn_scores = attn_scores + attn_mask
-            
-        attn_weights = F.softmax(attn_scores, dim=-1)
-        out = torch.matmul(attn_weights, V)
-        out = out.transpose(1, 2).contiguous().view(B, S, D)
-        out = self.out_proj(out)
-        
-        if kv_cache is not None:
-            return out, kv_cache
-        return out
+from qan_transformers.modeling.attention.utils import repeat_kv, cayley_orthogonal_adapter, enforce_orthogonality
+from qan_transformers.modeling.attention.e8_routing import get_shared_e8_roots
 
 class QuasicrystallineAttention(nn.Module):
     _shared_entropy_history = []
     _shared_firewall_interval = 16
 
-    def __init__(self, embed_dim, num_heads, sparse_ratio=0.15, firewall=None, num_key_value_heads=None, is_draft=False):
+    def __init__(self, embed_dim, num_heads, sparse_ratio=0.15, firewall=None, num_key_value_heads=None, is_draft=False, attention_mode='projected', temperature_mode='fixed', cache_compression='rg_flow', compression_level=0.1, use_derived_composition=False, use_braiding=True):
         """
         Quasicrystalline Attention Layer.
         Uses E8 root alignment in 3D icosahedral projected space to select
@@ -153,6 +18,12 @@ class QuasicrystallineAttention(nn.Module):
         """
         super().__init__()
         self.is_draft = is_draft
+        self.attention_mode = attention_mode
+        self.temperature_mode = temperature_mode
+        self.cache_compression = cache_compression
+        self.compression_level = compression_level
+        self.use_derived_composition = use_derived_composition
+        self.use_braiding = use_braiding
         if embed_dim % num_heads != 0:
             raise ValueError(f"embed_dim ({embed_dim}) must be perfectly divisible by num_heads ({num_heads})")
         self.embed_dim = embed_dim
@@ -177,6 +48,7 @@ class QuasicrystallineAttention(nn.Module):
         
         # 8D mapping layer: maps embed_dim to 8D E8 root space
         self.e8_proj = nn.Linear(embed_dim, 8)
+        self.e8_proj_momentum = nn.Linear(embed_dim, 8)
         
         # Initialize E8 root project buffers
         phi = (1.0 + np.sqrt(5.0)) / 2.0
@@ -230,6 +102,26 @@ class QuasicrystallineAttention(nn.Module):
         self.adapter_A = nn.Parameter(torch.randn(embed_dim, 16) * 0.01)
         self.adapter_B = nn.Parameter(torch.randn(embed_dim, 16) * 0.01)
         self._cayley_cache = None
+        
+        from qan_transformers.modeling.attention.octonionic import OctonionicAttentionMode
+        from qan_transformers.math.tropical import AdaptiveTropicalTemperature
+        from qan_transformers.modeling.attention.spectral import SpectralSequenceAttention
+        from qan_transformers.modeling.rg_flow import KVRenormalizationFlow
+        from qan_transformers.modeling.attention.derived import DerivedAttentionComposition
+        self.octonionic_mode = OctonionicAttentionMode()
+        self.adaptive_tropical_temp = AdaptiveTropicalTemperature()
+        self.spectral_attention = SpectralSequenceAttention()
+        self.rg_flow = KVRenormalizationFlow()
+        self.derived_composition = DerivedAttentionComposition()
+        from qan_transformers.modeling.attention.symplectic import SymplecticAttention
+        self.symplectic_attention = SymplecticAttention()
+        from qan_transformers.modeling.anyonic_braiding import BraidedMultiHeadAttention
+        self.braid_attention = BraidedMultiHeadAttention(embed_dim, num_heads)
+
+    def _braid_heads(self, out: torch.Tensor) -> torch.Tensor:
+        if getattr(self, "use_braiding", False) and hasattr(self, "braid_attention"):
+            return self.braid_attention(out)
+        return out
 
     def train(self, mode: bool = True):
         super().train(mode)
@@ -266,6 +158,7 @@ class QuasicrystallineAttention(nn.Module):
             .expand(expand_shape)
             .reshape(reshape_shape)
         )
+
     def forward(self, x, kv_cache=None, attn_mask=None, is_superposition=False):
         if self._cayley_cache is None:
             self._cayley_cache = {}
@@ -345,7 +238,11 @@ class QuasicrystallineAttention(nn.Module):
                 dV_combined_rep = dV_combined
                 
             # Compute reference attention scores A0
-            A0 = torch.matmul(Q0, K0_combined_rep.transpose(-2, -1)) * self.scaling # [B, H, S, S_seq]
+            A0_raw = torch.matmul(Q0, K0_combined_rep.transpose(-2, -1)) * self.scaling
+            if getattr(self, "temperature_mode", "fixed") == "tropical":
+                A0 = self.adaptive_tropical_temp(A0_raw)
+            else:
+                A0 = A0_raw # [B, H, S, S_seq]
             
             offset = kv_cache.get("seq_len", 0) if kv_cache is not None else 0
             mask_val = -65000.0 if dtype in (torch.float16, torch.bfloat16) else -1e9
@@ -379,11 +276,15 @@ class QuasicrystallineAttention(nn.Module):
             Q0_unsqueezed = Q0.unsqueeze(1) # [B, 1, H, S, head_dim]
             K0_unsqueezed = K0_combined_rep.unsqueeze(1) # [B, 1, H, S_seq, head_dim]
             
-            dA = (
+            dA_raw = (
                 torch.matmul(Q0_unsqueezed, dK_combined_rep.transpose(-2, -1)) +
                 torch.matmul(dQ, K0_unsqueezed.transpose(-2, -1)) +
                 torch.matmul(dQ, dK_combined_rep.transpose(-2, -1))
-            ) * self.scaling # [B, C, H, S, S_seq]
+            ) * self.scaling
+            if getattr(self, "temperature_mode", "fixed") == "tropical":
+                dA = self.adaptive_tropical_temp(dA_raw)
+            else:
+                dA = dA_raw # [B, C, H, S, S_seq]
             dA = torch.where(mask_valid.unsqueeze(1), dA, torch.zeros_like(dA))
             
             # Apply second-order Taylor Softmax
@@ -482,6 +383,113 @@ class QuasicrystallineAttention(nn.Module):
         if getattr(self, "v_norm", None) is not None:
             V = self.v_norm(V)
 
+        if getattr(self, "attention_mode", "projected") == "spectral":
+            # Run multi-page spectral sequence attention loop
+            spectral_res = self.spectral_attention(
+                Q, K, V, x, self, kv_cache=kv_cache, attn_mask=attn_mask
+            )
+            out = spectral_res["out"]
+            attn_weights = spectral_res["attn_weights"]
+            K_sparse = spectral_res["K_sparse"]
+            V_sparse = spectral_res["V_sparse"]
+            indices_sparse = spectral_res["indices_sparse"]
+            topk_scores = spectral_res["topk_scores"]
+            
+            # Update cache if kv_cache is active (using the final page's selected routing)
+            offset = kv_cache.get("seq_len", 0) if kv_cache is not None else 0
+            S_total = offset + S
+            if kv_cache is not None:
+                if "K" in kv_cache and kv_cache["K"] is not None:
+                    K_combined = torch.cat([kv_cache["K"], K_sparse], dim=2)
+                    V_combined = torch.cat([kv_cache["V"], V_sparse], dim=2)
+                    indices_combined = torch.cat([kv_cache["indices"], indices_sparse], dim=1)
+                    scores_combined = torch.cat([kv_cache["alignment_scores"], topk_scores], dim=1)
+                else:
+                    K_combined = K_sparse
+                    V_combined = V_sparse
+                    indices_combined = indices_sparse
+                    scores_combined = topk_scores
+                    
+                if getattr(self, "sparse_ratio", 0.15) >= 1.0:
+                    K_sparse = K_combined
+                    V_sparse = V_combined
+                    indices_sparse = indices_combined
+                    scores_sparse = scores_combined
+                else:
+                    K_total = min(indices_combined.shape[1], max(min(indices_combined.shape[1], self.min_keep) if self.min_keep > 0 else 1, int(S_total * self.sparse_ratio)))
+                    num_extra = indices_combined.shape[1] - K_total
+                    is_prefill = (S > 8 or offset == 0)
+                    in_wave_solver = getattr(self.__class__, "in_wave_solver", False)
+                    if not getattr(self, "is_draft", False) and (is_prefill or num_extra >= 16) and indices_combined.shape[1] > K_total and not in_wave_solver:
+                        if getattr(self, "cache_compression", "none") == "rg_flow":
+                            K_sparse, V_sparse, indices_sparse, scores_sparse = self.rg_flow.compress(
+                                K_combined, V_combined, indices_combined, scores_combined, K_total, self.compression_level
+                            )
+                        else:
+                            K_sparse, V_sparse, indices_sparse, scores_sparse = self._morse_collapse_cache(
+                                K_combined, V_combined, indices_combined, scores_combined, K_total, offset
+                            )
+                    else:
+                        K_sparse = K_combined
+                        V_sparse = V_combined
+                        indices_sparse = indices_combined
+                        scores_sparse = scores_combined
+                
+                kv_cache["K"] = K_sparse
+                kv_cache["V"] = V_sparse
+                kv_cache["indices"] = indices_sparse
+                kv_cache["alignment_scores"] = scores_sparse
+                kv_cache["seq_len"] = S_total
+                
+            # Fused Perplexity Canary and Shell Entropy computation
+            entropy = torch.sum(torch.special.entr(attn_weights), dim=-1).mean()
+            entropy_val = float(entropy.item())
+            self._last_entropy_val = entropy_val
+            ppl_val = np.exp(entropy_val)
+            self._last_ppl = ppl_val
+            self.ppl_canary_window.append(ppl_val)
+            
+            layer_idx = getattr(self, "layer_idx", 0)
+            if layer_idx == 0:
+                self.prev_entropy = entropy_val
+                if hasattr(self, "config") and self.config is not None:
+                    self.config.shared_prev_entropy = self.prev_entropy
+                    
+            # 1. Cohomology Firewall inline check
+            is_fractured, cfi, alt_idx = False, 0.0, []
+            if not self.training and hasattr(self, "firewall") and self.firewall is not None:
+                if S == 1:
+                    self._token_count += 1
+                    interval = getattr(QuasicrystallineAttention, "_shared_firewall_interval", 16)
+                    if self._token_count % interval == 0 or interval == 2:
+                        if attn_weights is not None:
+                            is_fractured, cfi, alt_idx = self.firewall.check_obstruction(attn_weights.detach())
+                if kv_cache is not None:
+                    kv_cache["is_fractured"] = is_fractured
+                    kv_cache["cfi"] = cfi
+                    kv_cache["alt_idx"] = alt_idx
+                    
+            # 2. Reshape and project output
+            out = self._braid_heads(out).transpose(1, 2).contiguous().view(B, S, D)
+            
+            out_proj_layer = None
+            if hasattr(self, "out_proj"):
+                out_proj_layer = self.out_proj
+            elif hasattr(self, "o_proj"):
+                out_proj_layer = self.o_proj
+            elif hasattr(self, "c_proj"):
+                out_proj_layer = self.c_proj
+                
+            if out_proj_layer is not None:
+                out = out_proj_layer(out)
+                
+            # Apply output guardrails
+            out = torch.nan_to_num(out, nan=0.0, posinf=20.0, neginf=-20.0)
+            
+            if kv_cache is not None:
+                return out, kv_cache
+            return out
+
         if use_dense:
             offset = kv_cache.get("seq_len", 0) if kv_cache is not None else 0
             step_idx = offset
@@ -507,6 +515,8 @@ class QuasicrystallineAttention(nn.Module):
             if S == 1 and getattr(self, "_last_entropy_val", None) is not None:
                 if step_idx % 16 != 0:
                     need_entropy = False
+            if getattr(self, "temperature_mode", "fixed") == "tropical":
+                need_entropy = True
             
             # Prepare attn_mask_sparse
             attn_mask_sparse = None
@@ -536,7 +546,11 @@ class QuasicrystallineAttention(nn.Module):
                 ppl_val = self._last_ppl
             else:
                 # Manual path to compute entropy
-                attn_scores = torch.matmul(Q, K_rep.transpose(-2, -1)) * self.scaling
+                attn_scores_raw = torch.matmul(Q, K_rep.transpose(-2, -1)) * self.scaling
+                if getattr(self, "temperature_mode", "fixed") == "tropical":
+                    attn_scores = self.adaptive_tropical_temp(attn_scores_raw)
+                else:
+                    attn_scores = attn_scores_raw
                 if attn_mask_sparse is not None:
                     attn_scores.add_(attn_mask_sparse)
                     
@@ -553,7 +567,7 @@ class QuasicrystallineAttention(nn.Module):
             
             self.ppl_canary_window.append(ppl_val)
                 
-            out = out.transpose(1, 2).contiguous().view(B, S, D)
+            out = self._braid_heads(out).transpose(1, 2).contiguous().view(B, S, D)
             if out_proj_layer is not None:
                 out = out_proj_layer(out)
             out.nan_to_num_(nan=0.0, posinf=20.0, neginf=-20.0)
@@ -591,27 +605,54 @@ class QuasicrystallineAttention(nn.Module):
             if getattr(self, "review_mode", False):
                 # Win 169: Use the pre-allocated and registered review mask buffer
                 seq_8d = seq_8d * self.review_mask.to(device=seq_8d.device, dtype=seq_8d.dtype)
-            # Dequantization-Free E8 Projections: Cache and run in native dtype to avoid float32 cast allocations
-            if not hasattr(self, "_P_8_3_cached") or self._P_8_3_cached.device != device or self._P_8_3_cached.dtype != dtype:
-                self._P_8_3_cached = self.P_8_3.to(device=device, dtype=dtype)
-            seq_3d = torch.matmul(seq_8d, self._P_8_3_cached)
             
-            # Native robust normalization in native dtype
-            seq_3d_norm = F.normalize(seq_3d, p=2, dim=-1, eps=1e-6)
+            # Symplectic Hamiltonian evolution
+            if hasattr(self, "symplectic_attention"):
+                p = self.e8_proj_momentum(x)
+                seq_8d, _ = self.symplectic_attention(seq_8d, p)
             
-            # Cache and convert E8 Roots to native dtype
-            if not hasattr(self, "_cached_roots_3d_norm") or self._cached_roots_3d_norm_device != device or getattr(self, "_cached_roots_3d_norm_dtype", None) != dtype:
-                self._cached_roots_3d_norm = {
-                    lvl: getattr(self, f"roots_3d_norm_lvl_{lvl}").to(device=device, dtype=dtype)
-                    for lvl in [1, 2, 3]
-                }
-                self._cached_roots_3d_norm_device = device
-                self._cached_roots_3d_norm_dtype = dtype
-            roots_3d_norm = self._cached_roots_3d_norm[shell_level]
-            
-            # Compute E8 alignment scores
-            cos_sim = torch.matmul(seq_3d_norm, roots_3d_norm.t())
-            alignment_score = torch.amax(cos_sim, dim=-1).nan_to_num(nan=-1.0)
+            if getattr(self, "attention_mode", "projected") == "octonionic":
+                # Octonionic alignment path
+                if not hasattr(self, "_cached_roots_8d_norm") or self._cached_roots_8d_norm_device != device or getattr(self, "_cached_roots_8d_norm_dtype", None) != dtype:
+                    from qan_transformers.modeling.attention.e8_routing import get_shared_e8_roots_8d
+                    self._cached_roots_8d_norm = {
+                        lvl: get_shared_e8_roots_8d(lvl)[1].to(device=device, dtype=dtype)
+                        for lvl in [1, 2, 3]
+                    }
+                    self._cached_roots_8d_norm_device = device
+                    self._cached_roots_8d_norm_dtype = dtype
+                roots_8d_norm = self._cached_roots_8d_norm[shell_level]
+                
+                # Normalize query projections
+                seq_8d_norm = F.normalize(seq_8d, p=2, dim=-1, eps=1e-6)
+                
+                # Compute octonionic alignment scores
+                alignment_score_oct = self.octonionic_mode(seq_8d_norm, roots_8d_norm)
+                # Take the max over E8 roots dimension
+                alignment_score = torch.amax(alignment_score_oct, dim=-1).nan_to_num(nan=-1.0)
+            else:
+                # Standard projected path
+                # Dequantization-Free E8 Projections: Cache and run in native dtype to avoid float32 cast allocations
+                if not hasattr(self, "_P_8_3_cached") or self._P_8_3_cached.device != device or self._P_8_3_cached.dtype != dtype:
+                    self._P_8_3_cached = self.P_8_3.to(device=device, dtype=dtype)
+                seq_3d = torch.matmul(seq_8d, self._P_8_3_cached)
+                
+                # Native robust normalization in native dtype
+                seq_3d_norm = F.normalize(seq_3d, p=2, dim=-1, eps=1e-6)
+                
+                # Cache and convert E8 Roots to native dtype
+                if not hasattr(self, "_cached_roots_3d_norm") or self._cached_roots_3d_norm_device != device or getattr(self, "_cached_roots_3d_norm_dtype", None) != dtype:
+                    self._cached_roots_3d_norm = {
+                        lvl: getattr(self, f"roots_3d_norm_lvl_{lvl}").to(device=device, dtype=dtype)
+                        for lvl in [1, 2, 3]
+                    }
+                    self._cached_roots_3d_norm_device = device
+                    self._cached_roots_3d_norm_dtype = dtype
+                roots_3d_norm = self._cached_roots_3d_norm[shell_level]
+                
+                # Compute E8 alignment scores
+                cos_sim = torch.matmul(seq_3d_norm, roots_3d_norm.t())
+                alignment_score = torch.amax(cos_sim, dim=-1).nan_to_num(nan=-1.0)
             
             in_wave_solver = getattr(self.__class__, "in_wave_solver", False)
             if in_wave_solver:
@@ -661,9 +702,14 @@ class QuasicrystallineAttention(nn.Module):
                 is_prefill = (S > 8 or offset == 0)
                 in_wave_solver = getattr(self.__class__, "in_wave_solver", False)
                 if not getattr(self, "is_draft", False) and (is_prefill or num_extra >= 16) and indices_combined.shape[1] > K_total and not in_wave_solver:
-                    K_sparse, V_sparse, indices_sparse, scores_sparse = self._morse_collapse_cache(
-                        K_combined, V_combined, indices_combined, scores_combined, K_total, offset
-                    )
+                    if getattr(self, "cache_compression", "none") == "rg_flow":
+                        K_sparse, V_sparse, indices_sparse, scores_sparse = self.rg_flow.compress(
+                            K_combined, V_combined, indices_combined, scores_combined, K_total, self.compression_level
+                        )
+                    else:
+                        K_sparse, V_sparse, indices_sparse, scores_sparse = self._morse_collapse_cache(
+                            K_combined, V_combined, indices_combined, scores_combined, K_total, offset
+                        )
                 else:
                     K_sparse = K_combined
                     V_sparse = V_combined
@@ -796,7 +842,8 @@ class QuasicrystallineAttention(nn.Module):
             if step_idx % interval != 0 and interval != 2:
                 need_entropy = False
 
-        if not need_entropy:
+        force_manual = need_entropy or getattr(self, "use_derived_composition", False)
+        if not force_manual:
             # Replaces manual path entirely when entropy is not needed! (GQA repeat deferred here)
             K_sparse_rep = self._repeat_kv(K_sparse, is_sparse=True)
             V_sparse_rep = self._repeat_kv(V_sparse, is_sparse=True)
@@ -809,7 +856,7 @@ class QuasicrystallineAttention(nn.Module):
             attn_weights = None
             ppl_val = self._last_ppl
         else:
-            if device.type == "cuda":
+            if device.type == "cuda" and not getattr(self, "use_derived_composition", False):
                 from qan_transformers.kernels.triton_sparse import triton_block_sparse_attention
                 K_sparse_rep = self._repeat_kv(K_sparse, is_sparse=True)
                 V_sparse_rep = self._repeat_kv(V_sparse, is_sparse=True)
@@ -818,8 +865,10 @@ class QuasicrystallineAttention(nn.Module):
                 # Win 149: Broadcasted Grouped-Query Attention (GQA) MatMul
                 Q_reshaped = Q.view(B, self.num_key_value_heads, num_key_value_groups, S, self.head_dim)
                 K_sparse_reshaped = K_sparse.unsqueeze(2)
-                attn_scores = torch.matmul(Q_reshaped, K_sparse_reshaped.transpose(-2, -1)) * self.scaling
-                attn_scores = attn_scores.view(B, self.num_heads, S, -1)
+                attn_scores_raw = torch.matmul(Q_reshaped, K_sparse_reshaped.transpose(-2, -1)) * self.scaling
+                attn_scores = attn_scores_raw.view(B, self.num_heads, S, -1)
+                if getattr(self, "temperature_mode", "fixed") == "tropical":
+                    attn_scores = self.adaptive_tropical_temp(attn_scores)
                 if attn_mask_sparse is not None:
                     attn_scores = attn_scores + attn_mask_sparse
                 attn_scores = torch.nan_to_num(attn_scores, nan=mask_val, posinf=mask_val, neginf=mask_val)
@@ -836,8 +885,10 @@ class QuasicrystallineAttention(nn.Module):
                 # Win 149: Broadcasted Grouped-Query Attention (GQA) MatMul
                 Q_reshaped = Q.view(B, self.num_key_value_heads, num_key_value_groups, S, self.head_dim)
                 K_sparse_reshaped = K_sparse.unsqueeze(2) # [B, num_key_value_heads, 1, K_len, head_dim]
-                attn_scores = torch.matmul(Q_reshaped, K_sparse_reshaped.transpose(-2, -1)) * self.scaling
-                attn_scores = attn_scores.view(B, self.num_heads, S, -1)
+                attn_scores_raw = torch.matmul(Q_reshaped, K_sparse_reshaped.transpose(-2, -1)) * self.scaling
+                attn_scores = attn_scores_raw.view(B, self.num_heads, S, -1)
+                if getattr(self, "temperature_mode", "fixed") == "tropical":
+                    attn_scores = self.adaptive_tropical_temp(attn_scores)
                 
                 if attn_mask_sparse is not None:
                     attn_scores = attn_scores + attn_mask_sparse
@@ -851,6 +902,20 @@ class QuasicrystallineAttention(nn.Module):
                     attn_weights = attn_weights * (~is_masked_row)
                 else:
                     attn_weights.mul_(~is_masked_row)
+                
+                # Apply Derived Category Attention Composition
+                if getattr(self, "use_derived_composition", False) and hasattr(self, "config") and self.config is not None:
+                    prev_attn_weights = getattr(self.config, "shared_prev_attn_weights", None)
+                    if prev_attn_weights is not None and prev_attn_weights.shape == attn_weights.shape:
+                        attn_weights = self.derived_composition(
+                            attn_weights,
+                            prev_attn_weights,
+                            indices=indices_sparse,
+                            S_total=S_total
+                        )
+                        
+                if hasattr(self, "config") and self.config is not None:
+                    self.config.shared_prev_attn_weights = attn_weights.detach()
                 
                 attn_weights_reshaped = attn_weights.view(B, self.num_key_value_heads, num_key_value_groups, S, -1)
                 V_sparse_reshaped = V_sparse.unsqueeze(2) # [B, num_key_value_heads, 1, K_len, head_dim]
@@ -921,7 +986,7 @@ class QuasicrystallineAttention(nn.Module):
             else:
                 self.prev_entropy = None
             
-        out = out.transpose(1, 2).contiguous().view(B, S, D)
+        out = self._braid_heads(out).transpose(1, 2).contiguous().view(B, S, D)
         if out_proj_layer is not None:
             out = out_proj_layer(out)
             
@@ -932,6 +997,201 @@ class QuasicrystallineAttention(nn.Module):
             return out, kv_cache
             
         return out
+
+    def _compute_page_attention(self, Q, K, V, x, shell_level, kv_cache=None, attn_mask=None):
+        B, S, D = x.shape
+        device = x.device
+        dtype = x.dtype
+        offset = kv_cache.get("seq_len", 0) if kv_cache is not None else 0
+        min_keep = self.min_keep
+        
+        # 1. E8 coordinate projection and routing
+        seq_8d = self.e8_proj(x)
+        if getattr(self, "review_mode", False):
+            seq_8d = seq_8d * self.review_mask.to(device=seq_8d.device, dtype=seq_8d.dtype)
+            
+        # Symplectic Hamiltonian evolution
+        if hasattr(self, "symplectic_attention"):
+            p = self.e8_proj_momentum(x)
+            seq_8d, _ = self.symplectic_attention(seq_8d, p)
+            
+        # For spectral attention mode, we routing via octonionic mode by default
+        if getattr(self, "attention_mode", "projected") in ("octonionic", "spectral"):
+            if not hasattr(self, "_cached_roots_8d_norm") or self._cached_roots_8d_norm_device != device or getattr(self, "_cached_roots_8d_norm_dtype", None) != dtype:
+                from qan_transformers.modeling.attention.e8_routing import get_shared_e8_roots_8d
+                self._cached_roots_8d_norm = {
+                    lvl: get_shared_e8_roots_8d(lvl)[1].to(device=device, dtype=dtype)
+                    for lvl in [1, 2, 3]
+                }
+                self._cached_roots_8d_norm_device = device
+                self._cached_roots_8d_norm_dtype = dtype
+            roots_8d_norm = self._cached_roots_8d_norm[shell_level]
+            
+            seq_8d_norm = F.normalize(seq_8d, p=2, dim=-1, eps=1e-6)
+            alignment_score_oct = self.octonionic_mode(seq_8d_norm, roots_8d_norm)
+            alignment_score = torch.amax(alignment_score_oct, dim=-1).nan_to_num(nan=-1.0)
+        else:
+            if not hasattr(self, "_P_8_3_cached") or self._P_8_3_cached.device != device or self._P_8_3_cached.dtype != dtype:
+                self._P_8_3_cached = self.P_8_3.to(device=device, dtype=dtype)
+            seq_3d = torch.matmul(seq_8d, self._P_8_3_cached)
+            seq_3d_norm = F.normalize(seq_3d, p=2, dim=-1, eps=1e-6)
+            
+            if not hasattr(self, "_cached_roots_3d_norm") or self._cached_roots_3d_norm_device != device or getattr(self, "_cached_roots_3d_norm_dtype", None) != dtype:
+                self._cached_roots_3d_norm = {
+                    lvl: getattr(self, f"roots_3d_norm_lvl_{lvl}").to(device=device, dtype=dtype)
+                    for lvl in [1, 2, 3]
+                }
+                self._cached_roots_3d_norm_device = device
+                self._cached_roots_3d_norm_dtype = dtype
+            roots_3d_norm = self._cached_roots_3d_norm[shell_level]
+            
+            cos_sim = torch.matmul(seq_3d_norm, roots_3d_norm.t())
+            alignment_score = torch.amax(cos_sim, dim=-1).nan_to_num(nan=-1.0)
+            
+        in_wave_solver = getattr(self.__class__, "in_wave_solver", False)
+        if in_wave_solver:
+            K_size = S
+            topk_indices = torch.arange(S, device=alignment_score.device).unsqueeze(0).expand(B, -1)
+            topk_scores = alignment_score
+            absolute_topk_indices = topk_indices + offset
+        else:
+            K_size = min(S, max(min(S, min_keep) if min_keep > 0 else 1, int(S * self.sparse_ratio)))
+            if not self.training and S > 4 and offset == 0:
+                alignment_score[..., :4] = 60000.0
+            topk_scores, topk_indices = torch.topk(alignment_score, K_size, dim=-1, sorted=True)
+            topk_indices, sort_idx = torch.sort(topk_indices, dim=-1)
+            topk_scores = torch.gather(topk_scores, -1, sort_idx)
+            absolute_topk_indices = topk_indices + offset
+            
+        if device.type == "mps":
+            from qan_transformers.kernels.mps_scatter import mps_coordinate_gather_scatter
+            K_sparse, V_sparse = mps_coordinate_gather_scatter(Q, K, V, topk_indices)
+        else:
+            gather_indices = topk_indices.view(B, 1, K_size, 1).expand(-1, self.num_key_value_heads, -1, self.head_dim)
+            K_sparse = torch.gather(K, 2, gather_indices)
+            V_sparse = torch.gather(V, 2, gather_indices)
+            
+        K_sparse_new = K_sparse
+        V_sparse_new = V_sparse
+        
+        # Incorporate history from kv_cache if present (but do not modify it yet)
+        if kv_cache is not None and "K" in kv_cache and kv_cache["K"] is not None:
+            K_sparse_combined = torch.cat([kv_cache["K"], K_sparse], dim=2)
+            V_sparse_combined = torch.cat([kv_cache["V"], V_sparse], dim=2)
+            indices_sparse = torch.cat([kv_cache["indices"], absolute_topk_indices], dim=1)
+        else:
+            K_sparse_combined = K_sparse
+            V_sparse_combined = V_sparse
+            indices_sparse = absolute_topk_indices
+            
+        # Retrieve Matched Swap Database vectors
+        max_matches = 8 if not self.training else 0
+        if not self.training and offset > 0:
+            Q_grouped = Q.view(B, self.num_key_value_heads, self.num_heads // self.num_key_value_heads, S, self.head_dim)[:, :, 0]
+            if getattr(self, "is_draft", False) and hasattr(self.swap_db, "swap_in_batch_draft"):
+                swapped_k, swapped_v = self.swap_db.swap_in_batch_draft(Q_grouped, max_matches=max_matches)
+            elif hasattr(self.swap_db, "swap_in_batch_target"):
+                swapped_k, swapped_v = self.swap_db.swap_in_batch_target(Q_grouped, max_matches=max_matches)
+            else:
+                swapped_k, swapped_v = self.swap_db.swap_in_batch(Q_grouped, max_matches=max_matches)
+            swapped_k = swapped_k.to(device=device, dtype=dtype)
+            swapped_v = swapped_v.to(device=device, dtype=dtype)
+            
+            K_sparse_combined = torch.cat([K_sparse_combined, swapped_k], dim=2)
+            V_sparse_combined = torch.cat([V_sparse_combined, swapped_v], dim=2)
+            
+        # Absolute Causal Masking
+        mask_val = -65000.0 if dtype in (torch.float16, torch.bfloat16) else -1e9
+        if not self.training and S == 1:
+            if attn_mask is None:
+                attn_mask_sparse = None
+            else:
+                K_sparse_len = K_sparse_combined.shape[2]
+                attn_mask_sparse = torch.zeros((B, 1, 1, K_sparse_len), device=device, dtype=dtype)
+        else:
+            q_positions = torch.arange(offset, offset + S, device=device, dtype=torch.long).view(1, S, 1)
+            k_positions = indices_sparse.unsqueeze(1)
+            causal_mask_inv = (k_positions > q_positions).unsqueeze(1).to(dtype=dtype)
+            if not self.training and offset > 0 and max_matches > 0:
+                pad_shape = causal_mask_inv.shape[:-1] + (max_matches,)
+                causal_mask_inv = torch.cat([causal_mask_inv, torch.zeros(pad_shape, device=device, dtype=dtype)], dim=-1)
+            attn_mask_sparse = causal_mask_inv * mask_val
+            
+        if attn_mask is not None:
+            if attn_mask.dim() == 2:
+                if attn_mask.shape[0] == S and attn_mask.shape[1] == S:
+                    attn_mask = attn_mask.unsqueeze(0).unsqueeze(1)
+                else:
+                    attn_mask = attn_mask.unsqueeze(1).unsqueeze(2)
+            elif attn_mask.dim() == 3:
+                attn_mask = attn_mask.unsqueeze(1)
+                
+            B_mask, H_mask, S_mask, Mask_K = attn_mask.shape
+            K_total = indices_sparse.shape[-1]
+            B_max = max(B, B_mask)
+            
+            if Mask_K < offset + S:
+                padding_size = offset + S - Mask_K
+                attn_mask = F.pad(attn_mask, (0, padding_size), value=0.0)
+                
+            attn_mask_expanded = attn_mask.expand(B_max, H_mask, S_mask, attn_mask.shape[-1])
+            gather_indices_mask = indices_sparse.view(B, 1, 1, K_total).expand(B_max, H_mask, S_mask, K_total)
+            user_mask_sparse = torch.gather(attn_mask_expanded, 3, gather_indices_mask)
+            if not self.training and offset > 0 and max_matches > 0:
+                unmasked_pad = torch.zeros(user_mask_sparse.shape[:-1] + (max_matches,), device=device, dtype=dtype)
+                user_mask_sparse = torch.cat([user_mask_sparse, unmasked_pad], dim=-1)
+                
+            attn_mask_sparse = attn_mask_sparse + user_mask_sparse
+            
+        # matmul
+        num_key_value_groups = self.num_key_value_groups
+        Q_reshaped = Q.view(B, self.num_key_value_heads, num_key_value_groups, S, self.head_dim)
+        K_sparse_reshaped = K_sparse_combined.unsqueeze(2)
+        attn_scores_raw = torch.matmul(Q_reshaped, K_sparse_reshaped.transpose(-2, -1)) * self.scaling
+        attn_scores = attn_scores_raw.view(B, self.num_heads, S, -1)
+        
+        if getattr(self, "temperature_mode", "fixed") == "tropical":
+            attn_scores = self.adaptive_tropical_temp(attn_scores)
+            
+        if attn_mask_sparse is not None:
+            attn_scores = attn_scores + attn_mask_sparse
+            
+        attn_scores = torch.nan_to_num(attn_scores, nan=mask_val, posinf=mask_val, neginf=mask_val)
+        attn_scores_max = torch.max(attn_scores, dim=-1, keepdim=True)[0]
+        is_masked_row = attn_scores_max <= -60000.0
+        
+        attn_weights = F.softmax(attn_scores, dim=-1)
+        if self.training:
+            attn_weights = attn_weights * (~is_masked_row)
+        else:
+            attn_weights.mul_(~is_masked_row)
+            
+        # Apply Derived Category Attention Composition
+        if getattr(self, "use_derived_composition", False) and hasattr(self, "config") and self.config is not None:
+            prev_attn_weights = getattr(self.config, "shared_prev_attn_weights", None)
+            if prev_attn_weights is not None and prev_attn_weights.shape == attn_weights.shape:
+                attn_weights = self.derived_composition(
+                    attn_weights,
+                    prev_attn_weights,
+                    indices=indices_sparse,
+                    S_total=offset + S
+                )
+                
+        if hasattr(self, "config") and self.config is not None:
+            self.config.shared_prev_attn_weights = attn_weights.detach()
+            
+        attn_weights_reshaped = attn_weights.view(B, self.num_key_value_heads, num_key_value_groups, S, -1)
+        V_sparse_reshaped = V_sparse_combined.unsqueeze(2)
+        out = torch.matmul(attn_weights_reshaped, V_sparse_reshaped).view(B, self.num_heads, S, self.head_dim)
+        
+        return {
+            "out": out,
+            "attn_weights": attn_weights,
+            "K_sparse": K_sparse_new,
+            "V_sparse": V_sparse_new,
+            "indices_sparse": absolute_topk_indices,
+            "topk_scores": topk_scores
+        }
 
     def _morse_collapse_cache(self, K_combined, V_combined, indices_combined, scores_combined, K_total, offset=0):
         B, H, K_len, head_dim = K_combined.shape
@@ -1008,359 +1268,3 @@ class QuasicrystallineAttention(nn.Module):
         scores_ret = scores_combined[:, critical_summits]
             
         return K_ret, V_ret, indices_ret, scores_ret
-
-
-class UltrametricAttention(nn.Module):
-    def __init__(self, embed_dim, num_heads, sparse_ratio=0.15, num_key_value_heads=None, is_draft=False, depth=5, leaf_size=128):
-        super().__init__()
-        if embed_dim % num_heads != 0:
-            raise ValueError(f"embed_dim ({embed_dim}) must be perfectly divisible by num_heads ({num_heads})")
-        self.embed_dim = embed_dim
-        self.num_heads = num_heads
-        self.sparse_ratio = sparse_ratio
-        self.num_key_value_heads = num_key_value_heads if num_key_value_heads is not None else num_heads
-        self.num_key_value_groups = self.num_heads // self.num_key_value_heads
-        self.is_draft = is_draft
-        self.depth = depth
-        self.leaf_size = leaf_size
-        self.head_dim = embed_dim // num_heads
-        self.scaling = 1.0 / np.sqrt(self.head_dim)
-        
-        self.q_proj = nn.Linear(embed_dim, embed_dim)
-        self.k_proj = nn.Linear(embed_dim, self.num_key_value_heads * self.head_dim)
-        self.v_proj = nn.Linear(embed_dim, self.num_key_value_heads * self.head_dim)
-        self.out_proj = nn.Linear(embed_dim, embed_dim)
-        
-        # Coordinate projection mapping embed_dim to 3 coordinates
-        self.coordinate_proj = nn.Linear(embed_dim, 3)
-        
-        # Learnable decay parameter
-        self.gamma = nn.Parameter(torch.tensor(1.0))
-        
-    def forward(self, x, kv_cache=None, attn_mask=None):
-        device = x.device
-        dtype = x.dtype
-        B, S, D = x.shape
-        
-        # Projects hidden states into 3D continuous coordinates
-        coords = torch.sigmoid(self.coordinate_proj(x))
-        coords = torch.nan_to_num(coords, nan=0.5)
-        
-        # Extract depth digits for bases 2, 3, and 5
-        c0 = coords[..., 0]
-        c1 = coords[..., 1]
-        c2 = coords[..., 2]
-        
-        # Base 2 digits
-        current_0 = c0
-        digits_2 = []
-        for _ in range(self.depth):
-            current_0 = current_0 * 2
-            d = torch.floor(current_0)
-            d = torch.clamp(d, 0, 1)
-            digits_2.append(d)
-            current_0 = current_0 - d
-            
-        # Base 3 digits
-        current_1 = c1
-        digits_3 = []
-        for _ in range(self.depth):
-            current_1 = current_1 * 3
-            d = torch.floor(current_1)
-            d = torch.clamp(d, 0, 2)
-            digits_3.append(d)
-            current_1 = current_1 - d
-            
-        # Base 5 digits
-        current_2 = c2
-        digits_5 = []
-        for _ in range(self.depth):
-            current_2 = current_2 * 5
-            d = torch.floor(current_2)
-            d = torch.clamp(d, 0, 4)
-            digits_5.append(d)
-            current_2 = current_2 - d
-            
-        # Interleave and pack digits into base-30 Morton code integers
-        morton_code = torch.zeros_like(c0, dtype=torch.long)
-        for k in range(self.depth):
-            d_30 = digits_2[k] + 2 * digits_3[k] + 6 * digits_5[k]
-            morton_code = morton_code * 30 + d_30.long()
-            
-        # Linear projections for Q, K, V
-        Q = self.q_proj(x).view(B, S, self.num_heads, self.head_dim).transpose(1, 2)
-        K = self.k_proj(x).view(B, S, self.num_key_value_heads, self.head_dim).transpose(1, 2)
-        V = self.v_proj(x).view(B, S, self.num_key_value_heads, self.head_dim).transpose(1, 2)
-        
-        # Concatenate with cached K and V if kv_cache is provided
-        if kv_cache is not None:
-            if "K" in kv_cache and kv_cache["K"] is not None:
-                K_combined = torch.cat([kv_cache["K"], K], dim=2)
-                V_combined = torch.cat([kv_cache["V"], V], dim=2)
-                morton_combined = torch.cat([kv_cache["morton_codes"], morton_code], dim=1)
-            else:
-                K_combined = K
-                V_combined = V
-                morton_combined = morton_code
-            kv_cache["K"] = K_combined
-            kv_cache["V"] = V_combined
-            kv_cache["morton_codes"] = morton_combined
-        else:
-            K_combined = K
-            V_combined = V
-            morton_combined = morton_code
-            
-        S_total = K_combined.shape[2]
-        
-        # S_total < 2048 (dynamic fallback)
-        if S_total < 2048:
-            if self.num_key_value_groups > 1:
-                K_rep = repeat_kv(K_combined, self.num_key_value_groups)
-                V_rep = repeat_kv(V_combined, self.num_key_value_groups)
-            else:
-                K_rep = K_combined
-                V_rep = V_combined
-                
-            if attn_mask is not None:
-                if attn_mask.dim() == 2:
-                    if attn_mask.shape[0] == S and attn_mask.shape[1] == S:
-                        attn_mask_sdpa = attn_mask.unsqueeze(0).unsqueeze(1)
-                    else:
-                        attn_mask_sdpa = attn_mask.unsqueeze(1).unsqueeze(2)
-                elif attn_mask.dim() == 3:
-                    attn_mask_sdpa = attn_mask.unsqueeze(1)
-                else:
-                    attn_mask_sdpa = attn_mask
-            else:
-                attn_mask_sdpa = None
-                
-            out = F.scaled_dot_product_attention(
-                Q, K_rep, V_rep,
-                attn_mask=attn_mask_sdpa,
-                scale=self.scaling,
-                is_causal=False
-            )
-        else:
-            # S_total >= 2048: Fast Multipole Method (FMM) attention loop
-            N = S_total
-            H = self.num_heads
-            
-            # Repeat KV if needed
-            if self.num_key_value_groups > 1:
-                K_rep = repeat_kv(K_combined, self.num_key_value_groups)
-                V_rep = repeat_kv(V_combined, self.num_key_value_groups)
-            else:
-                K_rep = K_combined
-                V_rep = V_combined
-                
-            # Sort sequence along sequence dimension by Morton codes (with chronological priority to prevent causal leakage)
-            orig_idx = torch.arange(N, device=device).unsqueeze(0).expand(B, -1)
-            sort_key = orig_idx * 100000000 + morton_combined
-            sort_idx = torch.argsort(sort_key, dim=-1) # Shape: [B, N]
-            unsort_idx = torch.argsort(sort_idx, dim=-1) # Shape: [B, N]
-            
-            # Pad Q to N if S < N
-            if S < N:
-                Q_padded = F.pad(Q, (0, 0, 0, N - S))
-            else:
-                Q_padded = Q
-                
-            # Gather sorted tensors along sequence dimension (dim 2)
-            gather_idx = sort_idx.view(B, 1, N, 1).expand(-1, H, -1, self.head_dim)
-            Q_sorted = torch.gather(Q_padded, 2, gather_idx)
-            K_sorted = torch.gather(K_rep, 2, gather_idx)
-            V_sorted = torch.gather(V_rep, 2, gather_idx)
-            
-            # Determine tree dimensions
-            B_sz = self.leaf_size
-            M = (N + B_sz - 1) // B_sz
-            L = int(np.ceil(np.log2(max(M, 1))))
-            M_pow = 2**L
-            N_tree = M_pow * B_sz
-            pad_len = N_tree - N
-            
-            # Construct sorted mask (Issue 2)
-            mask_val = -65000.0 if Q.dtype in (torch.float16, torch.bfloat16) else -1e9
-            mask_sorted = torch.zeros(B, H, N_tree, device=device, dtype=dtype)
-            
-            if attn_mask is not None:
-                if attn_mask.dim() == 2:
-                    mask_seq = attn_mask.unsqueeze(1).expand(-1, H, -1)
-                elif attn_mask.dim() == 3:
-                    if attn_mask.shape[1] in (H, 1):
-                        mask_seq = attn_mask.expand(-1, H, -1)
-                    else:
-                        mask_seq = attn_mask[:, 0, :].unsqueeze(1).expand(-1, H, -1)
-                elif attn_mask.dim() == 4:
-                    if attn_mask.shape[1] == 1:
-                        mask_seq = attn_mask[:, 0, 0, :].unsqueeze(1).expand(-1, H, -1)
-                    else:
-                        mask_seq = attn_mask[:, :, 0, :]
-                else:
-                    mask_seq = attn_mask
-                
-                if mask_seq.shape[-1] < N:
-                    pad_size = N - mask_seq.shape[-1]
-                    mask_seq = F.pad(mask_seq, (0, pad_size), value=0.0)
-                elif mask_seq.shape[-1] > N:
-                    mask_seq = mask_seq[..., :N]
-                
-                gather_idx_mask = sort_idx.unsqueeze(1).expand(-1, H, -1)
-                mask_sorted_seq = torch.gather(mask_seq, 2, gather_idx_mask)
-                
-                if pad_len > 0:
-                    mask_sorted = F.pad(mask_sorted_seq, (0, pad_len), value=mask_val)
-                else:
-                    mask_sorted = mask_sorted_seq
-            else:
-                if pad_len > 0:
-                    mask_sorted[:, :, N:] = mask_val
-            # Pad sorted tensors to N_tree
-            if pad_len > 0:
-                Q_tree = F.pad(Q_sorted, (0, 0, 0, pad_len))
-                K_tree = F.pad(K_sorted, (0, 0, 0, pad_len))
-                V_tree = F.pad(V_sorted, (0, 0, 0, pad_len))
-            else:
-                Q_tree = Q_sorted
-                K_tree = K_sorted
-                V_tree = V_sorted
-                
-            # Reshape to block structure
-            Q_blocks = Q_tree.view(B, H, M_pow, B_sz, self.head_dim)
-            K_blocks = K_tree.view(B, H, M_pow, B_sz, self.head_dim)
-            V_blocks = V_tree.view(B, H, M_pow, B_sz, self.head_dim)
-            
-            # Upward Pass (Aggregate nodes)
-            K_tree_nodes = {}
-            V_tree_nodes = {}
-            # Leaf level L nodes (Issue 3: active count pooling)
-            active_count = (mask_sorted == 0).to(dtype).view(B, H, M_pow, B_sz).sum(dim=-1, keepdim=True)
-            K_tree_nodes[L] = K_blocks.sum(dim=-2) / torch.clamp(active_count, min=1.0)
-            V_tree_nodes[L] = V_blocks.sum(dim=-2) / torch.clamp(active_count, min=1.0)
-            
-            for l in range(L - 1, -1, -1):
-                parent_K = K_tree_nodes[l+1].view(B, H, 2**l, 2, self.head_dim).mean(dim=3)
-                parent_V = V_tree_nodes[l+1].view(B, H, 2**l, 2, self.head_dim).mean(dim=3)
-                K_tree_nodes[l] = parent_K
-                V_tree_nodes[l] = parent_V
-                
-            # Upward Pass for mask nodes (Issue 2)
-            mask_nodes = {}
-            mask_nodes[L] = mask_sorted.view(B, H, M_pow, B_sz).max(dim=-1)[0]
-            for l in range(L - 1, -1, -1):
-                mask_nodes[l] = torch.maximum(mask_nodes[l+1][..., ::2], mask_nodes[l+1][..., 1::2])
-                
-            # Near-field direct block attention
-            attn_scores_near = torch.matmul(Q_blocks, K_blocks.transpose(-2, -1)) * self.scaling
-            
-            # Causal and padding masks in near-field
-            if pad_len > 0:
-                sort_idx_tree = F.pad(sort_idx, (0, pad_len), value=N + 1000)
-            else:
-                sort_idx_tree = sort_idx
-                
-            orig_indices_blocks = sort_idx_tree.view(B, 1, M_pow, B_sz)
-            causal_mask_near = (orig_indices_blocks.unsqueeze(-1) < orig_indices_blocks.unsqueeze(-2))
-            padding_mask_near = (orig_indices_blocks.unsqueeze(-2) >= N)
-            
-            mask_near = (causal_mask_near | padding_mask_near).to(dtype=Q.dtype) * mask_val
-            
-            # Extract block-local slice of sorted mask and add to near-field scores (Issue 2)
-            mask_blocks = mask_sorted.view(B, H, M_pow, B_sz)
-            attn_scores_near = attn_scores_near + mask_near + mask_blocks.unsqueeze(-2)
-            
-            # Upward hierarchy of minimum and maximum original indices for causal checks (Issue 1)
-            min_orig_node = {}
-            max_orig_node = {}
-            min_orig_node[L] = orig_indices_blocks.min(dim=-1)[0]
-            max_orig_node[L] = orig_indices_blocks.max(dim=-1)[0]
-            for l in range(L - 1, -1, -1):
-                min_orig_node[l] = torch.minimum(min_orig_node[l+1][..., ::2], min_orig_node[l+1][..., 1::2])
-                max_orig_node[l] = torch.maximum(max_orig_node[l+1][..., ::2], max_orig_node[l+1][..., 1::2])
-                
-            # Far-field aggregated sibling nodes attention
-            j_indices = torch.arange(M_pow, device=Q.device)
-            K_sibs = []
-            V_sibs = []
-            is_sib_padded_list = []
-            is_sib_causal_violation_list = []
-            sibling_mask_list = []
-            
-            for l in range(1, L + 1):
-                ancestor_indices = torch.div(j_indices, 2**(L - l), rounding_mode='trunc')
-                sibling_indices = ancestor_indices ^ 1
-                
-                gather_idx_sib = sibling_indices.view(1, 1, M_pow, 1).expand(B, H, -1, self.head_dim)
-                K_sib_l = torch.gather(K_tree_nodes[l], 2, gather_idx_sib)
-                V_sib_l = torch.gather(V_tree_nodes[l], 2, gather_idx_sib)
-                
-                K_sibs.append(K_sib_l.unsqueeze(3))
-                V_sibs.append(V_sib_l.unsqueeze(3))
-                
-                # Check sibling padding
-                sibling_start_block = sibling_indices * (2**(L - l))
-                is_sib_padded_l = (sibling_start_block >= M)
-                is_sib_padded_list.append(is_sib_padded_l.view(1, 1, M_pow, 1, 1))
-                
-                # Check sibling causal violation (Issue 1)
-                sibling_max_orig_l = torch.gather(max_orig_node[l], 2, sibling_indices.view(1, 1, M_pow).expand(B, 1, -1))
-                causal_mask_sib_l = (sibling_max_orig_l.unsqueeze(-1) > orig_indices_blocks)
-                is_sib_causal_violation_list.append(causal_mask_sib_l.unsqueeze(-1))
-                
-                # Sibling mask (Issue 2)
-                sibling_mask_l = torch.gather(mask_nodes[l], 2, sibling_indices.view(1, 1, M_pow).expand(B, H, -1))
-                sibling_mask_list.append(sibling_mask_l.unsqueeze(-1))
-                
-            K_sib_all = torch.cat(K_sibs, dim=3) # Shape: [B, H, M_pow, L, D]
-            V_sib_all = torch.cat(V_sibs, dim=3) # Shape: [B, H, M_pow, L, D]
-            is_sib_padded_all = torch.cat(is_sib_padded_list, dim=4) # Shape: [1, 1, M_pow, 1, L]
-            is_sib_causal_violation_all = torch.cat(is_sib_causal_violation_list, dim=-1) # Shape: [B, 1, M_pow, B_sz, L]
-            sibling_mask_all = torch.cat(sibling_mask_list, dim=-1) # Shape: [B, H, M_pow, L]
-            
-            # Sibling scores
-            scores_sib = torch.matmul(Q_blocks, K_sib_all.transpose(-2, -1)) * self.scaling
-            
-            # Scale factor for sibling nodes: -self.gamma * 30**(-level)
-            levels = torch.arange(1, L + 1, device=Q.device, dtype=Q.dtype)
-            scale_factors = -self.gamma * (30.0 ** (-levels))
-            scores_sib_scaled = scores_sib * scale_factors.view(1, 1, 1, 1, L)
-            
-            # Mask padded and causal violated sibling nodes (Issue 1)
-            is_sib_invalid = (is_sib_padded_all | is_sib_causal_violation_all)
-            scores_sib_scaled = scores_sib_scaled.masked_fill(is_sib_invalid, mask_val)
-            
-            # Add sibling mask (Issue 2)
-            scores_sib_scaled = scores_sib_scaled + sibling_mask_all.unsqueeze(-2)
-            
-            # Joint attention scores and softmax
-            total_scores = torch.cat([attn_scores_near, scores_sib_scaled], dim=-1)
-            total_weights = F.softmax(total_scores, dim=-1)
-            
-            weights_near = total_weights[..., :B_sz]
-            weights_sib = total_weights[..., B_sz:]
-            
-            # Outputs
-            out_near = torch.matmul(weights_near, V_blocks)
-            out_sib = torch.matmul(weights_sib, V_sib_all)
-            out_block = out_near + out_sib
-            
-            # Restore shape and unsort
-            out_tree = out_block.view(B, H, N_tree, self.head_dim)
-            out_sorted = out_tree[:, :, :N, :]
-            
-            unsort_gather_idx = unsort_idx.view(B, 1, N, 1).expand(-1, H, -1, self.head_dim)
-            out_unsorted = torch.gather(out_sorted, 2, unsort_gather_idx)
-            
-            out = out_unsorted[:, :, :S, :]
-            
-        out = out.transpose(1, 2).contiguous().view(B, S, self.embed_dim)
-        out = self.out_proj(out)
-        out = torch.nan_to_num(out, nan=0.0, posinf=20.0, neginf=-20.0)
-        
-        # Differentiable hook to populate gradients for coordinate_proj
-        # (since sorting and floor digit extraction are discrete/non-differentiable)
-        out = out + (coords - coords.detach()).mean(dim=-1, keepdim=True)
-        
-        if kv_cache is not None:
-            return out, kv_cache
-        return out

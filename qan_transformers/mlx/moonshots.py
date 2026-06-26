@@ -251,17 +251,53 @@ class FusedGeGLUFFN(nn.Module):
 
             self._compiled_forward = _fused_weight_forward
         else:
-            # ELQLinear path — keep the two separate module calls.
+            # ELQLinear path — keep the two separate module calls, but use fused geglu kernel when B==1.
             self.gate_proj = gate_proj
             self.up_proj = up_proj
             self._use_fused_weight = False
 
-            @mx.compile
             def _module_forward(x):
-                gate = self.gate_proj(x)
-                up = self.up_proj(x)
-                activated = self.gelu(gate) * up
-                return self.down_proj(activated)
+                # Retrieve cache references
+                cache = getattr(self.gate_proj, "cache", None)
+                global_bypass = getattr(self.gate_proj.__class__, "_global_cache_bypass", False)
+                
+                # Check if we should use cache (if cache contains both weights)
+                use_cache = False
+                if cache is not None and cache.is_enabled and not global_bypass:
+                    if self.gate_proj._layer_id in cache._cache and self.up_proj._layer_id in cache._cache:
+                        use_cache = True
+                
+                # B is the batch size (B=1 is our optimized case)
+                B = x.shape[0] if len(x.shape) > 1 else 1
+                
+                # If cache is missed/disabled and B == 1, run the fused gate_up Metal kernel
+                if not use_cache and B == 1 and self.gate_proj.__class__.__name__ == "ELQLinear" and self.up_proj.__class__.__name__ == "ELQLinear":
+                    from qan_transformers.kernels.elq_metal import elq_fused_gate_up
+                    gate_up = elq_fused_gate_up(
+                        x,
+                        self.gate_proj._indices, self.gate_proj._scales,
+                        self.up_proj._indices, self.up_proj._scales
+                    )
+                    d_ff = self.gate_proj.output_dims
+                    gate = gate_up[..., :d_ff]
+                    up = gate_up[..., d_ff:]
+                    
+                    # Apply outlier corrections in Python
+                    delta_W_gate = self.gate_proj.get_delta_W_T(x.dtype)
+                    if delta_W_gate is not None:
+                        gate = gate + mx.matmul(x[..., self.gate_proj._outlier_indices], delta_W_gate)
+                    
+                    delta_W_up = self.up_proj.get_delta_W_T(x.dtype)
+                    if delta_W_up is not None:
+                        up = up + mx.matmul(x[..., self.up_proj._outlier_indices], delta_W_up)
+                    
+                    activated = self.gelu(gate) * up
+                    return self.down_proj(activated)
+                else:
+                    gate = self.gate_proj(x)
+                    up = self.up_proj(x)
+                    activated = self.gelu(gate) * up
+                    return self.down_proj(activated)
 
             self._compiled_forward = _module_forward
 

@@ -4,7 +4,7 @@ from pathlib import Path
 from qan_transformers.tokenizer import KineticsTokenizer
 
 # Locate Gemma4 tokenizer JSON
-TOKENIZER_JSON = Path("/Volumes/Storage/antigravity_worktrees/project_atlas/explain-git-worktree/benchmarks/data/gemma4-E4B-tokenizer.json")
+TOKENIZER_JSON = Path(__file__).parents[3] / "benchmarks" / "data" / "gemma4-E4B-tokenizer.json"
 
 def test_kinetics_tokenizer_initialization():
     if not TOKENIZER_JSON.exists():

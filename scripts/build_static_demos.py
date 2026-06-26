@@ -292,6 +292,8 @@ def inject_and_save(html_content, filename):
     modified = modified.replace("href='moe.html'", "href='moe_portal.html'")
     modified = modified.replace('href="chat.html"', 'href="aim_chat.html"')
     modified = modified.replace("href='chat.html'", "href='aim_chat.html'")
+    modified = modified.replace('href="marsshot.html"', 'href="marsshot_simulator.html"')
+    modified = modified.replace("href='marsshot.html'", "href='marsshot_simulator.html'")
         
     out_path = os.path.join("docs", filename)
     with open(out_path, "w", encoding="utf-8") as f:

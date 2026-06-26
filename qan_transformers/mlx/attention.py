@@ -4,6 +4,11 @@ import numpy as np
 from typing import Optional, Any
 from qan_transformers.mlx.e8_swap import AdelicMemorySwapGridDB
 from qan_transformers.firewall.cohomology import CohomologyFirewall
+from qan_transformers.mlx.octonionic import OctonionicAttentionMode
+from qan_transformers.mlx.tropical import AdaptiveTropicalTemperature
+from qan_transformers.mlx.derived_composition import DerivedAttentionComposition
+from qan_transformers.mlx.symplectic import SymplecticAttention
+from qan_transformers.mlx.anyonic_braiding import BraidedMultiHeadAttention
 
 _PROJECTED_ROOTS_CACHE = {}
 
@@ -161,7 +166,12 @@ class QuasicrystallineAttention(nn.Module):
         rg_enabled: bool = False,
         uv_window: int = 64,
         rg_chunk_size: int = 32,
-        lattice: str = 'e8'
+        lattice: str = 'e8',
+        attention_mode: str = 'projected',
+        temperature_mode: str = 'fixed',
+        use_derived_composition: bool = False,
+        use_braiding: bool = False,
+        use_lattice_bias: bool = False
     ):
         """
         MLX-native Quasicrystalline Attention Layer.
@@ -175,6 +185,11 @@ class QuasicrystallineAttention(nn.Module):
         self.embed_dim = embed_dim
         self.num_heads = num_heads
         self.sparse_ratio = sparse_ratio
+        self.attention_mode = attention_mode
+        self.temperature_mode = temperature_mode
+        self.use_derived_composition = use_derived_composition
+        self.use_braiding = use_braiding
+        self.use_lattice_bias = use_lattice_bias
         self.head_dim = head_dim if head_dim is not None else (embed_dim // num_heads)
         self.scale = self.head_dim ** -0.5
         self.min_keep = 0
@@ -238,6 +253,31 @@ class QuasicrystallineAttention(nn.Module):
         self.roots_3d = self.cached_roots[1]
         self.roots_3d_norm = getattr(self, "roots_3d_norm_lvl_1")
         
+        # Pre-cache Shell 1, 2, 3 8D roots globally per device type to avoid redundant math
+        if (device_type, '8d', 1) not in _PROJECTED_ROOTS_CACHE:
+            from qan_transformers.math.e8_projection import generate_dynamic_e8_coordinates
+            prev_dev = mx.default_device()
+            mx.set_default_device(mx.Device(device_type))
+            try:
+                for lvl in [1, 2, 3]:
+                    roots_8d = mx.array(generate_dynamic_e8_coordinates(lvl), dtype=mx.float32)
+                    roots_8d_norm = roots_8d / (mx.linalg.norm(roots_8d, axis=-1, keepdims=True) + 1e-6)
+                    mx.eval(roots_8d_norm)
+                    _PROJECTED_ROOTS_CACHE[(device_type, '8d', lvl)] = roots_8d_norm
+            finally:
+                mx.set_default_device(prev_dev)
+                
+        self.cached_8d_roots_norm = {lvl: _PROJECTED_ROOTS_CACHE[(device_type, '8d', lvl)] for lvl in [1, 2, 3]}
+        self.roots_8d_norm = self.cached_8d_roots_norm[1]
+
+        # Initialize Marsshot submodules
+        self.octonionic_mode = OctonionicAttentionMode()
+        self.adaptive_tropical_temp = AdaptiveTropicalTemperature()
+        self.derived_composition = DerivedAttentionComposition()
+        self.symplectic_attention = SymplecticAttention()
+        self.braid_attention = BraidedMultiHeadAttention(embed_dim, num_heads)
+        self.e8_proj_momentum = nn.Linear(embed_dim, 8)
+        
         # Moonshot: Leech lattice mode (196,560 addresses vs E8's 240)
         self._lattice_mode = lattice
         if lattice == 'leech':
@@ -286,7 +326,14 @@ class QuasicrystallineAttention(nn.Module):
         self.positions_buffer = mx.arange(8192, dtype=mx.int32)
         self._cpu_cache_len_history = {}
         
+    def _braid_heads(self, out: mx.array) -> mx.array:
+        if getattr(self, "use_braiding", False) and hasattr(self, "braid_attention"):
+            return self.braid_attention(out)
+        return out
+
     def _apply_e8_lattice_bias(self, attn_scores, S, S_total, rope_offset, dtype, is_prefill=False):
+        if not getattr(self, "use_lattice_bias", False):
+            return attn_scores
         if getattr(self.__class__, "in_jit", False):
             return attn_scores
 
@@ -397,6 +444,16 @@ class QuasicrystallineAttention(nn.Module):
             QuasicrystallineAttention._shared_prev_entropy = val
             QuasicrystallineAttention._pending_entropy = None
             
+            # Dynamically adjust target cache capacity based on the attention entropy val
+            elq_cache = getattr(self.q_proj, "cache", None)
+            if elq_cache is not None:
+                if val < 1.8:
+                    elq_cache.set_capacity(32)
+                elif val > 2.5:
+                    elq_cache.set_capacity(258)
+                else:
+                    elq_cache.set_capacity(128)
+            
             # Update history and calculate dynamic firewall interval (Enzymatic Gating)
             QuasicrystallineAttention._shared_entropy_history.append(val)
             if len(QuasicrystallineAttention._shared_entropy_history) > 5:
@@ -446,13 +503,15 @@ class QuasicrystallineAttention(nn.Module):
                 lvl: getattr(self, f"roots_3d_norm_lvl_{lvl}") for lvl in self.cached_roots
             }
         self.roots_3d_norm = self._roots_3d_norm_by_level[shell_level]
+        self.roots_8d_norm = self.cached_8d_roots_norm[shell_level]
         
         # Project states using native linear layers to avoid expensive manual dequantization on every step
         if shared_kv is not None:
             queries = self.q_proj(x)
-            queries = mx.transpose(mx.reshape(queries, (B, S, self.num_heads, self.head_dim)), (0, 2, 1, 3))
+            queries = mx.reshape(queries, (B, S, self.num_heads, self.head_dim))
             if hasattr(self, "q_norm"):
                 queries = self.q_norm(queries)
+            queries = mx.transpose(queries, (0, 2, 1, 3))
             
             if len(shared_kv) == 3:
                 keys, values, _ = shared_kv
@@ -463,9 +522,10 @@ class QuasicrystallineAttention(nn.Module):
                 raise ValueError("Layer is a KV-shared layer but received no shared_kv")
             
             queries = self.q_proj(x)
-            queries = mx.transpose(mx.reshape(queries, (B, S, self.num_heads, self.head_dim)), (0, 2, 1, 3))
+            queries = mx.reshape(queries, (B, S, self.num_heads, self.head_dim))
             if hasattr(self, "q_norm"):
                 queries = self.q_norm(queries)
+            queries = mx.transpose(queries, (0, 2, 1, 3))
                 
             use_sparse_projection = getattr(self, "_use_sparse_projection_override", None)
             if use_sparse_projection is None:
@@ -482,15 +542,16 @@ class QuasicrystallineAttention(nn.Module):
                 values = None
             else:
                 keys = self.k_proj(x)
-                keys = mx.transpose(mx.reshape(keys, (B, S, self.num_key_value_heads, self.head_dim)), (0, 2, 1, 3))
-                
-                values = self.v_proj(x)
-                values = mx.transpose(mx.reshape(values, (B, S, self.num_key_value_heads, self.head_dim)), (0, 2, 1, 3))
-                
+                keys = mx.reshape(keys, (B, S, self.num_key_value_heads, self.head_dim))
                 if hasattr(self, "k_norm"):
                     keys = self.k_norm(keys)
+                keys = mx.transpose(keys, (0, 2, 1, 3))
+                
+                values = self.v_proj(x)
+                values = mx.reshape(values, (B, S, self.num_key_value_heads, self.head_dim))
                 if hasattr(self, "v_norm"):
                     values = self.v_norm(values)
+                values = mx.transpose(values, (0, 2, 1, 3))
 
             
         # Determine positional encoding offset
@@ -587,6 +648,9 @@ class QuasicrystallineAttention(nn.Module):
             attn_scores = self._apply_e8_lattice_bias(attn_scores, S, S_total, rope_offset, dtype, is_prefill=is_prefill)
             attn_scores = attn_scores + attn_mask_sparse
             
+            if getattr(self, "temperature_mode", "fixed") == "tropical":
+                attn_scores = self.adaptive_tropical_temp(attn_scores)
+                
             attn_scores_max = mx.max(attn_scores, axis=-1, keepdims=True)
             is_masked_row = attn_scores_max <= -60000.0
             
@@ -602,9 +666,25 @@ class QuasicrystallineAttention(nn.Module):
             else:
                 attn_weights = mx.softmax(attn_scores, axis=-1)
                 attn_weights = attn_weights * (~is_masked_row)
+                
+            attn_weights = mx.where(mx.isnan(attn_weights), mx.array(0.0, dtype=attn_weights.dtype), attn_weights)
+                
+            if getattr(self, "use_derived_composition", False) and hasattr(self, "config") and self.config is not None:
+                prev_attn_weights = getattr(self.config, "shared_prev_attn_weights", None)
+                if prev_attn_weights is not None and prev_attn_weights.shape == attn_weights.shape:
+                    attn_weights = self.derived_composition(
+                        attn_weights,
+                        prev_attn_weights,
+                        indices=indices_sparse,
+                        S_total=S_total
+                    )
+            if hasattr(self, "config") and self.config is not None:
+                self.config.shared_prev_attn_weights = mx.stop_gradient(attn_weights)
+                
             self.last_attn_weights = attn_weights
             out = attn_weights @ V_sparse
             
+            out = self._braid_heads(out)
             out = mx.transpose(out, (0, 2, 1, 3))
             out = mx.reshape(out, (B, S, -1))
             if kwargs.get("return_unprojected", False):
@@ -706,22 +786,31 @@ class QuasicrystallineAttention(nn.Module):
                     topk_scores = mx.full((B, S), 60000.0, dtype=dtype)
                     absolute_topk_indices = mx.broadcast_to((mx.arange(S, dtype=mx.int32) + offset)[None, :], (B, S))
                 else:
-                    # E8 projection to 3D in a single step (fused optimization)
-                    if not hasattr(self, "_e8_proj_3d_weight") or self.training:
-                        self._e8_proj_3d_weight = _get_dequantized_weight(self.e8_proj, dtype).T @ self.P_8_3
-                        if hasattr(self.e8_proj, "bias") and self.e8_proj.bias is not None:
-                            self._e8_proj_3d_bias = self.e8_proj.bias @ self.P_8_3
-                        else:
-                            self._e8_proj_3d_bias = None
-                    
-                    if self._e8_proj_3d_bias is not None:
-                        seq_3d = x @ self._e8_proj_3d_weight + self._e8_proj_3d_bias
+                    if self.attention_mode == 'octonionic':
+                        seq_8d = self.e8_proj(x)
+                        if hasattr(self, "symplectic_attention") and hasattr(self, "e8_proj_momentum"):
+                            p = self.e8_proj_momentum(x)
+                            seq_8d, _ = self.symplectic_attention(seq_8d, p)
+                        seq_8d_norm = seq_8d / (mx.linalg.norm(seq_8d, axis=-1, keepdims=True) + 1e-6)
+                        alignment_score_oct = self.octonionic_mode(seq_8d_norm, self.roots_8d_norm)
+                        alignment_score = mx.max(alignment_score_oct, axis=-1)
                     else:
-                        seq_3d = x @ self._e8_proj_3d_weight
-                    
-                    seq_3d_norm = seq_3d / (mx.linalg.norm(seq_3d, axis=-1, keepdims=True) + 1e-6)
-                    cos_sim = seq_3d_norm @ self.roots_3d_norm.T
-                    alignment_score = mx.max(cos_sim, axis=-1)
+                        # E8 projection to 3D in a single step (fused optimization)
+                        if not hasattr(self, "_e8_proj_3d_weight") or self.training:
+                            self._e8_proj_3d_weight = _get_dequantized_weight(self.e8_proj, dtype).T @ self.P_8_3
+                            if hasattr(self.e8_proj, "bias") and self.e8_proj.bias is not None:
+                                self._e8_proj_3d_bias = self.e8_proj.bias @ self.P_8_3
+                            else:
+                                self._e8_proj_3d_bias = None
+                        
+                        if self._e8_proj_3d_bias is not None:
+                            seq_3d = x @ self._e8_proj_3d_weight + self._e8_proj_3d_bias
+                        else:
+                            seq_3d = x @ self._e8_proj_3d_weight
+                        
+                        seq_3d_norm = seq_3d / (mx.linalg.norm(seq_3d, axis=-1, keepdims=True) + 1e-6)
+                        cos_sim = seq_3d_norm @ self.roots_3d_norm.T
+                        alignment_score = mx.max(cos_sim, axis=-1)
                     
                     # BREAK GPU JIT GRAPH FOR PREFILL:
                     if S > 16 and mx.default_device().type == mx.DeviceType.gpu:
@@ -750,16 +839,18 @@ class QuasicrystallineAttention(nn.Module):
                         x_sparse = mx.take_along_axis(x, mx.expand_dims(topk_indices, -1), axis=1)
                         
                         K_sparse = self.k_proj(x_sparse)
-                        K_sparse = mx.transpose(mx.reshape(K_sparse, (B, K_size, self.num_key_value_heads, self.head_dim)), (0, 2, 1, 3))
+                        K_sparse = mx.reshape(K_sparse, (B, K_size, self.num_key_value_heads, self.head_dim))
                         if hasattr(self, "k_norm"):
                             K_sparse = self.k_norm(K_sparse)
+                        K_sparse = mx.transpose(K_sparse, (0, 2, 1, 3))
                         if hasattr(self, "rope") and self.rope is not None:
                             K_sparse = apply_rope_with_indices(K_sparse, absolute_topk_indices, self.rope)
                             
                         V_sparse = self.v_proj(x_sparse)
-                        V_sparse = mx.transpose(mx.reshape(V_sparse, (B, K_size, self.num_key_value_heads, self.head_dim)), (0, 2, 1, 3))
+                        V_sparse = mx.reshape(V_sparse, (B, K_size, self.num_key_value_heads, self.head_dim))
                         if hasattr(self, "v_norm"):
                             V_sparse = self.v_norm(V_sparse)
+                        V_sparse = mx.transpose(V_sparse, (0, 2, 1, 3))
                     else:
                         gather_indices = mx.reshape(topk_indices, (B, 1, -1, 1))
                         K_sparse = mx.take_along_axis(keys, gather_indices, axis=2)
@@ -978,7 +1069,13 @@ class QuasicrystallineAttention(nn.Module):
                     raise e
                 
             # Fused Scaled Dot-Product Attention Optimization (Prefill Fusion)
-            if not getattr(self, "use_poly_softmax", False):
+            use_manual_attention = (
+                getattr(self, "use_poly_softmax", False)
+                or getattr(self, "use_derived_composition", False)
+                or getattr(self, "temperature_mode", "fixed") == "tropical"
+                or S == 1
+            )
+            if not use_manual_attention:
                 combined_mask = attn_mask_sparse
                 
                 # Check for E8 precomputed coordinates or fallback to current_token_ids lookup
@@ -1026,6 +1123,10 @@ class QuasicrystallineAttention(nn.Module):
                 attn_scores = self._apply_e8_lattice_bias(attn_scores, S, S_total, rope_offset, dtype, is_prefill=is_prefill)
                 attn_scores = attn_scores + attn_mask_sparse
                 
+                # Apply Tropical Temperature
+                if getattr(self, "temperature_mode", "fixed") == "tropical":
+                    attn_scores = self.adaptive_tropical_temp(attn_scores)
+                
                 # Win 104: Fused broadcast-based row masking in MLX attention
                 attn_scores_max = mx.max(attn_scores, axis=-1, keepdims=True)
                 is_masked_row = attn_scores_max <= -60000.0
@@ -1033,17 +1134,39 @@ class QuasicrystallineAttention(nn.Module):
                 # Prevent nan in fully masked rows (-inf - -inf)
                 safe_max = mx.where(is_masked_row, 0.0, attn_scores_max)
                 
-                # 2nd-order Taylor approximation: exp(y) approx (1 + y/2)^2 for y >= -2, else 0
-                y = attn_scores - safe_max
-                exp_approx = mx.maximum(0.0, 1.0 + 0.5 * y)
-                exp_approx = exp_approx * exp_approx
-                exp_approx = exp_approx * (~is_masked_row)
-                
-                sum_exp = mx.sum(exp_approx, axis=-1, keepdims=True)
-                attn_weights = exp_approx / (sum_exp + 1e-6)
+                if getattr(self, "use_poly_softmax", False):
+                    # 2nd-order Taylor approximation: exp(y) approx (1 + y/2)^2 for y >= -2, else 0
+                    y = attn_scores - safe_max
+                    exp_approx = mx.maximum(0.0, 1.0 + 0.5 * y)
+                    exp_approx = exp_approx * exp_approx
+                    exp_approx = exp_approx * (~is_masked_row)
+                    sum_exp = mx.sum(exp_approx, axis=-1, keepdims=True)
+                    attn_weights = exp_approx / (sum_exp + 1e-6)
+                else:
+                    attn_weights = mx.softmax(attn_scores, axis=-1)
+                    attn_weights = attn_weights * (~is_masked_row)
+                    
+                attn_weights = mx.where(mx.isnan(attn_weights), mx.array(0.0, dtype=attn_weights.dtype), attn_weights)
+                    
+                # Apply Derived Category Attention Composition
+                if getattr(self, "use_derived_composition", False) and hasattr(self, "config") and self.config is not None:
+                    prev_attn_weights = getattr(self.config, "shared_prev_attn_weights", None)
+                    if prev_attn_weights is not None and prev_attn_weights.shape == attn_weights.shape:
+                        attn_weights = self.derived_composition(
+                            attn_weights,
+                            prev_attn_weights,
+                            indices=indices_sparse,
+                            S_total=S_total
+                        )
+                if hasattr(self, "config") and self.config is not None:
+                    self.config.shared_prev_attn_weights = mx.stop_gradient(attn_weights)
+                    
                 out = attn_weights @ V_sparse
                 
             self.last_attn_weights = attn_weights
+            
+            # Apply braiding
+            out = self._braid_heads(out)
             
             # Increment token counter (used to gate expensive CPU-sync operations)
             self._token_count += 1
@@ -1085,20 +1208,29 @@ class QuasicrystallineAttention(nn.Module):
             return out
         
     def _update_cache_keys_values(self, cache, K, V, S_total):
-        max_size = getattr(cache, "max_size", S_total)
+        if hasattr(cache, "max_size"):
+            max_size = cache.max_size
+        else:
+            step = getattr(cache, "step", 256)
+            max_size = ((S_total + step - 1) // step) * step
+            
         if max_size > S_total:
             B, H, _, D = K.shape
             cache_k = mx.zeros((B, H, max_size, D), dtype=K.dtype)
             cache_v = mx.zeros((B, H, max_size, D), dtype=V.dtype)
-            cache_k[..., :S_total, :] = K
-            cache_v[..., :S_total, :] = V
+            cache_k[..., :K.shape[2], :] = K
+            cache_v[..., :V.shape[2], :] = V
             cache.keys = cache_k
             cache.values = cache_v
             cache.offset = S_total
-            cache._idx = S_total
+            cache._idx = S_total % max_size
         else:
-            cache.keys = K
-            cache.values = V
+            if hasattr(cache, "max_size"):
+                cache.keys = K[..., -max_size:, :]
+                cache.values = V[..., -max_size:, :]
+            else:
+                cache.keys = K
+                cache.values = V
             cache.offset = S_total
             cache._idx = S_total % max_size
 

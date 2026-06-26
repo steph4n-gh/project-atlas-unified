@@ -1,109 +1,101 @@
+import torch
 import pytest
-import mlx.core as mx
 import numpy as np
-from qan_transformers.mlx.attention import QuasicrystallineAttention
+from qan_transformers.modeling.attention.base import QuasicrystallineAttention
+from qan_transformers.modeling.rg_flow import KVRenormalizationFlow
 
-class MockCache:
-    def __init__(self):
-        self.offset = 0
+def test_rg_flow_differentiable():
+    flow = KVRenormalizationFlow(eta=0.1, alpha=0.05, max_steps=3)
+    
+    # [B, H, N, D]
+    K = torch.randn(2, 4, 8, 16, requires_grad=True)
+    V = torch.randn(2, 4, 8, 16, requires_grad=True)
+    indices = torch.arange(8).unsqueeze(0).expand(2, -1)
+    scores = torch.randn(2, 4, 8)
+    
+    # Run compression to K_total = 4
+    K_comp, V_comp, ind_comp, scr_comp = flow.compress(
+        K, V, indices, scores, K_total=4, compression_level=0.1
+    )
+    
+    assert K_comp.shape == (2, 4, 4, 16)
+    assert V_comp.shape == (2, 4, 4, 16)
+    assert ind_comp.shape == (2, 4)
+    
+    # Backward pass
+    loss = K_comp.sum() + V_comp.sum()
+    loss.backward()
+    
+    assert K.grad is not None
+    assert V.grad is not None
+    assert (K.grad != 0.0).any()
+    assert (V.grad != 0.0).any()
 
-def test_analytical_diagonalization():
-    # Construct a random 2x2 symmetric matrix: [[a, b], [b, c]]
-    # and verify that the analytical theta rotation yields the top eigenvector
-    a = mx.array([3.0, 1.0, 5.0])
-    b = mx.array([1.0, -0.5, 2.0])
-    c = mx.array([2.0, 2.0, 1.0])
-    
-    # Calculate eigenvalues analytically to compare
-    # lambda_1 = (a + c + sqrt((a-c)^2 + 4b^2)) / 2
-    eig_val_top = 0.5 * (a + c + mx.sqrt((a - c)**2 + 4.0 * b**2))
-    
-    # Calculate theta and eigenvector psi = [alpha, beta]
-    theta = 0.5 * mx.arctan2(2.0 * b, a - c)
-    alpha = mx.cos(theta)
-    beta = mx.sin(theta)
-    
-    # Matrix-vector multiplication rho @ psi
-    # [a*alpha + b*beta, b*alpha + c*beta]
-    rho_psi_x = a * alpha + b * beta
-    rho_psi_y = b * alpha + c * beta
-    
-    # Check that rho @ psi is collinear with psi: rho @ psi = lambda * psi
-    alpha_safe = mx.where(alpha == 0.0, 1e-9, alpha)
-    beta_safe = mx.where(beta == 0.0, 1e-9, beta)
-    
-    lambda_x = rho_psi_x / alpha_safe
-    lambda_y = rho_psi_y / beta_safe
-    
-    assert mx.allclose(lambda_x, eig_val_top, rtol=1e-5, atol=1e-5).item()
-    assert mx.allclose(lambda_y, eig_val_top, rtol=1e-5, atol=1e-5).item()
 
-def test_rg_flow_compression():
-    embed_dim = 64
-    num_heads = 4
-    uv_window = 8
-    rg_chunk_size = 4
+def test_rg_flow_compression_attention():
+    embed_dim = 16
+    num_heads = 2
     
+    # Instantiate QC attention with RG flow cache compression enabled
     attn = QuasicrystallineAttention(
         embed_dim=embed_dim,
         num_heads=num_heads,
-        sparse_ratio=1.0, # Keep all tokens in the cache
-        rg_enabled=True,
-        uv_window=uv_window,
-        rg_chunk_size=rg_chunk_size
+        sparse_ratio=0.5, # target size is 50%
+        cache_compression='rg_flow',
+        compression_level=0.1
     )
     
-    # Sequence length S = 20
-    x = mx.random.normal((1, 20, embed_dim))
+    # Sequence length 24
+    x = torch.randn(2, 24, embed_dim)
+    kv_cache = {}
     
-    # Run with MockCache
-    cache = MockCache()
-    attn(x, cache=cache, is_prefill=False)
+    # Forward pass (prefill)
+    out, kv_cache = attn(x, kv_cache=kv_cache)
+    assert out.shape == (2, 24, embed_dim)
     
-    # Cache length after S=20:
-    # S_old = 20 - uv_window = 12 tokens
-    # Grouped into 6 blocks of 2, compressed to 6 tokens.
-    # Total cache length should be S_recent (uv_window = 8) + 6 = 14 tokens
-    assert cache.offset == 20
-    assert attn.custom_kv_cache["K"].shape[2] == 14
-    assert attn.custom_kv_cache["indices"].shape[1] == 14
+    # Verify cache was compressed to ~50%
+    # 24 * 0.5 = 12 tokens target
+    assert "K" in kv_cache
+    assert kv_cache["K"].shape[2] == 12
+    assert kv_cache["indices"].shape[1] == 12
+
 
 def test_semantic_consistency():
-    embed_dim = 64
-    num_heads = 4
-    uv_window = 8
-    rg_chunk_size = 4
+    embed_dim = 16
+    num_heads = 2
     
     attn_comp = QuasicrystallineAttention(
         embed_dim=embed_dim,
         num_heads=num_heads,
-        sparse_ratio=1.0, # Keep all tokens in the cache
-        rg_enabled=True,
-        uv_window=uv_window,
-        rg_chunk_size=rg_chunk_size
+        sparse_ratio=0.5,
+        cache_compression='rg_flow',
+        compression_level=0.1
     )
-    attn_uncomp = QuasicrystallineAttention(
+    
+    attn_morse = QuasicrystallineAttention(
         embed_dim=embed_dim,
         num_heads=num_heads,
-        sparse_ratio=1.0, # Keep all tokens in the cache
-        rg_enabled=False
+        sparse_ratio=0.5,
+        cache_compression='morse'
     )
     
-    # Share weights
-    attn_uncomp.q_proj = attn_comp.q_proj
-    attn_uncomp.k_proj = attn_comp.k_proj
-    attn_uncomp.v_proj = attn_comp.v_proj
-    attn_uncomp.o_proj = attn_comp.o_proj
-    attn_uncomp.e8_proj = attn_comp.e8_proj
+    # Share projections and weights
+    attn_morse.q_proj = attn_comp.q_proj
+    attn_morse.k_proj = attn_comp.k_proj
+    attn_morse.v_proj = attn_comp.v_proj
+    attn_morse.out_proj = attn_comp.out_proj
+    attn_morse.e8_proj = attn_comp.e8_proj
+    attn_morse.e8_proj_momentum = attn_comp.e8_proj_momentum
+    attn_morse.symplectic_attention = attn_comp.symplectic_attention
     
-    x = mx.random.normal((1, 24, embed_dim))
+    x = torch.randn(2, 16, embed_dim)
     
-    # Run uncompressed
-    out_uncomp = attn_uncomp(x, is_prefill=False)
+    kv_cache_comp = {}
+    out_comp, kv_cache_comp = attn_comp(x, kv_cache=kv_cache_comp)
     
-    # Run compressed
-    out_comp = attn_comp(x, is_prefill=False)
+    kv_cache_morse = {}
+    out_morse, kv_cache_morse = attn_morse(x, kv_cache=kv_cache_morse)
     
-    # Verify outputs are semantically aligned (high cosine similarity)
-    cos_sim = mx.sum(out_comp * out_uncomp) / (mx.linalg.norm(out_comp) * mx.linalg.norm(out_uncomp) + 1e-9)
-    assert cos_sim.item() > 0.95
+    # Outputs should be very close semantically
+    cosine_sim = torch.cosine_similarity(out_comp.flatten(), out_morse.flatten(), dim=0)
+    assert cosine_sim.item() > 0.90

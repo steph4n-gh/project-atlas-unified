@@ -7,6 +7,8 @@ try:
 except ImportError:
     mx = None
 
+from qan_transformers.firewall.motivic import MotivicCohomologyFirewall
+
 class CohomologyFirewall:
     """
     CohomologyFirewall detects topological obstructions (anomalous fracturing) in attention weights
@@ -19,6 +21,7 @@ class CohomologyFirewall:
         self.split_boundary = None
         self.last_lambda_2 = 1.0
         self._fiedler_cache = {}
+        self.motivic = MotivicCohomologyFirewall()
 
     def check_obstruction(self, attn_matrix: Any) -> Tuple[Any, Any, Any]:
         """
@@ -217,6 +220,12 @@ class CohomologyFirewall:
         else:
             sorted_indices_alt_cpu = [[] for _ in range(B_dim)]
             
+        # Escalation to Motivic Cohomology Firewall (warning threshold = 0.8 * threshold)
+        self.last_motivic_diagnostics = None
+        max_cfi_val = float(torch.max(cfi).item()) if isinstance(cfi, torch.Tensor) else float(cfi)
+        if max_cfi_val > self.threshold * 0.8:
+            self.last_motivic_diagnostics = self.motivic(A_skeleton)
+            
         is_fractured_list = []
         cfi_list = []
         alt_idx_list = []
@@ -236,7 +245,23 @@ class CohomologyFirewall:
             if boundary_b is not None:
                 alt_idx_b = [boundary_b] + alt_idx_b
                 
-            is_fractured_list.append((boundary_b is not None) or (cfi_val > self.threshold))
+            is_fractured_val = (boundary_b is not None) or (cfi_val > self.threshold)
+            
+            # Incorporate motivic diagnostic actions
+            if self.last_motivic_diagnostics is not None:
+                actions = self.last_motivic_diagnostics["action"]
+                if isinstance(actions, list):
+                    if len(actions) > 0 and isinstance(actions[0], list):
+                        head_actions = actions[b]
+                    else:
+                        head_actions = [actions[b]]
+                else:
+                    head_actions = [actions]
+                
+                if "halt" in head_actions or "rollback" in head_actions:
+                    is_fractured_val = True
+                    
+            is_fractured_list.append(is_fractured_val)
             cfi_list.append(cfi_val)
             alt_idx_list.append(alt_idx_b)
             
