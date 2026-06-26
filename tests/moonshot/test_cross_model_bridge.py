@@ -89,7 +89,7 @@ class TestCayleyPrivacyAdapter:
 class TestWormholeConfig:
     def test_default_values(self):
         config = WormholeConfig()
-        assert config.model_name == "gemini-2.5-flash"
+        assert config.model_name == "gemini-embedding-001"
         assert config.cayley_rank == 16
         assert config.soft_threshold < config.hard_threshold
     

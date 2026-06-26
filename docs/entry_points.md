@@ -16,7 +16,7 @@ When you need to run high-speed, local, zero-dependency semantic routing on low-
 ```python
 import sys
 from pathlib import Path
-sys.path.insert(0, str(Path("/Volumes/Storage/project_atlas_moonshot")))
+sys.path.insert(0, str(Path("/Volumes/Storage/project_atlas_marsshot")))
 
 from ultrametric_ce.inference import load_model_and_tree
 from ultrametric_ce.distillation import text_to_address_sequence
@@ -51,7 +51,7 @@ from ultrametric_ce.moe import UCEMoeRouter
 
 # Initialize the 8-Expert MoE Router pointing to the expert weights directory
 router = UCEMoeRouter(
-    moe_dir="/Volumes/Storage/project_atlas_moonshot/tmp/moe",
+    moe_dir="/Volumes/Storage/project_atlas_marsshot/tmp/moe",
     gemma_model_id="google/gemma-4-e2b"
 )
 

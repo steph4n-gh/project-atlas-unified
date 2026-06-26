@@ -107,5 +107,5 @@ We do not believe in magic. Project Atlas achieves its massive memory savings by
 
 ## 8. Performance & Comparison Whitepaper
 
-For a detailed comparative breakdown utilizing real logged data from our Apple Silicon M4 Pro benchmarking runs (including memory footprint comparisons up to 500k context lengths and speculative decoding speeds), please see [Project Atlas Performance Whitepaper](file:///Volumes/Storage/project_atlas_moonshot/docs/project_atlas_whitepaper.md).
+For a detailed comparative breakdown utilizing real logged data from our Apple Silicon M4 Pro benchmarking runs (including memory footprint comparisons up to 500k context lengths and speculative decoding speeds), please see [Project Atlas Performance Whitepaper](file:///Volumes/Storage/project_atlas_marsshot/docs/project_atlas_whitepaper.md).
 

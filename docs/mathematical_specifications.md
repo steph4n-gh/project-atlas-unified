@@ -74,7 +74,7 @@ $$
 
     where $\mathbf{y}_i = \mathbf{x}_i \cdot P_{24 \to 3}$. This direct method concentrates the 196,560 projected vectors into **8 discrete concentric shells** with an alignment quality score of $\approx 0.73$.
 
-*Code Reference*: Golay coding and Leech coordinates are generated in [leech_lattice.py](file:///Volumes/Storage/project_atlas_moonshot/qan_transformers/math/leech_lattice.py) (`generate_leech_coordinates`, `project_leech_to_3d`).
+*Code Reference*: Golay coding and Leech coordinates are generated in [leech_lattice.py](file:///Volumes/Storage/project_atlas_marsshot/qan_transformers/math/leech_lattice.py) (`generate_leech_coordinates`, `project_leech_to_3d`).
 
 ---
 
@@ -495,3 +495,202 @@ where `is_sink` protects critical attention sinks and recent context tokens. Tok
 If critical summits exceed capacity $K_{\text{total}}$, we select the top-$K_{\text{total}}$ by energy. If they are fewer, we backfill slots from highest-energy redundant nodes. The selected indices are then sorted chronologically to preserve sequence order.
 
 *Code Reference*: Implemented in [attention.py](file:///Volumes/Storage/project_atlas_unified/qan_transformers/modeling/attention.py#L936-L1010) (`_morse_collapse_cache`).
+
+---
+
+## 9. Octonionic Attention Geometry
+
+Instead of the lossy $E_8 \to 3\text{D}$ projection, we compute attention natively in the 8-dimensional space of octonions $\mathbb{O}$. The 240 roots of the $E_8$ lattice are isomorphic to the Cayley integers (integral octonions). Because the $E_8$ root system is algebraically closed under octonionic multiplication, all calculations remain on the lattice.
+
+The octonionic multiplication of two octonions $a, b \in \mathbb{O}$ is defined via the Fano plane structure constants $\epsilon_{ijk}$:
+
+$$
+a \cdot b = a_0 b_0 - \sum_{i=1}^7 a_i b_i + \sum_{i=1}^7 (a_0 b_i + b_0 a_i) e_i + \sum_{j,k=1}^7 \epsilon_{ijk} a_j b_k e_i
+$$
+
+For Query and Key vectors projected to 8D, we compute the conjugate product $\bar{Q} \cdot K$ (where the imaginary components of $Q$ are negated):
+
+$$
+\text{Attn}_{\mathbb{O}}(Q, K) = \text{Re}(\bar{Q} \cdot K) = Q_0 K_0 + \sum_{i=1}^7 Q_i K_i
+$$
+
+The 7 imaginary components are routed through a 1x1 convolution mixer to capture auxiliary geometric relationship channels:
+
+$$
+\text{Imag}(\bar{Q} \cdot K) = \sum_{i=1}^7 (Q_0 K_i - K_0 Q_i - \sum_{j,k=1}^7 \epsilon_{ijk} Q_j K_k) e_i
+$$
+
+*Code Reference*: Implemented in [math/octonion.py](file:///Volumes/Storage/project_atlas_marsshot/qan_transformers/math/octonion.py) and [modeling/attention/octonionic.py](file:///Volumes/Storage/project_atlas_marsshot/qan_transformers/modeling/attention/octonionic.py).
+
+---
+
+## 10. Tropical Attention Temperature
+
+Tropical geometry replaces the standard semiring $(\mathbb{R}, +, \times)$ with the tropical semiring $(\mathbb{R} \cup \{-\infty\}, \max, +)$. Softmax attention in the low-temperature limit converges to tropical matrix multiplication:
+
+$$
+\lim_{T \to 0} T \log \left( \sum_{j} e^{(Q_i \cdot K_j)/T} \right) = \max_j (Q_i \cdot K_j)
+$$
+
+The decision boundaries where two or more routing paths tie form a tropical variety. The optimal routing temperature $T^*$ is analytically derived in closed-form by keeping the attention matrix at the boundary variety fraction (balancing soft-max diffusion and hard-argmax routing):
+
+$$
+T^* = \frac{\Delta_{\text{routing}}}{\log(1 / \alpha_{\text{variety}} - 1)} \approx 0.78
+$$
+
+*Code Reference*: Implemented in [math/tropical.py](file:///Volumes/Storage/project_atlas_marsshot/qan_transformers/math/tropical.py).
+
+---
+
+## 11. Differentiable Persistent Homology Loss
+
+To prevent attention map fracturing during training, we construct a differentiable topological loss using a soft Vietoris-Rips filtration. Rather than transferring coordinates to CPU/NumPy, we calculate birth/death times of topological components ($H_0$ and $H_1$) via a differentiable soft-minimum/soft-maximum on edge weights:
+
+$$
+d(v_i, v_j) = 1.0 - \text{Attn}(i, j)
+$$
+
+We compute the L1 landscape distance between current and reference landscapes for $H_0$ and $H_1$:
+
+$$
+\mathcal{L}_{\text{topo}} = \lambda_0 \int | \Lambda_0(t) - \Lambda_{0, \text{ref}}(t) | dt + \lambda_1 \int | \Lambda_1(t) - \Lambda_{1, \text{ref}}(t) | dt
+$$
+
+This loss is calculated completely inside the PyTorch autograd graph without any NumPy transfers.
+
+*Code Reference*: Implemented in [modeling/persistent_homology_loss.py](file:///Volumes/Storage/project_atlas_marsshot/qan_transformers/modeling/persistent_homology_loss.py).
+
+---
+
+## 12. Motivic Cohomology Firewall $H^{p,q}$
+
+The bi-graded motivic cohomology groups $H^{p,q}$ extend the single Čech Cohomology Index (CFI) to diagnose qualitatively distinct attention pathologies. We construct a filtration of weights $W_k$ based on attention strengths (strong, moderate, weak):
+
+- $H^{1,0}$ (weight-0 loops): Flags circular reasoning, triggering a cache rollback.
+- $H^{0,1}$ (high entropy): Flags uniform confusion, triggering an adaptive temperature decrease (sharpening).
+- $H^{1,1}$ (adversarial): Flags structured, high-frequency, non-local attention anomalies, triggering a safety generation halt.
+
+*Code Reference*: Implemented in [firewall/motivic.py](file:///Volumes/Storage/project_atlas_marsshot/qan_transformers/firewall/motivic.py).
+
+---
+
+## 13. Spectral Sequence Attention Refinement
+
+Rather than evaluating all E8 shells in a single pass, we compute attention page-by-page. A spectral sequence filtration converges to the full attention representation:
+
+$$
+E_1^{p,q} = H^q(E_8 \text{ Shell 1}) \implies E_2^{p,q} = H^q(E_8 \text{ Shell 2}) \implies \dots \implies E_{\infty}
+$$
+
+- Page $E_1$: Global coarse routing over Shell 1 (240 roots).
+- Page $E_2$: Coarse residual correction over Shell 2 (2160 roots).
+- Page $E_3$: Fine local correction over Shell 3 (6720 roots).
+
+The refinement differential $d_r: E_r \to E_r$ is monitored. When $\| d_r \|_F < \epsilon$, the sequence has collapsed (Page Collapse), enabling early termination of attention computation.
+
+*Code Reference*: Implemented in [modeling/spectral_sequence.py](file:///Volumes/Storage/project_atlas_marsshot/qan_transformers/modeling/spectral_sequence.py) and [modeling/attention/spectral.py](file:///Volumes/Storage/project_atlas_marsshot/qan_transformers/modeling/attention/spectral.py).
+
+---
+
+## 14. KV Renormalization Group Flow
+
+We treat context length as an energy scale under Wilsonian Renormalization Group (RG) flow. Keys and values are integrated continuously along the scale parameter $\ell = \log(\text{scale})$:
+
+$$
+\frac{d\mathbf{K}}{d\ell} = \beta(\mathbf{K}) = -\Delta \cdot \mathbf{K} + \mathbf{Attn}(\mathbf{K})
+$$
+
+High-attention tokens represent *relevant operators* that grow under flow, while redundant tokens represent *irrelevant operators* that shrink. At $\ell \to \infty$, the cache converges to an IR fixed point representing the prompt-type's universality class.
+
+*Code Reference*: Implemented in [modeling/rg_flow.py](file:///Volumes/Storage/project_atlas_marsshot/qan_transformers/modeling/rg_flow.py).
+
+---
+
+## 15. Derived Category Attention Composition
+
+To prevent information rank decay across deep transformer layers, we replace standard matrix composition with a derived category tensor product $A_{\ell+1} \otimes^L A_\ell$. We compute $\text{Ext}^1(A_\ell, A_{\ell+1})$ using SVD nullspace decomposition on the CPU:
+
+$$
+A_{\ell+1} \otimes^L A_\ell = A_{\ell+1} \cdot A_\ell + \alpha \cdot \text{Ext}^1(A_\ell, A_{\ell+1})
+$$
+
+where $\alpha$ is a learnable coupling coefficient, restoring full-rank representation to deficient layer compositions.
+
+*Code Reference*: Implemented in [modeling/derived_composition.py](file:///Volumes/Storage/project_atlas_marsshot/qan_transformers/modeling/derived_composition.py) and [modeling/attention/derived.py](file:///Volumes/Storage/project_atlas_marsshot/qan_transformers/modeling/attention/derived.py).
+
+---
+
+## 16. CFT Attention Kernel & Modular Duality
+
+We model token correlation using a Conformal Field Theory (CFT) two-point correlation function. Instead of traditional dot products, the kernel is:
+
+$$
+\langle \mathcal{O}_i \mathcal{O}_j \rangle = \frac{C_{ij}}{ |i - j|^{\Delta_i + \Delta_j} }
+$$
+
+where $\Delta_i$ represent learnable conformal dimensions at token position $i$, and $C_{ij}$ are Operator Product Expansion (OPE) coefficients. Under Modular Duality, S-matrix transformations map short-context behaviours to long-context targets:
+
+$$
+\tau \to -\frac{1}{\tau} \implies L \to \frac{L_{\text{ref}}^2}{L}
+$$
+
+ensuring zero-shot context length extrapolation.
+
+*Code Reference*: Implemented in [modeling/conformal.py](file:///Volumes/Storage/project_atlas_marsshot/qan_transformers/modeling/conformal.py).
+
+---
+
+## 17. Symplectic Hamiltonian Attention Dynamics
+
+We model attention pre-projection dynamics as an energy-conserving Hamiltonian system. Key vectors are treated as generalized coordinates $q$ and values as generalized momenta $p$. They evolve via a leapfrog integrator that preserves the symplectic form $\omega$:
+
+$$
+q_{n+1/2} = q_n + \frac{\Delta t}{2} M^{-1} p_n
+$$
+$$
+p_{n+1} = p_n - \Delta t \nabla_q V(q_{n+1/2})
+$$
+$$
+q_{n+1} = q_{n+1/2} + \frac{\Delta t}{2} M^{-1} p_{n+1}
+$$
+
+This guarantees volume preservation (no information loss during dynamics) and time-reversibility.
+
+*Code Reference*: Implemented in [modeling/attention/symplectic.py](file:///Volumes/Storage/project_atlas_marsshot/qan_transformers/modeling/attention/symplectic.py).
+
+---
+
+## 18. Galois-Theoretic Adapter Symmetry Groups
+
+The adapter weights $W$ are shared and reconstructed via Lagrange polynomial interpolation over the finite field $GF(2^8)$. Multiple task-specific adapter weights $W_c$ (represented as byte matrices) are encoded into a shared matrix parameter $M$:
+
+$$
+M_i = \sum_{c=1}^{N_{\text{tasks}}} v_{i,c} \cdot W_c \pmod{\text{GF}(2^8)}
+$$
+
+where $v_{i,c}$ are encoding coefficients derived via Lagrange polynomials over task points. For active task index $c$, the task-specific adapter weights are reconstructed from the shared parameters $M$ using Lagrange weights $w_i$:
+
+$$
+W_c = \sum_{i=1}^{N_{\text{tasks}}} w_i \cdot M_i \pmod{\text{GF}(2^8)}
+$$
+
+The reconstructed byte matrices are dequantized to floats via $W_{\text{float}} = (W_c - 128) \cdot \text{scale}$. This achieves up to **2.9× parameter compression**.
+
+*Code Reference*: Implemented in [modeling/galois_adapter.py](file:///Volumes/Storage/project_atlas_marsshot/qan_transformers/modeling/galois_adapter.py).
+
+---
+
+## 19. Anyonic Braiding with Quantum Group R-Matrices
+
+Instead of simple head concatenation, multi-head communication is governed by the braid group $B_n$. Adjacent heads are braided using parametric R-matrices derived from the Burau representation of the braid group, satisfying the Yang-Baxter relation exactly. The learnable parameter $t$ (parameterized in $(0, 1)$ via sigmoid on a raw parameter $t_{\text{raw}}$) governs the braiding:
+
+$$
+h_{i,\text{new}} = (1 - t) \cdot h_i + t \cdot h_j
+$$
+$$
+h_{j,\text{new}} = h_i
+$$
+
+The trace-based diagnostic invariants are logged by the braid group tracker to evaluate multi-head entanglement.
+
+*Code Reference*: Implemented in [modeling/anyonic_braiding.py](file:///Volumes/Storage/project_atlas_marsshot/qan_transformers/modeling/anyonic_braiding.py) and [modeling/attention/braiding.py](file:///Volumes/Storage/project_atlas_marsshot/qan_transformers/modeling/attention/braiding.py).

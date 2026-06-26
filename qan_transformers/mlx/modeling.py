@@ -330,11 +330,39 @@ try:
             assistant_attn.target_attn = target_layer.self_attn
             assistant_attn.target_layer_idx = target_idx
             
-            # Direct projection kernel sharing (bypass manual dequantization)
-            assistant_attn.target_k_weight = None
-            assistant_attn.target_k_bias = None
-            assistant_attn.target_v_weight = None
-            assistant_attn.target_v_bias = None
+            # Dequantize target projections to float16 to match assistant precision if ELQ is used
+            k_proj_elq = getattr(target_layer.self_attn, "k_proj", None)
+            v_proj_elq = getattr(target_layer.self_attn, "v_proj", None)
+            
+            if isinstance(k_proj_elq, ELQLinear):
+                # Dequantize k_proj using the helper method to support VRAM cache retrieval
+                W_dequant_k = k_proj_elq.get_dequantized_weight()
+                assistant_attn.target_k_weight = W_dequant_k.astype(mx.float16)
+                
+                if k_proj_elq.bias is not None:
+                    assistant_attn.target_k_bias = k_proj_elq.bias.astype(mx.float16)
+                
+                # Dequantize v_proj (if exists)
+                if v_proj_elq is not None:
+                    W_dequant_v = v_proj_elq.get_dequantized_weight()
+                    assistant_attn.target_v_weight = W_dequant_v.astype(mx.float16)
+                    
+                    if v_proj_elq.bias is not None:
+                        assistant_attn.target_v_bias = v_proj_elq.bias.astype(mx.float16)
+                else:
+                    assistant_attn.target_v_weight = assistant_attn.target_k_weight
+                    assistant_attn.target_v_bias = assistant_attn.target_k_bias
+                    
+                # Eagerly evaluate and sync to avoid JIT tracing issues
+                mx.eval(assistant_attn.target_k_weight)
+                if assistant_attn.target_v_weight is not None:
+                    mx.eval(assistant_attn.target_v_weight)
+                mx.synchronize()
+            else:
+                assistant_attn.target_k_weight = None
+                assistant_attn.target_k_bias = None
+                assistant_attn.target_v_weight = None
+                assistant_attn.target_v_bias = None
             
             linked_count += 1
             
@@ -534,6 +562,11 @@ class ELQSlidingCache:
         # Fast path: cache hit
         entry = self._cache.get(layer_id)
         if entry is not None:
+            # Move to end of order list (mark as MRU)
+            if layer_id in self._order:
+                self._order.remove(layer_id)
+            self._order.append(layer_id)
+            
             cached_W_T, cached_dtype = entry
             if cached_dtype == dtype:
                 return cached_W_T
@@ -542,13 +575,13 @@ class ELQSlidingCache:
             self._cache[layer_id] = (cached_W_T, dtype)
             return cached_W_T
 
-        # Check if we have room (unlimited capacity = always room)
+        # Check if we have room. If full, return None to bypass cache and use fused matmul path,
+        # avoiding cyclic cache thrashing under sequential inference loops.
         if self._max_entries is not None and len(self._cache) >= self._max_entries:
-            # Cache is full — return None to signal the caller to use fused matmul
             return None
 
         # Cache miss — dequantize via Metal kernel (happens once per layer)
-        print(f"[GossetGate Log] Cache MISS for layer {layer_id}! Dequantizing on the fly...", flush=True)
+        # print(f"[GossetGate Log] Cache MISS for layer {layer_id}! Dequantizing on the fly...", flush=True)
         W_dequant = dequant_fn(indices, scales)
         if outliers.size > 0:
             W_dequant[:, outlier_indices] = outliers
@@ -556,8 +589,9 @@ class ELQSlidingCache:
 
         # Store permanently (or until capacity eviction)
         self._cache[layer_id] = (W_T, dtype)
+        if layer_id in self._order:
+            self._order.remove(layer_id)
         self._order.append(layer_id)
-        self._evict_to_capacity()
 
         # Evaluate and synchronize immediately to prevent JIT graph bloat and watchdog timeouts
         mx.eval(W_T)
@@ -650,12 +684,55 @@ class ELQLinear(nn.Module):
             if self.delta_W_T.dtype != dtype:
                 self.delta_W_T = self.delta_W_T.astype(dtype)
             return self.delta_W_T
+        if hasattr(self, "_outliers") and self._outliers.size > 0:
+            with device_context(mx.DeviceType.gpu):
+                dequant_fn = self._get_dequantize_fn()
+                W_dequant = dequant_fn(self._indices, self._scales)
+                W_E8_outliers = W_dequant[:, self._outlier_indices]
+                delta_W = self._outliers - W_E8_outliers
+                delta_W_T_fp32 = delta_W.T.astype(mx.float32)
+                mx.eval(delta_W_T_fp32)
+                delta_W_T_np = np.array(delta_W_T_fp32)
+                self.delta_W_T = mx.array(delta_W_T_np, dtype=dtype)
+                mx.eval(self.delta_W_T)
+                mx.synchronize()
+                del W_dequant
+                del W_E8_outliers
+                del delta_W
+                del delta_W_T_fp32
+                del delta_W_T_np
+            return self.delta_W_T
         return None
 
     def pre_dequantize(self, dtype=mx.bfloat16):
         """Pre-cast the outlier correction matrix to the target dtype.
         The sliding cache handles weight dequantization on-demand."""
         return self.get_delta_W_T(dtype)
+
+    def get_dequantized_weight(self) -> mx.array:
+        """Retrieves the full dequantized weight matrix of shape (output_dims, input_dims).
+        Uses the cached weight matrix if available in the sliding cache to avoid
+        AttributeError when quantized fields have been eagerly deleted to save VRAM."""
+        cache = self.cache if self.cache is not None else ELQSlidingCache.get()
+        if cache is not None and self._layer_id in cache._cache:
+            W_T, _ = cache._cache[self._layer_id]
+            return W_T.T
+        
+        # Otherwise, dequantize on-demand
+        dequant_fn = self._get_dequantize_fn()
+        indices = getattr(self, "_indices", None)
+        scales = getattr(self, "_scales", None)
+        if indices is None or scales is None:
+            raise AttributeError(
+                f"ELQLinear layer {self._layer_id} does not have '_indices' or '_scales' "
+                f"and its dequantized weight is not cached."
+            )
+        W_dequant = dequant_fn(indices, scales)
+        outliers = getattr(self, "_outliers", None)
+        outlier_indices = getattr(self, "_outlier_indices", None)
+        if outliers is not None and outliers.size > 0 and outlier_indices is not None:
+            W_dequant[:, outlier_indices] = outliers
+        return W_dequant
             
     def __call__(self, x: mx.array) -> mx.array:
         if getattr(self, "is_draft", False):
@@ -681,7 +758,9 @@ class ELQLinear(nn.Module):
         cache = self.cache if self.cache is not None else ELQSlidingCache.get()
         W_T = None
 
-        if cache.is_enabled and ((getattr(self, "use_cache", True) and not ELQLinear._global_cache_bypass) or not hasattr(self, "_indices")) and (cache._max_entries is None or cache._max_entries > 0):
+        if getattr(self, "_temp_W_T", None) is not None:
+            W_T = self._temp_W_T
+        elif cache.is_enabled and ((getattr(self, "use_cache", True) and not ELQLinear._global_cache_bypass) or not hasattr(self, "_indices")) and (cache._max_entries is None or cache._max_entries > 0):
             # Fast check: retrieve from cache if present to avoid accessing potentially deleted quantized attributes
             if self._layer_id in cache._cache:
                 W_T, cached_dtype = cache._cache[self._layer_id]
@@ -885,11 +964,23 @@ def graft_mlx_model(model: nn.Module, sparse_ratio: float = 0.15, min_keep: int 
         # Initialize e8_proj.weight dynamically using SVD to align with the
         # principal attention subspaces of the base model (Zero-Shot Coherence Calibration).
         dtype = child.q_proj._scales.dtype if hasattr(child.q_proj, "_scales") else mx.float16
+        U, S, Vt = None, None, None
         try:
-            W_q = np.array(get_float_weight(child.q_proj))
+            W_q = np.array(get_float_weight(child.q_proj).astype(mx.float32))
             # Run SVD to extract the principal attention components
-            U, S, Vt = np.linalg.svd(W_q, full_matrices=False)
-            e8_weight_np = Vt[:8, :]
+            # Optimize: use scipy.sparse.linalg.svds to find top-8 components (uses vecLib/Accelerate)
+            try:
+                import scipy.sparse.linalg
+                _, _, Vt = scipy.sparse.linalg.svds(W_q, k=8, which='LM')
+                e8_weight_np = Vt[::-1, :]
+            except Exception as svds_err:
+                try:
+                    import scipy.linalg
+                    _, _, Vt = scipy.linalg.svd(W_q, full_matrices=False, lapack_driver='gesdd')
+                    e8_weight_np = Vt[:8, :]
+                except Exception as gesdd_err:
+                    U, S, Vt = np.linalg.svd(W_q, full_matrices=False)
+                    e8_weight_np = Vt[:8, :]
             # Normalize projection components
             e8_weight_np = e8_weight_np / (np.linalg.norm(e8_weight_np, axis=1, keepdims=True) + 1e-6)
         except Exception as e:
@@ -1139,7 +1230,7 @@ def move_model_to_device(model: nn.Module, device_type: mx.DeviceType):
     gc.collect()
     mx.clear_cache()
 
-def load_and_graft_elq_model(model: nn.Module, elq_path: str, sparse_ratio: float = 0.15, min_keep: int = 256, is_draft: bool = False, cache_capacity: int = None, lattice: str = "e8") -> nn.Module:
+def load_and_graft_elq_model(model: nn.Module, elq_path: str, sparse_ratio: float = 0.15, min_keep: int = 256, is_draft: bool = False, cache_capacity: int = None, lattice: str = "e8", pre_dequantize: bool = True) -> nn.Module:
     """
     Loads ELQ quantized weights from `elq_path` and grafts them into the MLX `model`.
     Also grafts QuasicrystallineAttention.
@@ -1341,14 +1432,14 @@ def load_and_graft_elq_model(model: nn.Module, elq_path: str, sparse_ratio: floa
     
     # Enforce Metal allocator memory and cache limits to prevent OS watchdog timeouts
     try:
-        mx.set_memory_limit(17 * 1024 * 1024 * 1024)
-        print("[ELQ] Metal allocator memory limit successfully set to 17.0 GB.", flush=True)
+        mx.set_memory_limit(23 * 1024 * 1024 * 1024)
+        print("[ELQ] Metal allocator memory limit successfully set to 23.0 GB.", flush=True)
     except Exception as e:
         print(f"[ELQ Warning] Could not set Metal memory limit: {e}", flush=True)
         
     try:
-        mx.set_cache_limit(2 * 1024 * 1024 * 1024)
-        print("[ELQ] Metal allocator cache limit successfully set to 2.0 GB.", flush=True)
+        mx.set_cache_limit(4 * 1024 * 1024 * 1024)
+        print("[ELQ] Metal allocator cache limit successfully set to 4.0 GB.", flush=True)
     except Exception as e:
         print(f"[ELQ Warning] Could not set Metal cache limit: {e}", flush=True)
         
@@ -1366,16 +1457,77 @@ def load_and_graft_elq_model(model: nn.Module, elq_path: str, sparse_ratio: floa
     dequant_fn = ELQLinear._get_dequantize_fn()
     count = 0
     cached_layer_ids = set()
+    
+    # 1. Initialize ELQLinear properties
     for name, module in grafted.named_modules():
         if isinstance(module, ELQLinear):
             module.cache = cache
             module.model_dtype = model_dtype
-            if is_draft and cache._max_entries == 0:
-                # For draft model with 0 capacity: do NOT cache the full weight matrix in VRAM,
-                # but still compute the outlier delta correction matrix delta_W_T.
+            
+    # 2. Run eager pre-dequantization only if pre_dequantize is True
+    if pre_dequantize:
+        for name, module in grafted.named_modules():
+            if isinstance(module, ELQLinear):
+                if is_draft and cache._max_entries == 0:
+                    # For draft model with 0 capacity: do NOT cache the full weight matrix in VRAM,
+                    # but still compute the outlier delta correction matrix delta_W_T.
+                    with device_context(mx.DeviceType.gpu):
+                        if module._outliers.size > 0:
+                            W_dequant = dequant_fn(module._indices, module._scales)
+                            W_E8_outliers = W_dequant[:, module._outlier_indices]
+                            delta_W = module._outliers - W_E8_outliers
+                            delta_W_T_fp32 = delta_W.T.astype(mx.float32)
+                            mx.eval(delta_W_T_fp32)
+                            delta_W_T_np = np.array(delta_W_T_fp32)
+                            module.delta_W_T = mx.array(delta_W_T_np, dtype=model_dtype)
+                            mx.eval(module.delta_W_T)
+                            del W_dequant
+                            del W_E8_outliers
+                            del delta_W
+                            del delta_W_T_fp32
+                            del delta_W_T_np
+                        else:
+                            module.delta_W_T = None
+                        mx.synchronize()
+                    count += 1
+                    if count % 32 == 0:
+                        mx.synchronize()
+                        gc.collect()
+                        mx.clear_cache()
+                    continue
+
+                # Limit target model cache capacity to 128 layers
+                if not is_draft and cache._max_entries is not None and len(cache._cache) >= cache._max_entries:
+                    print(f"[ELQ Skip Cache] Layer {module._layer_id} ({name}) - Cache at capacity, using fused path.", flush=True)
+                    with device_context(mx.DeviceType.gpu):
+                        if module._outliers.size > 0:
+                            W_dequant = dequant_fn(module._indices, module._scales)
+                            W_E8_outliers = W_dequant[:, module._outlier_indices]
+                            delta_W = module._outliers - W_E8_outliers
+                            delta_W_T_fp32 = delta_W.T.astype(mx.float32)
+                            mx.eval(delta_W_T_fp32)
+                            delta_W_T_np = np.array(delta_W_T_fp32)
+                            module.delta_W_T = mx.array(delta_W_T_np, dtype=model_dtype)
+                            mx.eval(module.delta_W_T)
+                            del W_dequant
+                            del W_E8_outliers
+                            del delta_W
+                            del delta_W_T_fp32
+                            del delta_W_T_np
+                        else:
+                            module.delta_W_T = None
+                        mx.synchronize()
+                    count += 1
+                    if count % 32 == 0:
+                        mx.synchronize()
+                        gc.collect()
+                        mx.clear_cache()
+                    continue
+
+                # 1. Dequantize on GPU (target model only)
                 with device_context(mx.DeviceType.gpu):
+                    W_dequant = dequant_fn(module._indices, module._scales)
                     if module._outliers.size > 0:
-                        W_dequant = dequant_fn(module._indices, module._scales)
                         W_E8_outliers = W_dequant[:, module._outlier_indices]
                         delta_W = module._outliers - W_E8_outliers
                         delta_W_T_fp32 = delta_W.T.astype(mx.float32)
@@ -1383,114 +1535,61 @@ def load_and_graft_elq_model(model: nn.Module, elq_path: str, sparse_ratio: floa
                         delta_W_T_np = np.array(delta_W_T_fp32)
                         module.delta_W_T = mx.array(delta_W_T_np, dtype=model_dtype)
                         mx.eval(module.delta_W_T)
-                        del W_dequant
+                        
+                        W_dequant[:, module._outlier_indices] = module._outliers
                         del W_E8_outliers
                         del delta_W
                         del delta_W_T_fp32
                         del delta_W_T_np
                     else:
                         module.delta_W_T = None
-                    mx.synchronize()
-                count += 1
-                if count % 32 == 0:
-                    mx.synchronize()
-                    gc.collect()
-                    mx.clear_cache()
-                continue
-
-            # Limit target model cache capacity to 128 layers
-            if not is_draft and cache._max_entries is not None and len(cache._cache) >= cache._max_entries:
-                print(f"[ELQ Skip Cache] Layer {module._layer_id} ({name}) - Cache at capacity, using fused path.", flush=True)
-                with device_context(mx.DeviceType.gpu):
-                    if module._outliers.size > 0:
-                        W_dequant = dequant_fn(module._indices, module._scales)
-                        W_E8_outliers = W_dequant[:, module._outlier_indices]
-                        delta_W = module._outliers - W_E8_outliers
-                        delta_W_T_fp32 = delta_W.T.astype(mx.float32)
-                        mx.eval(delta_W_T_fp32)
-                        delta_W_T_np = np.array(delta_W_T_fp32)
-                        module.delta_W_T = mx.array(delta_W_T_np, dtype=model_dtype)
-                        mx.eval(module.delta_W_T)
-                        del W_dequant
-                        del W_E8_outliers
-                        del delta_W
-                        del delta_W_T_fp32
-                        del delta_W_T_np
-                    else:
-                        module.delta_W_T = None
-                    mx.synchronize()
-                count += 1
-                if count % 32 == 0:
-                    mx.synchronize()
-                    gc.collect()
-                    mx.clear_cache()
-                continue
-
-            # 1. Dequantize on GPU (target model only)
-            with device_context(mx.DeviceType.gpu):
-                W_dequant = dequant_fn(module._indices, module._scales)
-                if module._outliers.size > 0:
-                    W_E8_outliers = W_dequant[:, module._outlier_indices]
-                    delta_W = module._outliers - W_E8_outliers
-                    delta_W_T_fp32 = delta_W.T.astype(mx.float32)
-                    mx.eval(delta_W_T_fp32)
-                    delta_W_T_np = np.array(delta_W_T_fp32)
-                    module.delta_W_T = mx.array(delta_W_T_np, dtype=model_dtype)
-                    mx.eval(module.delta_W_T)
+                    W_T = W_dequant.T.astype(model_dtype)
                     
-                    W_dequant[:, module._outlier_indices] = module._outliers
-                    del W_E8_outliers
-                    del delta_W
-                    del delta_W_T_fp32
-                    del delta_W_T_np
-                else:
-                    module.delta_W_T = None
-                W_T = W_dequant.T.astype(model_dtype)
+                    # 2. Evaluate and synchronize individually on GPU
+                    mx.eval(W_T)
+                    mx.synchronize()
                 
-                # 2. Evaluate and synchronize individually on GPU
-                mx.eval(W_T)
-                mx.synchronize()
-            
-            # 3. Cache permanently (target model only)
-            cache._cache[module._layer_id] = (W_T, model_dtype)
-            print(f"[ELQ Graft Cache] Cached target layer {module._layer_id} ({name})", flush=True)
+                # 3. Cache permanently (target model only)
+                cache._cache[module._layer_id] = (W_T, model_dtype)
+                print(f"[ELQ Graft Cache] Cached target layer {module._layer_id} ({name})", flush=True)
+                    
+                cache._order.append(module._layer_id)
+                cached_layer_ids.add(module._layer_id)
                 
-            cache._order.append(module._layer_id)
-            cached_layer_ids.add(module._layer_id)
-            
-            # 4. Clean up GPU memory reference
-            del W_dequant
-            del W_T
-            
-            count += 1
-            if count % 32 == 0:
-                mx.synchronize()
-                gc.collect()
-                mx.clear_cache()
-            
-    # Final memory cleanup after full dequantization loop
-    mx.synchronize()
-    gc.collect()
-    mx.clear_cache()
-            
-    # Set cache for the model session
-    for name, module in grafted.named_modules():
-        if isinstance(module, ELQLinear):
-            module.cache = cache
-            module.model_dtype = model_dtype
-            # Eagerly delete quantized arrays to save memory, but ONLY for cached layers
-            if module._layer_id in cached_layer_ids:
-                if hasattr(module, "_indices"):
-                    del module._indices
-                if hasattr(module, "_scales"):
-                    del module._scales
-                if hasattr(module, "_outliers"):
-                    del module._outliers
-                if hasattr(module, "_outlier_mask"):
-                    del module._outlier_mask
-                if hasattr(module, "delta_W_T"):
-                    del module.delta_W_T
-            
+                # 4. Clean up GPU memory reference
+                del W_dequant
+                del W_T
+                
+                count += 1
+                if count % 32 == 0:
+                    mx.synchronize()
+                    gc.collect()
+                    mx.clear_cache()
+                
+        # Final memory cleanup after full dequantization loop
+        mx.synchronize()
+        gc.collect()
+        mx.clear_cache()
+                
+        # Eagerly delete quantized arrays to save memory, but ONLY if they are permanently cached
+        # and cannot be evicted (i.e., for the draft model where capacity is static and >= total layers).
+        # Since target model capacity is dynamically scaled during generation, we must keep its
+        # quantized arrays in VRAM so it can perform fallback fused matmuls/dequantizations upon eviction.
+        if is_draft and cache._max_entries is not None and len(cached_layer_ids) <= cache._max_entries:
+            for name, module in grafted.named_modules():
+                if isinstance(module, ELQLinear):
+                    if module._layer_id in cached_layer_ids:
+                        if hasattr(module, "_indices"):
+                            del module._indices
+                        if hasattr(module, "_scales"):
+                            del module._scales
+                        if hasattr(module, "_outliers"):
+                            del module._outliers
+                        if hasattr(module, "_outlier_mask"):
+                            del module._outlier_mask
+                        if hasattr(module, "delta_W_T"):
+                            del module.delta_W_T
+                        
     elq_count = sum(1 for m in grafted.modules() if isinstance(m, ELQLinear))
     print(f"[ELQ Sliding Cache] Initialized for {elq_count} ELQ layers (is_draft={is_draft}, cached={len(cached_layer_ids)}).")
     
@@ -1876,9 +1975,7 @@ def patch_speculative_decoding(gen_mod):
                             input_embeddings=input_embeddings,
                             per_layer_inputs=per_layer_inputs,
                         )
-            from qan_transformers.mlx.attention import QuasicrystallineAttention
-            if not getattr(QuasicrystallineAttention, "in_jit", False):
-                self.last_hidden_state = out
+            self.last_hidden_state = out
             if self.tie_word_embeddings:
                 logits = self.model.embed_tokens.as_linear(out)
             else:
@@ -1931,6 +2028,7 @@ def patch_speculative_decoding(gen_mod):
         y = prompt.astype(mx.uint32)
         # Initialize sequence history for E8 lattice bias (Leap 0019/0022)
         from qan_transformers.mlx.attention import QuasicrystallineAttention
+        orig_in_jit = getattr(QuasicrystallineAttention, "in_jit", False)
         tok_obj = getattr(model, "tokenizer", None)
         if tok_obj is not None and hasattr(tok_obj, "organism"):
             QuasicrystallineAttention.organism = tok_obj.organism
@@ -2416,7 +2514,47 @@ def patch_speculative_decoding(gen_mod):
         if (not hasattr(patched_speculative_generate_step, "compiled_remaining_loops") or
             getattr(patched_speculative_generate_step, "last_draft_model", None) is not draft_model):
             patched_speculative_generate_step.compiled_remaining_loops = {}
+            patched_speculative_generate_step.compiled_target_verify_steps = {}
             patched_speculative_generate_step.last_draft_model = draft_model
+            
+        def get_compiled_target_verify_step(batch_size, num_tokens):
+            key = (batch_size, num_tokens)
+            if key in patched_speculative_generate_step.compiled_target_verify_steps:
+                return patched_speculative_generate_step.compiled_target_verify_steps[key]
+                
+            c0 = model_cache[0]
+            cache_class = type(c0)
+            max_size = getattr(c0, "max_size", None)
+            
+            def verify_fn(y_batched, keys_list, values_list, rope_offset):
+                print(f"[ELQ JIT DEBUG] Tracing verify_fn for batch_size={batch_size}, num_tokens={num_tokens} | keys_list[0] shape={keys_list[0].shape if keys_list and keys_list[0] is not None else 'None'}", flush=True)
+                cache_wrappers = []
+                for i in range(len(keys_list)):
+                    if max_size is not None:
+                        c = cache_class(max_size)
+                    else:
+                        c = cache_class()
+                    c.keys = keys_list[i]
+                    c.values = values_list[i]
+                    c.offset = rope_offset
+                    cache_wrappers.append(c)
+                    
+                logits = model(y_batched, cache=cache_wrappers)
+                logits = logits[:, -num_tokens:, :]
+                quantize_cache_fn(cache_wrappers)
+                
+                logprobs = logits - mx.logsumexp(logits, axis=-1, keepdims=True)
+                preds = nonlocal_sampler(logprobs)
+                
+                # Retrieve last hidden state from target model text backbone
+                last_hidden = getattr(target_lm, "last_hidden_state", None)
+                
+                updated_keys = [c.keys for c in cache_wrappers]
+                updated_values = [c.values for c in cache_wrappers]
+                return preds, logprobs, updated_keys, updated_values, last_hidden
+                
+            patched_speculative_generate_step.compiled_target_verify_steps[key] = mx.compile(verify_fn)
+            return patched_speculative_generate_step.compiled_target_verify_steps[key]
             
         def get_compiled_remaining_loop(num_steps):
             if num_steps in patched_speculative_generate_step.compiled_remaining_loops:
@@ -2427,6 +2565,7 @@ def patch_speculative_decoding(gen_mod):
             max_size = getattr(c0, "max_size", None)
             
             def loop_fn(curr_y, last_proj_state, keys_list, values_list, rope_offset):
+                print(f"[ELQ JIT DEBUG] Tracing loop_fn for num_steps={num_steps} | keys_list[0] shape={keys_list[0].shape if keys_list and keys_list[0] is not None else 'None'}", flush=True)
                 cache_wrappers = []
                 for i in range(len(keys_list)):
                     if max_size is not None:
@@ -2561,11 +2700,39 @@ def patch_speculative_decoding(gen_mod):
         draft_start_offset = 0
         num_existing_target = 0
         num_existing_draft = 0
+        
+        # Enable JIT mode globally during speculative generation steps (bypasses stale custom_kv_cache)
+        QuasicrystallineAttention.in_jit = True
+        
         try:
             while True:
                 num_draft = min(max_tokens - ntoks, dyn_num_draft)
                 target_start_offset = model_cache[0].offset if (model_cache and len(model_cache) > 0) else 0
                 draft_start_offset = draft_cache[0].offset if (draft_cache and len(draft_cache) > 0) else 0
+                
+                # Ensure caches are padded to prevent wrap-around and JIT/eager mismatch
+                for c in model_cache:
+                    if c.keys is not None:
+                        current_size = c.keys.shape[2]
+                        target_size = ((int(c.offset + num_draft + 1) + 255) // 256) * 256
+                        if current_size < target_size:
+                            pad_len = target_size - current_size
+                            pad_k = mx.zeros((c.keys.shape[0], c.keys.shape[1], pad_len, c.keys.shape[3]), c.keys.dtype)
+                            pad_v = mx.zeros((c.values.shape[0], c.values.shape[1], pad_len, c.values.shape[3]), c.values.dtype)
+                            c.keys = mx.concatenate([c.keys, pad_k], axis=2)
+                            c.values = mx.concatenate([c.values, pad_v], axis=2)
+                            
+                if draft_model is not None:
+                    for c in draft_cache:
+                        if c.keys is not None:
+                            current_size = c.keys.shape[2]
+                            target_size = ((int(c.offset + num_draft) + 255) // 256) * 256
+                            if current_size < target_size:
+                                pad_len = target_size - current_size
+                                pad_k = mx.zeros((c.keys.shape[0], c.keys.shape[1], pad_len, c.keys.shape[3]), c.keys.dtype)
+                                pad_v = mx.zeros((c.values.shape[0], c.values.shape[1], pad_len, c.values.shape[3]), c.values.dtype)
+                                c.keys = mx.concatenate([c.keys, pad_k], axis=2)
+                                c.values = mx.concatenate([c.values, pad_v], axis=2)
                 
                 num_existing_target = 0
                 if hasattr(model, "language_model"):
@@ -2643,8 +2810,8 @@ def patch_speculative_decoding(gen_mod):
                         with stream_ctx:
                             scaled_inputs_embeds = inputs_embeds / draft_model.model.embed_scale
                             
-                            # Bypass ELQ cache globally during draft step (single flag vs 34-layer iteration)
-                            ELQLinear._global_cache_bypass = True
+                            # Do not bypass ELQ cache during draft step so assistant can use its pre-dequantized VRAM cache
+                            pass
                             
                             logits_draft = draft_model(draft_y[None], cache=draft_cache, input_embeddings=scaled_inputs_embeds)
                             logits_draft = logits_draft[:, -1, :]
@@ -2653,8 +2820,8 @@ def patch_speculative_decoding(gen_mod):
                         dev_type = get_model_device_type(draft_model)
                         stream_ctx = mx.stream(mx.cpu) if dev_type == mx.DeviceType.cpu else mx.stream(generation_stream)
                         with stream_ctx:
-                            # Bypass ELQ cache globally during draft step (single flag vs 34-layer iteration)
-                            ELQLinear._global_cache_bypass = True
+                            # Do not bypass ELQ cache during draft step so assistant can use its pre-dequantized VRAM cache
+                            pass
                             
                             logits_draft = draft_model(draft_y[None], cache=draft_cache)
                             logits_draft = logits_draft[:, -1, :]
@@ -2686,28 +2853,47 @@ def patch_speculative_decoding(gen_mod):
                         
                     # 2. Generate remaining tokens for both paths in parallel
                     if num_draft > 1:
+                        # Pad draft cache to prevent JIT recompilation on every step
+                        for c in draft_cache:
+                            if c.keys is not None:
+                                current_size = c.keys.shape[2]
+                                target_size = ((int(c.offset + num_draft) + 255) // 256) * 256
+                                if current_size < target_size:
+                                    pad_len = target_size - current_size
+                                    pad_k = mx.zeros((c.keys.shape[0], c.keys.shape[1], pad_len, c.keys.shape[3]), c.keys.dtype)
+                                    pad_v = mx.zeros((c.values.shape[0], c.values.shape[1], pad_len, c.values.shape[3]), c.values.dtype)
+                                    c.keys = mx.concatenate([c.keys, pad_k], axis=2)
+                                    c.values = mx.concatenate([c.values, pad_v], axis=2)
+
                         loop_compiled = get_compiled_remaining_loop(num_draft - 1)
                         keys_list = [c.keys for c in draft_cache]
                         values_list = [c.values for c in draft_cache]
                         rope_offset = draft_cache[0].offset
+                        rope_offset_arr = mx.array(rope_offset, mx.int32)
                         
-                        if is_assistant:
-                            remaining_tokens, updated_keys, updated_values, last_proj_state = loop_compiled(
-                                curr_y,
-                                draft_model.last_projected_state,
-                                keys_list,
-                                values_list,
-                                rope_offset
-                            )
-                            draft_model.last_projected_state = last_proj_state
-                        else:
-                            remaining_tokens, updated_keys, updated_values, _ = loop_compiled(
-                                curr_y,
-                                mx.array(0.0),
-                                keys_list,
-                                values_list,
-                                rope_offset
-                            )
+                        from qan_transformers.mlx.attention import QuasicrystallineAttention
+                        orig_in_jit = getattr(QuasicrystallineAttention, "in_jit", False)
+                        QuasicrystallineAttention.in_jit = True
+                        try:
+                            if is_assistant:
+                                remaining_tokens, updated_keys, updated_values, last_proj_state = loop_compiled(
+                                    curr_y,
+                                    draft_model.last_projected_state,
+                                    keys_list,
+                                    values_list,
+                                    rope_offset_arr
+                                )
+                                draft_model.last_projected_state = last_proj_state
+                            else:
+                                remaining_tokens, updated_keys, updated_values, _ = loop_compiled(
+                                    curr_y,
+                                    mx.array(0.0),
+                                    keys_list,
+                                    values_list,
+                                    rope_offset_arr
+                                )
+                        finally:
+                            QuasicrystallineAttention.in_jit = orig_in_jit
                         
                         # Update the draft_cache keys and values in-place
                         for idx_c, c in enumerate(draft_cache):
@@ -2719,8 +2905,8 @@ def patch_speculative_decoding(gen_mod):
                     else:
                         draft_tokens = curr_y[:, None]
                         
-                    # Restore ELQ cache (single flag instead of per-layer iteration)
-                    ELQLinear._global_cache_bypass = False
+                    # No-op since we do not bypass ELQ cache during draft steps
+                    pass
                             
                     # Replicate target cache to batch size 2
                     for c in model_cache:
@@ -2732,10 +2918,53 @@ def patch_speculative_decoding(gen_mod):
                     args_rep_t = replicate_custom_caches(model, 2, eval_now=False)
                     global_eval_args.extend(args_rep_t)
                             
-                    # 3. Verify both paths in parallel in target model
+                    # Pad target model cache to prevent JIT compile cache misses
+                    for c in model_cache:
+                        if c.keys is not None:
+                            current_size = c.keys.shape[2]
+                            target_size = ((int(c.offset + num_draft + 1) + 255) // 256) * 256
+                            if current_size < target_size:
+                                pad_len = target_size - current_size
+                                pad_k = mx.zeros((c.keys.shape[0], c.keys.shape[1], pad_len, c.keys.shape[3]), c.keys.dtype)
+                                pad_v = mx.zeros((c.values.shape[0], c.values.shape[1], pad_len, c.values.shape[3]), c.values.dtype)
+                                c.keys = mx.concatenate([c.keys, pad_k], axis=2)
+                                c.values = mx.concatenate([c.values, pad_v], axis=2)
+
+                    # 3. Verify both paths in parallel in target model (JIT compiled)
                     y_duplicated = mx.concatenate([y, y], axis=0)
                     y_batched = mx.concatenate([y_duplicated[:, None], draft_tokens], axis=1) # shape (2, num_draft + 1)
-                    tokens_batched, logprobs_batched = _step(model, model_cache, y_batched, num_draft + 1)
+                    
+                    verify_compiled = get_compiled_target_verify_step(2, num_draft + 1)
+                    keys_list = [c.keys for c in model_cache]
+                    values_list = [c.values for c in model_cache]
+                    rope_offset = model_cache[0].offset
+                    rope_offset_arr = mx.array(rope_offset, mx.int32)
+                    
+                    from qan_transformers.mlx.attention import QuasicrystallineAttention
+                    orig_in_jit = getattr(QuasicrystallineAttention, "in_jit", False)
+                    QuasicrystallineAttention.in_jit = True
+                    try:
+                        tokens_batched, logprobs_batched, updated_keys, updated_values, last_hidden_batched = verify_compiled(
+                            y_batched,
+                            keys_list,
+                            values_list,
+                            rope_offset_arr
+                        )
+                    finally:
+                        QuasicrystallineAttention.in_jit = orig_in_jit
+                        
+                    # Propagate last hidden state back to target model text backbone
+                    if last_hidden_batched is not None:
+                        if hasattr(model, "language_model"):
+                            model.language_model.last_hidden_state = last_hidden_batched
+                        else:
+                            model.last_hidden_state = last_hidden_batched
+
+                    # Update target cache in-place
+                    for idx_c, c in enumerate(model_cache):
+                        c.keys = updated_keys[idx_c]
+                        c.values = updated_values[idx_c]
+                        c.offset = rope_offset + (num_draft + 1)
                     
                     # 4. GPU-side comparison and best path selection
                     mismatches = tokens_batched[:, :num_draft] != draft_tokens
@@ -2747,7 +2976,9 @@ def patch_speculative_decoding(gen_mod):
                     acc_len_gpu = accepted_lens[best_idx_gpu]
                     
                     # Combine all draft generation, verification, and replication evals into a single block
-                    eval_list = [draft_tokens, best_idx_gpu, acc_len_gpu]
+                    eval_list = [draft_tokens, best_idx_gpu, acc_len_gpu, tokens_batched, logprobs_batched]
+                    if last_hidden_batched is not None:
+                        eval_list.append(last_hidden_batched)
                     if global_eval_args:
                         eval_list.extend(global_eval_args)
                     mx.eval(*eval_list)
@@ -2885,6 +3116,8 @@ def patch_speculative_decoding(gen_mod):
         finally:
             _rewind_cache(num_draft, n)
             mx.clear_cache()
+            from qan_transformers.mlx.attention import QuasicrystallineAttention
+            QuasicrystallineAttention.in_jit = orig_in_jit
 
     gen_mod.speculative_generate_step = patched_speculative_generate_step
     gen_mod._is_patched_for_watchdog = True
@@ -2981,7 +3214,7 @@ def patch_standard_decoding(gen_mod):
 
         text_model = model.language_model.model if hasattr(model, "language_model") else (model.model if hasattr(model, "model") else model)
         num_layers = len(text_model.layers) if hasattr(text_model, "layers") else 0
-        use_layer_by_layer = (num_layers >= 40) and (input_embeddings is None)
+        use_layer_by_layer = (num_layers >= 40) and (input_embeddings is None) and not getattr(model, "disable_layer_by_layer", False)
         print(f"[Debug] patched_generate_step: num_layers={num_layers}, use_layer_by_layer={use_layer_by_layer}", flush=True)
 
         # Create the KV cache for generation
@@ -3927,6 +4160,36 @@ def layer_by_layer_prefill(model: nn.Module, token_ids: mx.array, cache: Any, ch
         layer_outputs = []
         layer_cache = padded_cache[layer_idx] if padded_cache is not None else None
         
+        # Dequantize ELQLinear submodules of the layer for prefill
+        elq_modules = []
+        for m in layer.modules():
+            if m.__class__.__name__ == "ELQLinear":
+                elq_modules.append(m)
+                dtype = getattr(m, "model_dtype", mx.bfloat16)
+                
+                # Check if already cached to avoid accessing deleted quantized attributes
+                cached_val = None
+                if m.cache is not None and m._layer_id in m.cache._cache:
+                    cached_val, _ = m.cache._cache[m._layer_id]
+                    
+                if cached_val is not None:
+                    m._temp_W_T = cached_val
+                    if m._temp_W_T.dtype != dtype:
+                        m._temp_W_T = m._temp_W_T.astype(dtype)
+                else:
+                    dequant_fn = m._get_dequantize_fn()
+                    W_dequant = dequant_fn(m._indices, m._scales)
+                    if m._outliers.size > 0:
+                        W_dequant[:, m._outlier_indices] = m._outliers
+                    m._temp_W_T = W_dequant.T.astype(dtype)
+                    mx.eval(m._temp_W_T)
+        import resource
+        rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024 / 1024
+        active_gb = mx.metal.get_active_memory() / (1024**3)
+        cache_gb = mx.metal.get_cache_memory() / (1024**3)
+        peak_gb = mx.metal.get_peak_memory() / (1024**3)
+        print(f"[Prefill Debug] Layer {layer_idx}: dequantized {len(elq_modules)} ELQ submodules. Max RSS: {rss:.2f} MB | GPU Active: {active_gb:.2f} GB, Cache: {cache_gb:.2f} GB, Peak: {peak_gb:.2f} GB", flush=True)
+        
         # Check if we need to retrieve shared_kv for this layer
         prev_kv_layer_idx = previous_kvs[layer_idx] if has_prev_kvs and previous_kvs is not None else None
         is_shared_kv_layer = (prev_kv_layer_idx is not None and prev_kv_layer_idx != layer_idx)
@@ -3981,6 +4244,14 @@ def layer_by_layer_prefill(model: nn.Module, token_ids: mx.array, cache: Any, ch
             
         h_chunks = layer_outputs
         
+        # Clean up temporary dequantized weights
+        deleted_count = 0
+        for m in elq_modules:
+            if hasattr(m, "_temp_W_T"):
+                del m._temp_W_T
+                deleted_count += 1
+        print(f"[Prefill Debug] Deleted {deleted_count} temporary weights from {len(elq_modules)} modules.", flush=True)
+        
         # Win 311: Periodic JIT Graph and GC Tuning
         # Force evaluation of the hidden states and cache of the layer
         eval_targets = list(h_chunks)
@@ -4012,13 +4283,11 @@ def layer_by_layer_prefill(model: nn.Module, token_ids: mx.array, cache: Any, ch
                     for c_idx in range(num_chunks):
                         intermediates.pop((prev_idx, c_idx), None)
                         
-        # Periodically block to clear cache (every 8 layers) or only at the final layer
-        if (layer_idx + 1) % 8 == 0 or layer_idx == len(text_model.layers) - 1:
-            mx.eval(*eval_targets)
-            gc.collect()
-            mx.clear_cache()
-        else:
-            mx.async_eval(*eval_targets)
+        # Block to evaluate and clear cache at every layer to keep memory footprint flat
+        mx.eval(*eval_targets)
+        mx.synchronize()
+        gc.collect()
+        mx.clear_cache()
             
     # 4. Final normalization and logits (Win 312: Last-Token Final Normalization)
     h_last = h_chunks[-1][:, -1:]

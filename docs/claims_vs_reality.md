@@ -80,6 +80,6 @@ We use a **Copy-on-Write (CoW)** branching coordinate database (`CoWMemorySwapGr
 ---
 
 ## Related Documentation
-* [Project Atlas Performance Whitepaper](file:///Volumes/Storage/project_atlas_moonshot/docs/project_atlas_whitepaper.md) — View the raw benchmark results.
-* [Skeptics FAQ](file:///Volumes/Storage/project_atlas_moonshot/docs/skeptics_faq.md) — Direct answers to common criticisms.
-* [QAN Accessible Overview](file:///Volumes/Storage/project_atlas_moonshot/docs/accessible_overview.md) — The subway system and postal code analogies.
+* [Project Atlas Performance Whitepaper](file:///Volumes/Storage/project_atlas_marsshot/docs/project_atlas_whitepaper.md) — View the raw benchmark results.
+* [Skeptics FAQ](file:///Volumes/Storage/project_atlas_marsshot/docs/skeptics_faq.md) — Direct answers to common criticisms.
+* [QAN Accessible Overview](file:///Volumes/Storage/project_atlas_marsshot/docs/accessible_overview.md) — The subway system and postal code analogies.

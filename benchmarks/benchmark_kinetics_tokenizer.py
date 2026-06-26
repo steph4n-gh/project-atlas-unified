@@ -4,8 +4,8 @@ from pathlib import Path
 from qan_transformers.tokenizer import KineticsTokenizer
 
 # Paths
-TOKENIZER_JSON = Path("/Volumes/Storage/antigravity_worktrees/project_atlas/explain-git-worktree/benchmarks/data/gemma4-E4B-tokenizer.json")
-CODEBASE_FILE = Path("/Volumes/Storage/antigravity_worktrees/project_atlas/explain-git-worktree/qan_transformers/mlx/modeling.py")
+TOKENIZER_JSON = Path(__file__).parents[1] / "benchmarks" / "data" / "gemma4-E4B-tokenizer.json"
+CODEBASE_FILE = Path(__file__).parents[1] / "qan_transformers" / "mlx" / "modeling.py"
 
 def main():
     if not TOKENIZER_JSON.exists():

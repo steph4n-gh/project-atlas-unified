@@ -91,6 +91,6 @@ However, you must respect the physical constraints of your machine. If you attem
 ---
 
 ## Related Documentation
-* For the mathematical details, see [Mathematical Specifications](file:///Volumes/Storage/project_atlas_moonshot/docs/mathematical_specifications.md).
-* For quick setup and run instructions, see [Entry Points](file:///Volumes/Storage/project_atlas_moonshot/docs/entry_points.md).
-* For human-accessible analogies, see [QAN Accessible Overview](file:///Volumes/Storage/project_atlas_moonshot/docs/accessible_overview.md).
+* For the mathematical details, see [Mathematical Specifications](file:///Volumes/Storage/project_atlas_marsshot/docs/mathematical_specifications.md).
+* For quick setup and run instructions, see [Entry Points](file:///Volumes/Storage/project_atlas_marsshot/docs/entry_points.md).
+* For human-accessible analogies, see [QAN Accessible Overview](file:///Volumes/Storage/project_atlas_marsshot/docs/accessible_overview.md).

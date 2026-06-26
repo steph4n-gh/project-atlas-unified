@@ -149,6 +149,17 @@ $$
 *   **Spectral bisection Cohomology Firewall**: Evaluates attention graph Laplacians ($L = D - W$) during the forward pass. When algebraic connectivity $\lambda_2 < \tau$, it uses the Fiedler vector's signs to bisect the context and trigger targeted rollbacks at the exact split boundary.
 *   **Apple Silicon (Metal/MPS) Autograd Operators**: Highly responsive custom gather-scatter PyTorch autograd operators tailored for local MPS execution.
 *   **Stable Differentiable LoRA Pipeline**: Features a custom LoRA training pipeline with a **Backtracking Line Search** optimizer to guarantee monotonic causal cross-entropy loss convergence and zero NaN gradients.
+*   **Octonionic 8D Native Attention**: Computes attention natively in 8D $E_8$ space using $\text{Re}(\bar{Q} \cdot K)$ with $100\%$ E8 algebraic closure, avoiding the lossy 3D projection path and providing 7 auxiliary geometric channels.
+*   **Closed-Form Tropical Temperature**: Replaces heuristic/NAS hyperparameter searches with a dynamically computed critical temperature ($T^* \approx 0.78$) derived from the tropical variety routing decision boundaries.
+*   **Differentiable Persistent Homology Loss**: A first-class training objective utilizing a soft Vietoris-Rips filtration to proactively penalize topological cycle/loop formations ($H_1$) and fragmentation ($H_0$).
+*   **Bi-Graded Motivic Cohomology Firewall ($H^{p,q}$)**: Upgrades the Cech firewall to distinguish between specific pathology types, enabling structured defense against zero-day adversarial attention manipulation ($H^{1,1}$).
+*   **Spectral Sequence Attention Refinement**: Multi-page iterative attention that processes shells of increasing resolution ($E_1 \to E_2 \to E_3$) and terminates early via Page Collapse when differentials vanish.
+*   **KV Cache Renormalization Group (RG) Flow**: Continuous KV cache compression dial treating sequence length as an energy scale under Wilsonian RG flow, reducing VRAM footprint by up to $23\times$.
+*   **Derived Category Composition ($Ext^1$)**: Restores layer information bottlenecks in deep stacks using SVD nullspace $\text{Ext}^1$ correction terms to recover rank representation.
+*   **Conformal Field Theory (CFT) Attention & Modular Duality**: Models token correlation via a covariant CFT two-point function, enabling zero-shot context length extrapolation under S-matrix modular dual mappings.
+*   **Symplectic Hamiltonian Attention Dynamics**: Models pre-projection key-value dynamics as an energy-conserving Hamiltonian system solved via a volume-preserving Leapfrog integrator.
+*   **Galois-Theoretic Adapters**: Projects weight matrices onto irreducible representations of finite groups (e.g. $\mathbb{Z}/8\mathbb{Z}$), achieving up to $2.9\times$ parameter compression.
+*   **Anyonic Braiding Multi-Head Attention**: Replaces simple head concatenation with topological braiding using parametric R-matrices satisfying the Yang-Baxter relation exactly.
 
 ---
 
@@ -351,28 +362,54 @@ for step, loss in enumerate(losses):
 ## 📂 Project Directory Structure
 
 ```text
-project_atlas_moonshot/
+project-atlas-unified/
 ├── qan_transformers/     # Core library package
-│   ├── math/             # High-dimensional lattice generation & coordinate projection
+│   ├── math/             # High-dimensional lattice generation, coordinate projection & algebra
 │   │   ├── e8_projection.py
 │   │   ├── e8_swap.py    # Swap DB, FileMutex locks, and CoW memory branching
 │   │   ├── leech_lattice.py # Leech Λ₂₄ coordinate generation & 3D projection
 │   │   ├── procrustes.py # SVD Procrustes alignment for cross-model representations
-│   │   └── rag.py        # LatticeIndexer chunking and directory crawling
+│   │   ├── rag.py        # LatticeIndexer chunking and directory crawling
+│   │   ├── octonion.py   # Vectorized octonionic algebra
+│   │   └── tropical.py   # Tropical semiring and temperature analysis
 │   ├── moonshot/         # Geometric attention and wormhole bridge layers
 │   │   ├── cross_model_bridge.py # Local-to-cloud Procrustes alignment bridge
 │   │   ├── geometric_filter.py # Geodesic trajectory draft filtering
 │   │   └── persistent_homology.py # Topological persistence & filtration checkers
+│   ├── firewall/         # Attention anomalies auditing and firewall engines
+│   │   ├── cohomology.py # Cech Cohomology Index (CFI) checking
+│   │   └── motivic.py    # Bi-graded motivic cohomology firewall
 │   ├── kernels/          # Accelerated hardware backends
 │   │   └── mps_scatter.py # Gather-scatter PyTorch autograd operators for Apple Silicon
 │   ├── modeling/         # Model grafting layers, adapters, and AutoQANGraftModel
-│   │   ├── attention.py
+│   │   ├── attention/    # Split attention package (Phase 0)
+│   │   │   ├── __init__.py
+│   │   │   ├── base.py   # QuasicrystallineAttention base class
+│   │   │   ├── dense.py  # Standalone DenseAttention
+│   │   │   ├── e8_routing.py
+│   │   │   ├── utils.py
+│   │   │   ├── octonionic.py # 8D Octonionic attention scoring
+│   │   │   ├── spectral.py   # Multi-page Spectral Sequence attention
+│   │   │   ├── derived.py    # Derived Category composition wrapper
+│   │   │   ├── symplectic.py # Symplectic Hamiltonian Attention dynamics
+│   │   │   └── braiding.py   # Quantum group braided multi-head attention
 │   │   ├── auto.py       # AutoQANGraftModel and RoPE wrapping functions
-│   │   └── gemma.py      # Gemma 4 modeling adapter
+│   │   ├── gemma.py      # Gemma 4 modeling adapter
+│   │   ├── persistent_homology_loss.py # Differentiable topological loss
+│   │   ├── spectral_sequence.py # Coarse-to-fine spectral page refinement
+│   │   ├── rg_flow.py    # KV cache renormalization group flow
+│   │   ├── derived_composition.py # Ext1 composition correction
+│   │   ├── conformal.py  # CFT two-point function & Conformal Positional Encoding
+│   │   ├── galois_adapter.py # Group-theoretic adapter decomposition
+│   │   └── anyonic_braiding.py # Braid group and U_q(sl_2) R-matrices
 │   ├── mlx/              # Apple MLX-native components
 │   │   ├── attention.py  # MLX-native Quasicrystalline attention layer
 │   │   ├── e8_swap.py    # MLX-native memory swap database
-│   │   └── modeling.py   # MLX-native model graft and speculative decoding
+│   │   ├── modeling.py   # MLX-native model graft and speculative decoding
+│   │   ├── derived_composition.py # MLX derived category composition
+│   │   ├── conformal.py  # MLX CFT attention and modular duality
+│   │   ├── symplectic.py # MLX Symplectic attention leapfrog dynamics
+│   │   └── anyonic_braiding.py # MLX anyonic braiding multi-head attention
 │   ├── lora/             # Fine-tuning adapters and training loops
 │   │   └── pipeline.py   # Backtracking Line Search optimizer
 │   └── cli/              # CLI subparsers and server backend

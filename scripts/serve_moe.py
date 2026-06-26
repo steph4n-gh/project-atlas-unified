@@ -4394,6 +4394,13 @@ class RetroMoEHandler(BaseHTTPRequestHandler):
             self.end_headers()
             with open("docs/moe_designer.html", "rb") as f:
                 self.wfile.write(f.read())
+        elif self.path == "/marsshot" or self.path == "/marsshot.html":
+            self.send_response(200)
+            self.send_header("Content-type", "text/html; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.end_headers()
+            with open("docs/marsshot_simulator.html", "rb") as f:
+                self.wfile.write(f.read())
         elif self.path == "/assets/css/designer.css":
             self.send_response(200)
             self.send_header("Content-type", "text/css; charset=utf-8")
