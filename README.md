@@ -1,7 +1,7 @@
 # Quasicrystalline Attention Networks (`qan_transformers`)
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Python: >=3.8](https://img.shields.io/badge/Python->=3.8-blue.svg)](https://www.python.org/)
+[![Python: >=3.11](https://img.shields.io/badge/Python-%3E%3D3.11-blue.svg)](https://www.python.org/)
 [![PyTorch: >=2.0](https://img.shields.io/badge/PyTorch->=2.0-red.svg)](https://pytorch.org/)
 
 <p align="center">
